@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { SimpleGrid, Text, Stack, Box } from '@mantine/core';
 import {
   DndContext,
@@ -23,6 +23,24 @@ export default function Calendar({
   onDayDoubleClick,
 }) {
   const [activeEvent, setActiveEvent] = useState(null);
+  const [slideDirection, setSlideDirection] = useState('');
+  const [prevDate, setPrevDate] = useState(currentDate);
+
+  // Detect month change direction for slide animation
+  useEffect(() => {
+    if (!prevDate.isSame(currentDate, 'month')) {
+      if (currentDate.isAfter(prevDate, 'month')) {
+        setSlideDirection('calendar-slide-right');
+      } else {
+        setSlideDirection('calendar-slide-left');
+      }
+      setPrevDate(currentDate);
+
+      // Clear animation class after animation completes
+      const timer = setTimeout(() => setSlideDirection(''), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [currentDate, prevDate]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -115,7 +133,7 @@ export default function Calendar({
               </Box>
             ))}
           </SimpleGrid>
-          <SimpleGrid cols={7} spacing={2}>
+          <SimpleGrid cols={7} spacing={2} className={slideDirection}>
             {calendarDays.map(({ date, isCurrentMonth }) => {
               const dateKey = date.format('YYYY-MM-DD');
               const dayEvents = eventsByDate[dateKey] || [];

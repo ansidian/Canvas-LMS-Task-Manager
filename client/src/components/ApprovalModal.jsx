@@ -30,6 +30,7 @@ export default function ApprovalModal({
   item,
   classes,
   onApprove,
+  onReject,
   pendingCount,
   currentIndex,
   onNavigate,
@@ -143,11 +144,16 @@ export default function ApprovalModal({
           onChange={(e) => setFormData((f) => ({ ...f, notes: e.target.value }))}
         />
 
-        <Group justify="flex-end">
-          <Button variant="subtle" onClick={onClose}>
-            Cancel
+        <Group justify="space-between">
+          <Button variant="light" color="red" onClick={() => onReject(item)}>
+            Reject
           </Button>
-          <Button onClick={handleSubmit}>Add to Calendar</Button>
+          <Group>
+            <Button variant="subtle" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmit}>Add to Calendar</Button>
+          </Group>
         </Group>
       </Stack>
     </Modal>

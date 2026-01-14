@@ -8,7 +8,6 @@ import {
   useMantineColorScheme,
   Badge,
   Tooltip,
-  Checkbox,
 } from "@mantine/core";
 import { useHotkeys } from "@mantine/hooks";
 import { Spotlight, spotlight } from "@mantine/spotlight";
@@ -27,11 +26,12 @@ import {
 } from "@tabler/icons-react";
 import dayjs from "dayjs";
 import Calendar from "./components/Calendar";
-import PendingSidebar from "./components/PendingSidebar";
+import ResizableSidebar from "./components/ResizableSidebar";
 import SettingsModal from "./components/SettingsModal";
 import ApprovalModal from "./components/ApprovalModal";
 import EventModal from "./components/EventModal";
 import CreateEventModal from "./components/CreateEventModal";
+import { CalendarSkeleton, PendingSidebarSkeleton } from "./components/SkeletonLoaders";
 
 // API helper
 const api = async (endpoint, options = {}) => {
@@ -49,6 +49,7 @@ const api = async (endpoint, options = {}) => {
 // Storage keys
 const PENDING_CACHE_KEY = "canvas_pending_items";
 const STATUS_FILTERS_KEY = "calendar_status_filters";
+const CLASS_FILTERS_KEY = "calendar_class_filters";
 
 const ALL_STATUSES = ["incomplete", "in_progress", "complete"];
 
@@ -63,9 +64,15 @@ export default function App() {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [createEventDate, setCreateEventDate] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [removingId, setRemovingId] = useState(null);
   const [statusFilters, setStatusFilters] = useState(() => {
     const saved = localStorage.getItem(STATUS_FILTERS_KEY);
     return saved ? JSON.parse(saved) : [...ALL_STATUSES];
+  });
+  const [classFilters, setClassFilters] = useState(() => {
+    const saved = localStorage.getItem(CLASS_FILTERS_KEY);
+    return saved ? JSON.parse(saved) : [];
   });
 
   // Current approval item based on index
@@ -76,11 +83,29 @@ export default function App() {
     localStorage.setItem(STATUS_FILTERS_KEY, JSON.stringify(statusFilters));
   }, [statusFilters]);
 
-  // Filtered events based on status checkboxes (empty = show all)
+  // Persist class filters to localStorage
+  useEffect(() => {
+    localStorage.setItem(CLASS_FILTERS_KEY, JSON.stringify(classFilters));
+  }, [classFilters]);
+
+  // Initialize class filters with all classes when classes load
+  useEffect(() => {
+    if (classes.length > 0 && classFilters.length === 0) {
+      const allClassIds = classes.map((c) => String(c.id));
+      setClassFilters([...allClassIds, 'unassigned']);
+    }
+  }, [classes, classFilters.length]);
+
+  // Filtered events based on status and class filters
   const filteredEvents = useMemo(() => {
-    if (statusFilters.length === 0) return events;
-    return events.filter((e) => statusFilters.includes(e.status));
-  }, [events, statusFilters]);
+    return events.filter((e) => {
+      const statusMatch = statusFilters.includes(e.status);
+      const classMatch = e.class_id
+        ? classFilters.includes(String(e.class_id))
+        : classFilters.includes('unassigned');
+      return statusMatch && classMatch;
+    });
+  }, [events, statusFilters, classFilters]);
 
   // Spotlight actions for searching events
   const spotlightActions = useMemo(() => {
@@ -116,9 +141,12 @@ export default function App() {
 
   // Load initial data and cached pending items
   useEffect(() => {
-    loadEvents();
-    loadClasses();
-    loadCachedPendingItems();
+    const loadInitialData = async () => {
+      await Promise.all([loadEvents(), loadClasses()]);
+      loadCachedPendingItems();
+      setInitialLoading(false);
+    };
+    loadInitialData();
   }, []);
 
   // Save pending items to cache when they change
@@ -162,12 +190,12 @@ export default function App() {
 
     const colors = [
       "#228be6",
-      "#40c057",
       "#fa5252",
       "#fab005",
-      "#7950f2",
       "#15aabf",
       "#e64980",
+      "#fd7e14",
+      "#20c997",
     ];
     for (const courseName of newCourses) {
       try {
@@ -218,6 +246,9 @@ export default function App() {
   };
 
   const handleApprove = async (item, formData) => {
+    // Trigger animation
+    setRemovingId(item.canvas_id);
+
     try {
       const newEvent = await api("/events", {
         method: "POST",
@@ -234,47 +265,65 @@ export default function App() {
       });
       setEvents((prev) => [...prev, newEvent]);
 
-      // Filter out the approved item
-      const remaining = pendingItems.filter(
-        (p) => p.canvas_id !== item.canvas_id
-      );
-      setPendingItems(remaining);
+      // Wait for animation to complete before removing
+      setTimeout(() => {
+        const remaining = pendingItems.filter(
+          (p) => p.canvas_id !== item.canvas_id
+        );
+        setPendingItems(remaining);
+        setRemovingId(null);
 
-      // Update cache
-      if (remaining.length > 0) {
-        localStorage.setItem(PENDING_CACHE_KEY, JSON.stringify(remaining));
-        // Stay at same index if possible, otherwise go to previous
-        if (approvalIndex >= remaining.length) {
-          setApprovalIndex(remaining.length - 1);
+        // Update cache
+        if (remaining.length > 0) {
+          localStorage.setItem(PENDING_CACHE_KEY, JSON.stringify(remaining));
+          // Stay at same index if possible, otherwise go to previous
+          if (approvalIndex >= remaining.length) {
+            setApprovalIndex(remaining.length - 1);
+          }
+        } else {
+          localStorage.removeItem(PENDING_CACHE_KEY);
+          setApprovalIndex(-1);
         }
-      } else {
-        localStorage.removeItem(PENDING_CACHE_KEY);
-        setApprovalIndex(-1);
-      }
+      }, 300);
     } catch (err) {
       console.error("Failed to approve item:", err);
+      setRemovingId(null);
     }
   };
 
   const handleReject = async (item) => {
+    // Trigger animation
+    setRemovingId(item.canvas_id);
+
     try {
       await api("/rejected", {
         method: "POST",
         body: JSON.stringify({ canvas_id: item.canvas_id }),
       });
-      const remaining = pendingItems.filter(
-        (p) => p.canvas_id !== item.canvas_id
-      );
-      setPendingItems(remaining);
 
-      // Update cache
-      if (remaining.length > 0) {
-        localStorage.setItem(PENDING_CACHE_KEY, JSON.stringify(remaining));
-      } else {
-        localStorage.removeItem(PENDING_CACHE_KEY);
-      }
+      // Wait for animation to complete before removing
+      setTimeout(() => {
+        const remaining = pendingItems.filter(
+          (p) => p.canvas_id !== item.canvas_id
+        );
+        setPendingItems(remaining);
+        setRemovingId(null);
+
+        // Update cache
+        if (remaining.length > 0) {
+          localStorage.setItem(PENDING_CACHE_KEY, JSON.stringify(remaining));
+          // Stay at same index if possible, otherwise go to previous
+          if (approvalIndex >= remaining.length) {
+            setApprovalIndex(remaining.length - 1);
+          }
+        } else {
+          localStorage.removeItem(PENDING_CACHE_KEY);
+          setApprovalIndex(-1);
+        }
+      }, 300);
     } catch (err) {
       console.error("Failed to reject item:", err);
+      setRemovingId(null);
     }
   };
 
@@ -399,13 +448,6 @@ export default function App() {
               </Tooltip>
             </Group>
             <Group>
-              <Checkbox.Group value={statusFilters} onChange={setStatusFilters}>
-                <Group gap="sm">
-                  <Checkbox size="xs" value="incomplete" label="Incomplete" />
-                  <Checkbox size="xs" value="in_progress" label="In Progress" />
-                  <Checkbox size="xs" value="complete" label="Complete" />
-                </Group>
-              </Checkbox.Group>
               <Tooltip label="Search (Ctrl+K)">
                 <ActionIcon
                   variant="subtle"
@@ -457,22 +499,35 @@ export default function App() {
         </AppShell.Header>
 
         <AppShell.Main>
-          <Calendar
-            currentDate={currentDate}
-            events={filteredEvents}
-            classes={classes}
-            onEventClick={setSelectedEvent}
-            onEventDrop={handleEventDrop}
-            onDayDoubleClick={handleDayDoubleClick}
-          />
+          {initialLoading ? (
+            <CalendarSkeleton />
+          ) : (
+            <Calendar
+              currentDate={currentDate}
+              events={filteredEvents}
+              classes={classes}
+              onEventClick={setSelectedEvent}
+              onEventDrop={handleEventDrop}
+              onDayDoubleClick={handleDayDoubleClick}
+            />
+          )}
         </AppShell.Main>
 
-        <AppShell.Aside p="md">
-          <PendingSidebar
-            items={pendingItems}
-            onApprove={openApprovalModal}
-            onReject={handleReject}
-          />
+        <AppShell.Aside p={0}>
+          {loading ? (
+            <PendingSidebarSkeleton />
+          ) : (
+            <ResizableSidebar
+              pendingItems={pendingItems}
+              onPendingItemClick={openApprovalModal}
+              removingId={removingId}
+              statusFilters={statusFilters}
+              onStatusFiltersChange={setStatusFilters}
+              classFilters={classFilters}
+              onClassFiltersChange={setClassFilters}
+              classes={classes}
+            />
+          )}
         </AppShell.Aside>
 
         <SettingsModal
@@ -488,6 +543,7 @@ export default function App() {
           item={approvalItem}
           classes={classes}
           onApprove={handleApprove}
+          onReject={handleReject}
           pendingCount={pendingItems.length}
           currentIndex={approvalIndex}
           onNavigate={navigateApproval}

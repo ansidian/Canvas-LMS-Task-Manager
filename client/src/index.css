@@ -13,7 +13,248 @@ html, body {
   min-height: 100vh;
 }
 
+/* Dark theme variables */
+[data-mantine-color-scheme="dark"] {
+  --bg-primary: #0a0a0b;
+  --bg-secondary: #111113;
+  --bg-tertiary: #18181b;
+  --bg-card: #1c1c1f;
+  --bg-hover: #232326;
+
+  --border-primary: #2a2a2e;
+  --border-secondary: #3a3a3f;
+  --border-accent: #4a4a50;
+
+  --text-primary: #fafafa;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  --accent-light: rgba(59, 130, 246, 0.1);
+}
+
+/* Light theme variables */
+[data-mantine-color-scheme="light"] {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f9fafb;
+  --bg-tertiary: #f3f4f6;
+  --bg-card: #ffffff;
+  --bg-hover: #f3f4f6;
+
+  --border-primary: #e5e7eb;
+  --border-secondary: #d1d5db;
+  --border-accent: #9ca3af;
+
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --text-muted: #6b7280;
+
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  --accent-light: rgba(59, 130, 246, 0.1);
+}
+
 /* Smooth transitions for theme changes */
 body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
   transition: background-color 0.2s ease, color 0.2s ease;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-secondary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-accent);
+}
+
+/* Modal animations */
+@keyframes modalEnter {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes modalExit {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+/* Apply modal animation to Mantine modals */
+.mantine-Modal-content {
+  animation: modalEnter 0.2s ease-out;
+}
+
+/* Calendar month slide transitions */
+@keyframes slideInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInFromLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.calendar-slide-right {
+  animation: slideInFromRight 0.3s ease-out;
+}
+
+.calendar-slide-left {
+  animation: slideInFromLeft 0.3s ease-out;
+}
+
+/* Button hover effects */
+.mantine-Button-root,
+.mantine-ActionIcon-root {
+  transition: all 0.2s ease;
+}
+
+.mantine-Button-root:hover:not(:disabled),
+.mantine-ActionIcon-root:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.mantine-Button-root:active:not(:disabled),
+.mantine-ActionIcon-root:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* Pending item card hover effect */
+.pending-item-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.pending-item-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+.pending-item-card:active {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Calendar day hover effect */
+.calendar-day {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.calendar-day:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.calendar-day:active {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+/* Fade out animation for removing items */
+@keyframes fadeOutSlide {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+    max-height: 200px;
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-10px);
+    max-height: 0;
+    margin: 0;
+    padding: 0;
+  }
+}
+
+.fade-out-item {
+  animation: fadeOutSlide 0.3s ease-out forwards;
+}
+
+/* Success flash animation for inline feedback */
+@keyframes successFlash {
+  0%, 100% {
+    background-color: transparent;
+  }
+  50% {
+    background-color: rgba(16, 185, 129, 0.2);
+  }
+}
+
+.success-flash {
+  animation: successFlash 0.6s ease-out;
+}
+
+/* Skeleton loader pulse */
+@keyframes skeletonPulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.skeleton-pulse {
+  animation: skeletonPulse 1.5s ease-in-out infinite;
+  background: var(--bg-hover);
+  border-radius: 4px;
+}
+
+/* Enhanced focus states */
+.mantine-Input-input:focus,
+.mantine-Select-input:focus,
+.mantine-Textarea-input:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px var(--accent-light) !important;
+}
+
+/* Smooth transitions for all interactive elements */
+.mantine-Paper-root,
+.mantine-Card-root {
+  transition: all 0.2s ease;
+}
+
+/* Enhanced empty states */
+.empty-state {
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-muted);
 }

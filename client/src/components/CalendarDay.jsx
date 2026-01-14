@@ -39,6 +39,7 @@ export default function CalendarDay({
       h={160}
       withBorder
       onDoubleClick={onDoubleClick}
+      className="calendar-day"
       style={{
         opacity: isCurrentMonth ? 1 : 0.4,
         backgroundColor: isOver ? "var(--mantine-color-blue-light)" : undefined,
@@ -46,7 +47,6 @@ export default function CalendarDay({
         borderWidth: isToday ? 2 : 1,
         overflow: "hidden",
         cursor: "default",
-        transition: "background-color 150ms ease",
       }}
     >
       <Stack gap={4}>

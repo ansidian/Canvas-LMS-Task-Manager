@@ -1,8 +1,15 @@
-import { Stack, Title, Text, Paper, Group, ActionIcon, Badge, ScrollArea } from '@mantine/core';
-import { IconCheck, IconX } from '@tabler/icons-react';
-import dayjs from 'dayjs';
+import {
+  Stack,
+  Title,
+  Text,
+  Paper,
+  Group,
+  Badge,
+  ScrollArea,
+} from "@mantine/core";
+import dayjs from "dayjs";
 
-export default function PendingSidebar({ items, onApprove, onReject }) {
+export default function PendingSidebar({ items, onItemClick, removingId }) {
   if (items.length === 0) {
     return (
       <Stack>
@@ -20,7 +27,16 @@ export default function PendingSidebar({ items, onApprove, onReject }) {
       <ScrollArea h="calc(100vh - 140px)">
         <Stack gap="sm">
           {items.map((item) => (
-            <Paper key={item.canvas_id} p="sm" withBorder>
+            <Paper
+              key={item.canvas_id}
+              p="sm"
+              withBorder
+              style={{ cursor: "pointer" }}
+              onClick={() => onItemClick(item)}
+              className={`pending-item-card ${
+                removingId === item.canvas_id ? "fade-out-item" : ""
+              }`}
+            >
               <Stack gap="xs">
                 <Text size="sm" fw={500} lineClamp={2}>
                   {item.title}
@@ -30,26 +46,8 @@ export default function PendingSidebar({ items, onApprove, onReject }) {
                     {item.course_name}
                   </Badge>
                   <Text size="xs" c="dimmed">
-                    {dayjs(item.due_date).format('MMM D')}
+                    {dayjs(item.due_date).format("MMM D")}
                   </Text>
-                </Group>
-                <Group justify="flex-end" gap="xs">
-                  <ActionIcon
-                    variant="light"
-                    color="red"
-                    onClick={() => onReject(item)}
-                    title="Reject"
-                  >
-                    <IconX size={16} />
-                  </ActionIcon>
-                  <ActionIcon
-                    variant="filled"
-                    color="green"
-                    onClick={() => onApprove(item)}
-                    title="Approve"
-                  >
-                    <IconCheck size={16} />
-                  </ActionIcon>
                 </Group>
               </Stack>
             </Paper>

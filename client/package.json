@@ -16,6 +16,7 @@
     "@mantine/hooks": "^8.3.12",
     "@mantine/spotlight": "^8.3.12",
     "@tabler/icons-react": "^3.36.1",
+    "canvas-confetti": "^1.9.4",
     "dayjs": "^1.11.19",
     "react": "^19.2.3",
     "react-dom": "^19.2.3"

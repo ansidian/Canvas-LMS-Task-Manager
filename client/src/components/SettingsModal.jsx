@@ -32,6 +32,7 @@ export default function SettingsModal({ opened, onClose, classes, onClassesChang
   const [editingClassId, setEditingClassId] = useState(null);
   const [editName, setEditName] = useState('');
   const [editColor, setEditColor] = useState('');
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   useEffect(() => {
     setCanvasUrl(localStorage.getItem('canvasUrl') || '');
@@ -41,6 +42,10 @@ export default function SettingsModal({ opened, onClose, classes, onClassesChang
   const saveCanvasSettings = () => {
     localStorage.setItem('canvasUrl', canvasUrl);
     localStorage.setItem('canvasToken', canvasToken);
+
+    // Show success feedback
+    setSaveSuccess(true);
+    setTimeout(() => setSaveSuccess(false), 1500);
   };
 
   const addClass = async () => {
@@ -122,7 +127,13 @@ export default function SettingsModal({ opened, onClose, classes, onClassesChang
               description="Generated from Canvas settings"
             />
             <Group justify="flex-end">
-              <Button onClick={saveCanvasSettings}>Save Settings</Button>
+              <Button
+                onClick={saveCanvasSettings}
+                color={saveSuccess ? 'green' : 'blue'}
+                className={saveSuccess ? 'success-flash' : ''}
+              >
+                {saveSuccess ? '✓ Saved' : 'Save Settings'}
+              </Button>
             </Group>
           </Stack>
         </Tabs.Panel>
