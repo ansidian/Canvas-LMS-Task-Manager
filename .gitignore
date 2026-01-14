@@ -1,0 +1,9 @@
+.claude/*
+PROJECT.md
+CLAUDE.md
+node_modules/
+client/node_modules/
+client/dist/
+server/db/*.db
+.DS_Store
+*.log
