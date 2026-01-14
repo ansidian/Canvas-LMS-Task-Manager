@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from "react";
 import {
   AppShell,
   Title,
@@ -8,11 +8,11 @@ import {
   useMantineColorScheme,
   Badge,
   Tooltip,
-  SegmentedControl,
-} from '@mantine/core';
-import { useHotkeys } from '@mantine/hooks';
-import { Spotlight, spotlight } from '@mantine/spotlight';
-import '@mantine/spotlight/styles.css';
+  Checkbox,
+} from "@mantine/core";
+import { useHotkeys } from "@mantine/hooks";
+import { Spotlight, spotlight } from "@mantine/spotlight";
+import "@mantine/spotlight/styles.css";
 import {
   IconChevronLeft,
   IconChevronRight,
@@ -24,32 +24,33 @@ import {
   IconCircle,
   IconCircleHalf2,
   IconCircleCheck,
-} from '@tabler/icons-react';
-import dayjs from 'dayjs';
-import Calendar from './components/Calendar';
-import PendingSidebar from './components/PendingSidebar';
-import SettingsModal from './components/SettingsModal';
-import ApprovalModal from './components/ApprovalModal';
-import EventModal from './components/EventModal';
-import CreateEventModal from './components/CreateEventModal';
+} from "@tabler/icons-react";
+import dayjs from "dayjs";
+import Calendar from "./components/Calendar";
+import PendingSidebar from "./components/PendingSidebar";
+import SettingsModal from "./components/SettingsModal";
+import ApprovalModal from "./components/ApprovalModal";
+import EventModal from "./components/EventModal";
+import CreateEventModal from "./components/CreateEventModal";
 
 // API helper
 const api = async (endpoint, options = {}) => {
   const res = await fetch(`/api${endpoint}`, {
-    headers: { 'Content-Type': 'application/json', ...options.headers },
+    headers: { "Content-Type": "application/json", ...options.headers },
     ...options,
   });
   if (!res.ok) {
-    const error = await res.json().catch(() => ({ message: 'Request failed' }));
-    throw new Error(error.message || 'Request failed');
+    const error = await res.json().catch(() => ({ message: "Request failed" }));
+    throw new Error(error.message || "Request failed");
   }
   return res.json();
 };
 
-// Cache keys
-const PENDING_CACHE_KEY = 'canvas_pending_items';
-const PENDING_CACHE_TIME_KEY = 'canvas_pending_cache_time';
-const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+// Storage keys
+const PENDING_CACHE_KEY = "canvas_pending_items";
+const STATUS_FILTERS_KEY = "calendar_status_filters";
+
+const ALL_STATUSES = ["incomplete", "in_progress", "complete"];
 
 export default function App() {
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
@@ -62,33 +63,43 @@ export default function App() {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [createEventDate, setCreateEventDate] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilters, setStatusFilters] = useState(() => {
+    const saved = localStorage.getItem(STATUS_FILTERS_KEY);
+    return saved ? JSON.parse(saved) : [...ALL_STATUSES];
+  });
 
   // Current approval item based on index
   const approvalItem = approvalIndex >= 0 ? pendingItems[approvalIndex] : null;
 
-  // Filtered events based on status
+  // Persist status filters to localStorage
+  useEffect(() => {
+    localStorage.setItem(STATUS_FILTERS_KEY, JSON.stringify(statusFilters));
+  }, [statusFilters]);
+
+  // Filtered events based on status checkboxes (empty = show all)
   const filteredEvents = useMemo(() => {
-    if (statusFilter === 'all') return events;
-    return events.filter((e) => e.status === statusFilter);
-  }, [events, statusFilter]);
+    if (statusFilters.length === 0) return events;
+    return events.filter((e) => statusFilters.includes(e.status));
+  }, [events, statusFilters]);
 
   // Spotlight actions for searching events
   const spotlightActions = useMemo(() => {
     return events.map((event) => {
       const cls = classes.find((c) => c.id === event.class_id);
       const StatusIcon =
-        event.status === 'complete'
+        event.status === "complete"
           ? IconCircleCheck
-          : event.status === 'in_progress'
+          : event.status === "in_progress"
           ? IconCircleHalf2
           : IconCircle;
 
       return {
         id: String(event.id),
         label: event.title,
-        description: `${cls?.name || 'No class'} • Due: ${dayjs(event.due_date).format('MMM D, YYYY')}`,
-        leftSection: <StatusIcon size={20} color={cls?.color || '#868e96'} />,
+        description: `${cls?.name || "No class"} • Due: ${dayjs(
+          event.due_date
+        ).format("MMM D, YYYY")}`,
+        leftSection: <StatusIcon size={20} color={cls?.color || "#868e96"} />,
         onClick: () => setSelectedEvent(event),
       };
     });
@@ -96,11 +107,11 @@ export default function App() {
 
   // Keyboard shortcuts
   useHotkeys([
-    ['n', () => setCurrentDate((d) => d.add(1, 'month'))],
-    ['p', () => setCurrentDate((d) => d.subtract(1, 'month'))],
-    ['t', () => setCurrentDate(dayjs())],
-    ['mod+j', () => toggleColorScheme()],
-    ['mod+k', () => spotlight.open()],
+    ["n", () => setCurrentDate((d) => d.add(1, "month"))],
+    ["p", () => setCurrentDate((d) => d.subtract(1, "month"))],
+    ["t", () => setCurrentDate(dayjs())],
+    ["mod+j", () => toggleColorScheme()],
+    ["mod+k", () => spotlight.open()],
   ]);
 
   // Load initial data and cached pending items
@@ -114,41 +125,31 @@ export default function App() {
   useEffect(() => {
     if (pendingItems.length > 0) {
       localStorage.setItem(PENDING_CACHE_KEY, JSON.stringify(pendingItems));
-      localStorage.setItem(PENDING_CACHE_TIME_KEY, Date.now().toString());
     }
   }, [pendingItems]);
 
   const loadCachedPendingItems = () => {
     const cached = localStorage.getItem(PENDING_CACHE_KEY);
-    const cacheTime = localStorage.getItem(PENDING_CACHE_TIME_KEY);
-
-    if (cached && cacheTime) {
-      const age = Date.now() - parseInt(cacheTime);
-      if (age < CACHE_DURATION) {
-        setPendingItems(JSON.parse(cached));
-      } else {
-        // Cache expired, clear it
-        localStorage.removeItem(PENDING_CACHE_KEY);
-        localStorage.removeItem(PENDING_CACHE_TIME_KEY);
-      }
+    if (cached) {
+      setPendingItems(JSON.parse(cached));
     }
   };
 
   const loadEvents = async () => {
     try {
-      const data = await api('/events');
+      const data = await api("/events");
       setEvents(data);
     } catch (err) {
-      console.error('Failed to load events:', err);
+      console.error("Failed to load events:", err);
     }
   };
 
   const loadClasses = async () => {
     try {
-      const data = await api('/classes');
+      const data = await api("/classes");
       setClasses(data);
     } catch (err) {
-      console.error('Failed to load classes:', err);
+      console.error("Failed to load classes:", err);
     }
   };
 
@@ -159,18 +160,26 @@ export default function App() {
       (name) => name && !existingNames.has(name.toLowerCase())
     );
 
-    const colors = ['#228be6', '#40c057', '#fa5252', '#fab005', '#7950f2', '#15aabf', '#e64980'];
+    const colors = [
+      "#228be6",
+      "#40c057",
+      "#fa5252",
+      "#fab005",
+      "#7950f2",
+      "#15aabf",
+      "#e64980",
+    ];
     for (const courseName of newCourses) {
       try {
-        await api('/classes', {
-          method: 'POST',
+        await api("/classes", {
+          method: "POST",
           body: JSON.stringify({
             name: courseName,
             color: colors[Math.floor(Math.random() * colors.length)],
           }),
         });
       } catch (err) {
-        console.error('Failed to create class:', err);
+        console.error("Failed to create class:", err);
       }
     }
 
@@ -180,8 +189,8 @@ export default function App() {
   };
 
   const fetchCanvasAssignments = async () => {
-    const canvasUrl = localStorage.getItem('canvasUrl');
-    const canvasToken = localStorage.getItem('canvasToken');
+    const canvasUrl = localStorage.getItem("canvasUrl");
+    const canvasToken = localStorage.getItem("canvasToken");
 
     if (!canvasUrl || !canvasToken) {
       setSettingsOpen(true);
@@ -190,10 +199,10 @@ export default function App() {
 
     setLoading(true);
     try {
-      const data = await api('/canvas/assignments', {
+      const data = await api("/canvas/assignments", {
         headers: {
-          'X-Canvas-Url': canvasUrl,
-          'X-Canvas-Token': canvasToken,
+          "X-Canvas-Url": canvasUrl,
+          "X-Canvas-Token": canvasToken,
         },
       });
 
@@ -202,7 +211,7 @@ export default function App() {
 
       setPendingItems(data);
     } catch (err) {
-      console.error('Failed to fetch Canvas assignments:', err);
+      console.error("Failed to fetch Canvas assignments:", err);
     } finally {
       setLoading(false);
     }
@@ -210,14 +219,14 @@ export default function App() {
 
   const handleApprove = async (item, formData) => {
     try {
-      const newEvent = await api('/events', {
-        method: 'POST',
+      const newEvent = await api("/events", {
+        method: "POST",
         body: JSON.stringify({
           title: item.title,
           due_date: formData.dueDate || item.due_date,
           class_id: formData.classId ? parseInt(formData.classId) : null,
           event_type: formData.eventType,
-          status: 'incomplete',
+          status: "incomplete",
           notes: formData.notes,
           url: formData.url || item.url,
           canvas_id: item.canvas_id,
@@ -226,7 +235,9 @@ export default function App() {
       setEvents((prev) => [...prev, newEvent]);
 
       // Filter out the approved item
-      const remaining = pendingItems.filter((p) => p.canvas_id !== item.canvas_id);
+      const remaining = pendingItems.filter(
+        (p) => p.canvas_id !== item.canvas_id
+      );
       setPendingItems(remaining);
 
       // Update cache
@@ -238,21 +249,22 @@ export default function App() {
         }
       } else {
         localStorage.removeItem(PENDING_CACHE_KEY);
-        localStorage.removeItem(PENDING_CACHE_TIME_KEY);
         setApprovalIndex(-1);
       }
     } catch (err) {
-      console.error('Failed to approve item:', err);
+      console.error("Failed to approve item:", err);
     }
   };
 
   const handleReject = async (item) => {
     try {
-      await api('/rejected', {
-        method: 'POST',
+      await api("/rejected", {
+        method: "POST",
         body: JSON.stringify({ canvas_id: item.canvas_id }),
       });
-      const remaining = pendingItems.filter((p) => p.canvas_id !== item.canvas_id);
+      const remaining = pendingItems.filter(
+        (p) => p.canvas_id !== item.canvas_id
+      );
       setPendingItems(remaining);
 
       // Update cache
@@ -260,58 +272,59 @@ export default function App() {
         localStorage.setItem(PENDING_CACHE_KEY, JSON.stringify(remaining));
       } else {
         localStorage.removeItem(PENDING_CACHE_KEY);
-        localStorage.removeItem(PENDING_CACHE_TIME_KEY);
       }
     } catch (err) {
-      console.error('Failed to reject item:', err);
+      console.error("Failed to reject item:", err);
     }
   };
 
   const handleEventUpdate = async (eventId, updates) => {
+    console.log("[App] handleEventUpdate called:", { eventId, updates });
     try {
       const updated = await api(`/events/${eventId}`, {
-        method: 'PATCH',
+        method: "PATCH",
         body: JSON.stringify(updates),
       });
+      console.log("[App] Server response:", updated);
       setEvents((prev) => prev.map((e) => (e.id === eventId ? updated : e)));
       setSelectedEvent(null);
     } catch (err) {
-      console.error('Failed to update event:', err);
+      console.error("Failed to update event:", err);
     }
   };
 
   const handleEventDelete = async (eventId) => {
     try {
-      await api(`/events/${eventId}`, { method: 'DELETE' });
+      await api(`/events/${eventId}`, { method: "DELETE" });
       setEvents((prev) => prev.filter((e) => e.id !== eventId));
       setSelectedEvent(null);
     } catch (err) {
-      console.error('Failed to delete event:', err);
+      console.error("Failed to delete event:", err);
     }
   };
 
   const handleEventDrop = async (eventId, newDate) => {
     try {
       const updated = await api(`/events/${eventId}`, {
-        method: 'PATCH',
+        method: "PATCH",
         body: JSON.stringify({ due_date: newDate }),
       });
       setEvents((prev) => prev.map((e) => (e.id === eventId ? updated : e)));
     } catch (err) {
-      console.error('Failed to move event:', err);
+      console.error("Failed to move event:", err);
     }
   };
 
   const handleCreateEvent = async (eventData) => {
     try {
-      const newEvent = await api('/events', {
-        method: 'POST',
-        body: JSON.stringify({ ...eventData, status: 'incomplete' }),
+      const newEvent = await api("/events", {
+        method: "POST",
+        body: JSON.stringify({ ...eventData, status: "incomplete" }),
       });
       setEvents((prev) => [...prev, newEvent]);
       setCreateEventDate(null);
     } catch (err) {
-      console.error('Failed to create event:', err);
+      console.error("Failed to create event:", err);
     }
   };
 
@@ -331,8 +344,8 @@ export default function App() {
     }
   };
 
-  const prevMonth = () => setCurrentDate((d) => d.subtract(1, 'month'));
-  const nextMonth = () => setCurrentDate((d) => d.add(1, 'month'));
+  const prevMonth = () => setCurrentDate((d) => d.subtract(1, "month"));
+  const nextMonth = () => setCurrentDate((d) => d.add(1, "month"));
   const goToToday = () => setCurrentDate(dayjs());
 
   return (
@@ -342,14 +355,18 @@ export default function App() {
         nothingFound="No assignments found"
         searchProps={{
           leftSection: <IconSearch size={20} />,
-          placeholder: 'Search assignments...',
+          placeholder: "Search assignments...",
         }}
         highlightQuery
       />
 
       <AppShell
         header={{ height: 60 }}
-        aside={{ width: 320, breakpoint: 'sm', collapsed: { mobile: pendingItems.length === 0 } }}
+        aside={{
+          width: 320,
+          breakpoint: "sm",
+          collapsed: { mobile: pendingItems.length === 0 },
+        }}
         padding="md"
       >
         <AppShell.Header>
@@ -369,10 +386,10 @@ export default function App() {
                   size="lg"
                   w={180}
                   ta="center"
-                  style={{ cursor: 'pointer' }}
+                  style={{ cursor: "pointer" }}
                   onClick={goToToday}
                 >
-                  {currentDate.format('MMMM YYYY')}
+                  {currentDate.format("MMMM YYYY")}
                 </Text>
               </Tooltip>
               <Tooltip label="Next month (N)">
@@ -382,34 +399,51 @@ export default function App() {
               </Tooltip>
             </Group>
             <Group>
-              <SegmentedControl
-                size="xs"
-                value={statusFilter}
-                onChange={setStatusFilter}
-                data={[
-                  { value: 'all', label: 'All' },
-                  { value: 'incomplete', label: 'Todo' },
-                  { value: 'in_progress', label: 'In Progress' },
-                  { value: 'complete', label: 'Done' },
-                ]}
-              />
+              <Checkbox.Group value={statusFilters} onChange={setStatusFilters}>
+                <Group gap="sm">
+                  <Checkbox size="xs" value="incomplete" label="Incomplete" />
+                  <Checkbox size="xs" value="in_progress" label="In Progress" />
+                  <Checkbox size="xs" value="complete" label="Complete" />
+                </Group>
+              </Checkbox.Group>
               <Tooltip label="Search (Ctrl+K)">
-                <ActionIcon variant="subtle" onClick={() => spotlight.open()} size="lg">
+                <ActionIcon
+                  variant="subtle"
+                  onClick={() => spotlight.open()}
+                  size="lg"
+                >
                   <IconSearch size={20} />
                 </ActionIcon>
               </Tooltip>
               <Tooltip label="Fetch Canvas assignments">
-                <ActionIcon variant="subtle" onClick={fetchCanvasAssignments} loading={loading} size="lg">
+                <ActionIcon
+                  variant="subtle"
+                  onClick={fetchCanvasAssignments}
+                  loading={loading}
+                  size="lg"
+                >
                   <IconRefresh size={20} />
                 </ActionIcon>
               </Tooltip>
               <Tooltip label="Toggle theme (Ctrl+J)">
-                <ActionIcon variant="subtle" onClick={toggleColorScheme} size="lg">
-                  {colorScheme === 'dark' ? <IconSun size={20} /> : <IconMoon size={20} />}
+                <ActionIcon
+                  variant="subtle"
+                  onClick={toggleColorScheme}
+                  size="lg"
+                >
+                  {colorScheme === "dark" ? (
+                    <IconSun size={20} />
+                  ) : (
+                    <IconMoon size={20} />
+                  )}
                 </ActionIcon>
               </Tooltip>
               <Tooltip label="Settings">
-                <ActionIcon variant="subtle" onClick={() => setSettingsOpen(true)} size="lg">
+                <ActionIcon
+                  variant="subtle"
+                  onClick={() => setSettingsOpen(true)}
+                  size="lg"
+                >
                   <IconSettings size={20} />
                 </ActionIcon>
               </Tooltip>

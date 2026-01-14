@@ -50,6 +50,26 @@ app.post('/api/classes', async (req, res) => {
   }
 });
 
+// Update class
+app.patch('/api/classes/:id', async (req, res) => {
+  const { id } = req.params;
+  const { name, color } = req.body;
+  try {
+    await db.execute({
+      sql: 'UPDATE classes SET name = ?, color = ? WHERE id = ?',
+      args: [name, color, id],
+    });
+    const updated = await db.execute({
+      sql: 'SELECT * FROM classes WHERE id = ?',
+      args: [id],
+    });
+    res.json(updated.rows[0]);
+  } catch (err) {
+    console.error('Error updating class:', err);
+    res.status(500).json({ message: 'Failed to update class' });
+  }
+});
+
 // Delete class
 app.delete('/api/classes/:id', async (req, res) => {
   const { id } = req.params;

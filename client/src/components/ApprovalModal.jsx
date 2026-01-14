@@ -109,6 +109,7 @@ export default function ApprovalModal({
           value={formData.dueDate}
           onChange={(v) => setFormData((f) => ({ ...f, dueDate: v }))}
           clearable={false}
+          firstDayOfWeek={0}
         />
 
         <Select

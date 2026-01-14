@@ -1,8 +1,9 @@
-import { Paper, Text, Stack, Badge } from '@mantine/core';
-import { useDroppable } from '@dnd-kit/core';
-import EventCard from './EventCard';
+import { Paper, Text, Stack, Popover } from "@mantine/core";
+import { useDroppable } from "@dnd-kit/core";
+import { useState } from "react";
+import EventCard from "./EventCard";
 
-const MAX_VISIBLE_EVENTS = 3;
+const MAX_VISIBLE_EVENTS = 4;
 
 export default function CalendarDay({
   date,
@@ -17,41 +18,46 @@ export default function CalendarDay({
   const { setNodeRef, isOver } = useDroppable({
     id: dateKey,
   });
+  const [popoverOpened, setPopoverOpened] = useState(false);
 
   const getClassColor = (classId) => {
     const cls = classes.find((c) => c.id === classId);
-    return cls?.color || '#868e96';
+    return cls?.color || "#868e96";
   };
 
-  const visibleEvents = events.slice(0, MAX_VISIBLE_EVENTS);
-  const hiddenCount = events.length - MAX_VISIBLE_EVENTS;
+  // If 5+ events, show 3 events + "N more". Otherwise show up to 4.
+  const shouldShowMore = events.length >= 5;
+  const displayCount = shouldShowMore ? 3 : MAX_VISIBLE_EVENTS;
+  const visibleEvents = events.slice(0, displayCount);
+  const hiddenCount = events.length - displayCount;
+  const hiddenEvents = events.slice(displayCount);
 
   return (
     <Paper
       ref={setNodeRef}
       p="xs"
-      h={120}
+      h={160}
       withBorder
       onDoubleClick={onDoubleClick}
       style={{
         opacity: isCurrentMonth ? 1 : 0.4,
-        backgroundColor: isOver ? 'var(--mantine-color-blue-light)' : undefined,
-        borderColor: isToday ? 'var(--mantine-color-blue-filled)' : undefined,
+        backgroundColor: isOver ? "var(--mantine-color-blue-light)" : undefined,
+        borderColor: isToday ? "var(--mantine-color-blue-filled)" : undefined,
         borderWidth: isToday ? 2 : 1,
-        overflow: 'hidden',
-        cursor: 'default',
-        transition: 'background-color 150ms ease',
+        overflow: "hidden",
+        cursor: "default",
+        transition: "background-color 150ms ease",
       }}
     >
       <Stack gap={4}>
         <Text
           size="sm"
           fw={isToday ? 700 : 400}
-          c={isToday ? 'blue' : undefined}
+          c={isToday ? "blue" : undefined}
         >
           {date.date()}
         </Text>
-        <Stack gap={2} style={{ overflow: 'hidden', maxHeight: 80 }}>
+        <Stack gap={2} style={{ overflow: "hidden", maxHeight: 110 }}>
           {visibleEvents.map((event) => (
             <EventCard
               key={event.id}
@@ -61,9 +67,44 @@ export default function CalendarDay({
             />
           ))}
           {hiddenCount > 0 && (
-            <Text size="xs" c="dimmed" ta="center" style={{ cursor: 'pointer' }}>
-              +{hiddenCount} more
-            </Text>
+            <Popover
+              opened={popoverOpened}
+              onChange={setPopoverOpened}
+              position="bottom"
+              withArrow
+              shadow="md"
+              width={250}
+            >
+              <Popover.Target>
+                <Text
+                  size="xs"
+                  c="dimmed"
+                  ta="center"
+                  style={{ cursor: "pointer" }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setPopoverOpened((o) => !o);
+                  }}
+                >
+                  +{hiddenCount} more
+                </Text>
+              </Popover.Target>
+              <Popover.Dropdown>
+                <Stack gap={4}>
+                  {hiddenEvents.map((event) => (
+                    <EventCard
+                      key={event.id}
+                      event={event}
+                      color={getClassColor(event.class_id)}
+                      onClick={() => {
+                        setPopoverOpened(false);
+                        onEventClick(event);
+                      }}
+                    />
+                  ))}
+                </Stack>
+              </Popover.Dropdown>
+            </Popover>
           )}
         </Stack>
       </Stack>

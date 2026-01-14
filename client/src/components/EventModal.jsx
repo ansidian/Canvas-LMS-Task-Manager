@@ -57,7 +57,7 @@ export default function EventModal({ opened, onClose, event, classes, onUpdate, 
   }, [event]);
 
   const handleSubmit = () => {
-    onUpdate(event.id, {
+    const updates = {
       title: formData.title,
       due_date: dayjs(formData.due_date).format('YYYY-MM-DD'),
       class_id: formData.class_id ? parseInt(formData.class_id) : null,
@@ -65,7 +65,9 @@ export default function EventModal({ opened, onClose, event, classes, onUpdate, 
       status: formData.status,
       notes: formData.notes,
       url: formData.url,
-    });
+    };
+    console.log('[EventModal] Submitting update:', { eventId: event.id, originalStatus: event.status, newStatus: formData.status, updates });
+    onUpdate(event.id, updates);
   };
 
   const handleDelete = () => {
@@ -103,6 +105,7 @@ export default function EventModal({ opened, onClose, event, classes, onUpdate, 
           label="Due Date"
           value={formData.due_date}
           onChange={(v) => setFormData((f) => ({ ...f, due_date: v }))}
+          firstDayOfWeek={0}
         />
 
         <Select

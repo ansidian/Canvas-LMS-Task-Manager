@@ -13,7 +13,7 @@ import {
   ActionIcon,
   Anchor,
 } from '@mantine/core';
-import { IconTrash, IconPlus } from '@tabler/icons-react';
+import { IconTrash, IconPlus, IconEdit, IconCheck, IconX } from '@tabler/icons-react';
 
 const api = async (endpoint, options = {}) => {
   const res = await fetch(`/api${endpoint}`, {
@@ -29,6 +29,9 @@ export default function SettingsModal({ opened, onClose, classes, onClassesChang
   const [canvasToken, setCanvasToken] = useState('');
   const [newClassName, setNewClassName] = useState('');
   const [newClassColor, setNewClassColor] = useState('#228be6');
+  const [editingClassId, setEditingClassId] = useState(null);
+  const [editName, setEditName] = useState('');
+  const [editColor, setEditColor] = useState('');
 
   useEffect(() => {
     setCanvasUrl(localStorage.getItem('canvasUrl') || '');
@@ -61,6 +64,32 @@ export default function SettingsModal({ opened, onClose, classes, onClassesChang
       onClassesChange();
     } catch (err) {
       console.error('Failed to delete class:', err);
+    }
+  };
+
+  const startEditing = (cls) => {
+    setEditingClassId(cls.id);
+    setEditName(cls.name);
+    setEditColor(cls.color);
+  };
+
+  const cancelEditing = () => {
+    setEditingClassId(null);
+    setEditName('');
+    setEditColor('');
+  };
+
+  const saveEdit = async () => {
+    if (!editName.trim()) return;
+    try {
+      await api(`/classes/${editingClassId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ name: editName.trim(), color: editColor }),
+      });
+      setEditingClassId(null);
+      onClassesChange();
+    } catch (err) {
+      console.error('Failed to update class:', err);
     }
   };
 
@@ -126,26 +155,67 @@ export default function SettingsModal({ opened, onClose, classes, onClassesChang
             <Stack gap="xs">
               {classes.map((cls) => (
                 <Paper key={cls.id} p="sm" withBorder>
-                  <Group justify="space-between">
-                    <Group>
-                      <div
-                        style={{
-                          width: 16,
-                          height: 16,
-                          borderRadius: 4,
-                          backgroundColor: cls.color,
-                        }}
+                  {editingClassId === cls.id ? (
+                    <Group align="flex-end">
+                      <TextInput
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        style={{ flex: 1 }}
+                        size="xs"
                       />
-                      <Text size="sm">{cls.name}</Text>
+                      <ColorInput
+                        value={editColor}
+                        onChange={setEditColor}
+                        w={100}
+                        size="xs"
+                      />
+                      <ActionIcon
+                        variant="filled"
+                        color="green"
+                        onClick={saveEdit}
+                        size="sm"
+                      >
+                        <IconCheck size={14} />
+                      </ActionIcon>
+                      <ActionIcon
+                        variant="subtle"
+                        color="gray"
+                        onClick={cancelEditing}
+                        size="sm"
+                      >
+                        <IconX size={14} />
+                      </ActionIcon>
                     </Group>
-                    <ActionIcon
-                      variant="subtle"
-                      color="red"
-                      onClick={() => deleteClass(cls.id)}
-                    >
-                      <IconTrash size={16} />
-                    </ActionIcon>
-                  </Group>
+                  ) : (
+                    <Group justify="space-between">
+                      <Group>
+                        <div
+                          style={{
+                            width: 16,
+                            height: 16,
+                            borderRadius: 4,
+                            backgroundColor: cls.color,
+                          }}
+                        />
+                        <Text size="sm">{cls.name}</Text>
+                      </Group>
+                      <Group gap="xs">
+                        <ActionIcon
+                          variant="subtle"
+                          onClick={() => startEditing(cls)}
+                        >
+                          <IconEdit size={16} />
+                        </ActionIcon>
+                        <ActionIcon
+                          variant="subtle"
+                          color="red"
+                          onClick={() => deleteClass(cls.id)}
+                        >
+                          <IconTrash size={16} />
+                        </ActionIcon>
+                      </Group>
+                    </Group>
+                  )}
                 </Paper>
               ))}
               {classes.length === 0 && (
