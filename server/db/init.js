@@ -7,6 +7,7 @@ async function initializeDatabase() {
   await db.execute(`
     CREATE TABLE IF NOT EXISTS classes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL,
       name TEXT NOT NULL,
       color TEXT NOT NULL DEFAULT '#228be6',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -17,6 +18,7 @@ async function initializeDatabase() {
   await db.execute(`
     CREATE TABLE IF NOT EXISTS events (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL,
       title TEXT NOT NULL,
       due_date DATE NOT NULL,
       class_id INTEGER REFERENCES classes(id) ON DELETE SET NULL,
@@ -24,7 +26,7 @@ async function initializeDatabase() {
       status TEXT DEFAULT 'incomplete' CHECK(status IN ('incomplete', 'in_progress', 'complete')),
       notes TEXT,
       url TEXT,
-      canvas_id TEXT UNIQUE,
+      canvas_id TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
@@ -44,8 +46,10 @@ async function initializeDatabase() {
   await db.execute(`
     CREATE TABLE IF NOT EXISTS rejected_items (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      canvas_id TEXT UNIQUE NOT NULL,
-      rejected_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      user_id TEXT NOT NULL,
+      canvas_id TEXT NOT NULL,
+      rejected_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, canvas_id)
     )
   `);
 

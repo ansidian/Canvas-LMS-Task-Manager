@@ -7,3 +7,5 @@ client/dist/
 server/db/*.db
 .DS_Store
 *.log
+.env
+client/.env

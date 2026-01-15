@@ -24,6 +24,13 @@ import {
   IconCircleHalf2,
   IconCircleCheck,
 } from "@tabler/icons-react";
+import {
+  SignedIn,
+  SignedOut,
+  SignIn,
+  UserButton,
+  useAuth,
+} from "@clerk/clerk-react";
 import dayjs from "dayjs";
 import Calendar from "./components/Calendar";
 import ResizableSidebar from "./components/ResizableSidebar";
@@ -36,29 +43,37 @@ import {
   PendingSidebarSkeleton,
 } from "./components/SkeletonLoaders";
 
-//TODO: implement Clerk auth, switch to Turso for Cloud DB, use Render for hosting
+// Main App Component
+function AppContent() {
+  const { getToken } = useAuth();
 
-// API helper
-const api = async (endpoint, options = {}) => {
-  const res = await fetch(`/api${endpoint}`, {
-    headers: { "Content-Type": "application/json", ...options.headers },
-    ...options,
-  });
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({ message: "Request failed" }));
-    throw new Error(error.message || "Request failed");
-  }
-  return res.json();
-};
+  // API helper with Clerk auth
+  const api = async (endpoint, options = {}) => {
+    const token = await getToken();
+    const res = await fetch(`/api${endpoint}`, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        ...options.headers,
+      },
+      ...options,
+    });
+    if (!res.ok) {
+      const error = await res
+        .json()
+        .catch(() => ({ message: "Request failed" }));
+      throw new Error(error.message || "Request failed");
+    }
+    return res.json();
+  };
 
-// Storage keys
-const PENDING_CACHE_KEY = "canvas_pending_items";
-const STATUS_FILTERS_KEY = "calendar_status_filters";
-const CLASS_FILTERS_KEY = "calendar_class_filters";
+  // Storage keys
+  const PENDING_CACHE_KEY = "canvas_pending_items";
+  const STATUS_FILTERS_KEY = "calendar_status_filters";
+  const CLASS_FILTERS_KEY = "calendar_class_filters";
 
-const ALL_STATUSES = ["incomplete", "in_progress", "complete"];
+  const ALL_STATUSES = ["incomplete", "in_progress", "complete"];
 
-export default function App() {
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
   const [currentDate, setCurrentDate] = useState(dayjs());
   const [events, setEvents] = useState([]);
@@ -499,6 +514,7 @@ export default function App() {
                   {pendingItems.length} pending
                 </Badge>
               )}
+              <UserButton />
             </Group>
           </Group>
         </AppShell.Header>
@@ -571,6 +587,43 @@ export default function App() {
           onCreate={handleCreateEvent}
         />
       </AppShell>
+    </>
+  );
+}
+
+// Sign-in page wrapper component
+function SignInPage() {
+  const { colorScheme } = useMantineColorScheme();
+
+  const backgroundStyle = {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: "100vh",
+    background:
+      colorScheme === "dark"
+        ? "linear-gradient(135deg, #1f2937 0%, #1e293b 50%, #0f172a 100%)"
+        : "linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)",
+  };
+
+  return (
+    <div style={backgroundStyle}>
+      <SignIn />
+    </div>
+  );
+}
+
+// Main export with authentication
+export default function App() {
+  return (
+    <>
+      <SignedOut>
+        <SignInPage />
+      </SignedOut>
+
+      <SignedIn>
+        <AppContent />
+      </SignedIn>
     </>
   );
 }

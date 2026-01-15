@@ -1,7 +1,9 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { clerkMiddleware, requireAuth } from '@clerk/express';
 import db from './db/connection.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -12,6 +14,7 @@ const PORT = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(express.json());
+app.use(clerkMiddleware());
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
@@ -21,9 +24,13 @@ if (process.env.NODE_ENV === 'production') {
 // ============= CLASSES API =============
 
 // Get all classes
-app.get('/api/classes', async (req, res) => {
+app.get('/api/classes', requireAuth(), async (req, res) => {
+  const userId = req.auth().userId;
   try {
-    const result = await db.execute('SELECT * FROM classes ORDER BY name');
+    const result = await db.execute({
+      sql: 'SELECT * FROM classes WHERE user_id = ? ORDER BY name',
+      args: [userId],
+    });
     res.json(result.rows);
   } catch (err) {
     console.error('Error fetching classes:', err);
@@ -32,16 +39,17 @@ app.get('/api/classes', async (req, res) => {
 });
 
 // Create class
-app.post('/api/classes', async (req, res) => {
+app.post('/api/classes', requireAuth(), async (req, res) => {
+  const userId = req.auth().userId;
   const { name, color } = req.body;
   try {
     const result = await db.execute({
-      sql: 'INSERT INTO classes (name, color) VALUES (?, ?)',
-      args: [name, color || '#228be6'],
+      sql: 'INSERT INTO classes (user_id, name, color) VALUES (?, ?, ?)',
+      args: [userId, name, color || '#228be6'],
     });
     const newClass = await db.execute({
-      sql: 'SELECT * FROM classes WHERE id = ?',
-      args: [result.lastInsertRowid],
+      sql: 'SELECT * FROM classes WHERE id = ? AND user_id = ?',
+      args: [result.lastInsertRowid, userId],
     });
     res.status(201).json(newClass.rows[0]);
   } catch (err) {
@@ -51,17 +59,18 @@ app.post('/api/classes', async (req, res) => {
 });
 
 // Update class
-app.patch('/api/classes/:id', async (req, res) => {
+app.patch('/api/classes/:id', requireAuth(), async (req, res) => {
+  const userId = req.auth().userId;
   const { id } = req.params;
   const { name, color } = req.body;
   try {
     await db.execute({
-      sql: 'UPDATE classes SET name = ?, color = ? WHERE id = ?',
-      args: [name, color, id],
+      sql: 'UPDATE classes SET name = ?, color = ? WHERE id = ? AND user_id = ?',
+      args: [name, color, id, userId],
     });
     const updated = await db.execute({
-      sql: 'SELECT * FROM classes WHERE id = ?',
-      args: [id],
+      sql: 'SELECT * FROM classes WHERE id = ? AND user_id = ?',
+      args: [id, userId],
     });
     res.json(updated.rows[0]);
   } catch (err) {
@@ -71,12 +80,13 @@ app.patch('/api/classes/:id', async (req, res) => {
 });
 
 // Delete class
-app.delete('/api/classes/:id', async (req, res) => {
+app.delete('/api/classes/:id', requireAuth(), async (req, res) => {
+  const userId = req.auth().userId;
   const { id } = req.params;
   try {
     await db.execute({
-      sql: 'DELETE FROM classes WHERE id = ?',
-      args: [id],
+      sql: 'DELETE FROM classes WHERE id = ? AND user_id = ?',
+      args: [id, userId],
     });
     res.json({ success: true });
   } catch (err) {
@@ -88,14 +98,19 @@ app.delete('/api/classes/:id', async (req, res) => {
 // ============= EVENTS API =============
 
 // Get all events
-app.get('/api/events', async (req, res) => {
+app.get('/api/events', requireAuth(), async (req, res) => {
+  const userId = req.auth().userId;
   try {
-    const result = await db.execute(`
-      SELECT e.*, c.name as class_name, c.color as class_color
-      FROM events e
-      LEFT JOIN classes c ON e.class_id = c.id
-      ORDER BY e.due_date
-    `);
+    const result = await db.execute({
+      sql: `
+        SELECT e.*, c.name as class_name, c.color as class_color
+        FROM events e
+        LEFT JOIN classes c ON e.class_id = c.id AND c.user_id = ?
+        WHERE e.user_id = ?
+        ORDER BY e.due_date
+      `,
+      args: [userId, userId],
+    });
     res.json(result.rows);
   } catch (err) {
     console.error('Error fetching events:', err);
@@ -104,20 +119,21 @@ app.get('/api/events', async (req, res) => {
 });
 
 // Create event
-app.post('/api/events', async (req, res) => {
+app.post('/api/events', requireAuth(), async (req, res) => {
+  const userId = req.auth().userId;
   const { title, due_date, class_id, event_type, status, notes, url, canvas_id } = req.body;
   try {
     const result = await db.execute({
-      sql: `INSERT INTO events (title, due_date, class_id, event_type, status, notes, url, canvas_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      args: [title, due_date, class_id || null, event_type, status || 'incomplete', notes || null, url || null, canvas_id || null],
+      sql: `INSERT INTO events (user_id, title, due_date, class_id, event_type, status, notes, url, canvas_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [userId, title, due_date, class_id || null, event_type, status || 'incomplete', notes || null, url || null, canvas_id || null],
     });
     const newEvent = await db.execute({
       sql: `SELECT e.*, c.name as class_name, c.color as class_color
             FROM events e
-            LEFT JOIN classes c ON e.class_id = c.id
-            WHERE e.id = ?`,
-      args: [result.lastInsertRowid],
+            LEFT JOIN classes c ON e.class_id = c.id AND c.user_id = ?
+            WHERE e.id = ? AND e.user_id = ?`,
+      args: [userId, result.lastInsertRowid, userId],
     });
     res.status(201).json(newEvent.rows[0]);
   } catch (err) {
@@ -127,7 +143,8 @@ app.post('/api/events', async (req, res) => {
 });
 
 // Update event
-app.patch('/api/events/:id', async (req, res) => {
+app.patch('/api/events/:id', requireAuth(), async (req, res) => {
+  const userId = req.auth().userId;
   const { id } = req.params;
   const { title, due_date, class_id, event_type, status, notes, url } = req.body;
 
@@ -166,19 +183,19 @@ app.patch('/api/events/:id', async (req, res) => {
     }
 
     updates.push('updated_at = CURRENT_TIMESTAMP');
-    args.push(id);
+    args.push(id, userId);
 
     await db.execute({
-      sql: `UPDATE events SET ${updates.join(', ')} WHERE id = ?`,
+      sql: `UPDATE events SET ${updates.join(', ')} WHERE id = ? AND user_id = ?`,
       args,
     });
 
     const updated = await db.execute({
       sql: `SELECT e.*, c.name as class_name, c.color as class_color
             FROM events e
-            LEFT JOIN classes c ON e.class_id = c.id
-            WHERE e.id = ?`,
-      args: [id],
+            LEFT JOIN classes c ON e.class_id = c.id AND c.user_id = ?
+            WHERE e.id = ? AND e.user_id = ?`,
+      args: [userId, id, userId],
     });
     res.json(updated.rows[0]);
   } catch (err) {
@@ -188,12 +205,13 @@ app.patch('/api/events/:id', async (req, res) => {
 });
 
 // Delete event
-app.delete('/api/events/:id', async (req, res) => {
+app.delete('/api/events/:id', requireAuth(), async (req, res) => {
+  const userId = req.auth().userId;
   const { id } = req.params;
   try {
     await db.execute({
-      sql: 'DELETE FROM events WHERE id = ?',
-      args: [id],
+      sql: 'DELETE FROM events WHERE id = ? AND user_id = ?',
+      args: [id, userId],
     });
     res.json({ success: true });
   } catch (err) {
@@ -205,12 +223,13 @@ app.delete('/api/events/:id', async (req, res) => {
 // ============= REJECTED ITEMS API =============
 
 // Add rejected item
-app.post('/api/rejected', async (req, res) => {
+app.post('/api/rejected', requireAuth(), async (req, res) => {
+  const userId = req.auth().userId;
   const { canvas_id } = req.body;
   try {
     await db.execute({
-      sql: 'INSERT OR IGNORE INTO rejected_items (canvas_id) VALUES (?)',
-      args: [canvas_id],
+      sql: 'INSERT OR IGNORE INTO rejected_items (user_id, canvas_id) VALUES (?, ?)',
+      args: [userId, canvas_id],
     });
     res.status(201).json({ success: true });
   } catch (err) {
@@ -222,7 +241,8 @@ app.post('/api/rejected', async (req, res) => {
 // ============= CANVAS API PROXY =============
 
 // Fetch assignments from Canvas
-app.get('/api/canvas/assignments', async (req, res) => {
+app.get('/api/canvas/assignments', requireAuth(), async (req, res) => {
+  const userId = req.auth().userId;
   const canvasUrl = req.headers['x-canvas-url'];
   const canvasToken = req.headers['x-canvas-token'];
 
@@ -274,9 +294,15 @@ app.get('/api/canvas/assignments', async (req, res) => {
       }
     }
 
-    // Filter out already approved or rejected items
-    const existingEvents = await db.execute('SELECT canvas_id FROM events WHERE canvas_id IS NOT NULL');
-    const rejectedItems = await db.execute('SELECT canvas_id FROM rejected_items');
+    // Filter out already approved or rejected items for this user
+    const existingEvents = await db.execute({
+      sql: 'SELECT canvas_id FROM events WHERE user_id = ? AND canvas_id IS NOT NULL',
+      args: [userId],
+    });
+    const rejectedItems = await db.execute({
+      sql: 'SELECT canvas_id FROM rejected_items WHERE user_id = ?',
+      args: [userId],
+    });
 
     const existingIds = new Set([
       ...existingEvents.rows.map((r) => r.canvas_id),

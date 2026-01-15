@@ -1,10 +1,22 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import { MantineProvider, createTheme } from '@mantine/core';
-import '@mantine/core/styles.css';
-import '@mantine/dates/styles.css';
-import App from './App';
-import './index.css';
+import React from "react";
+import ReactDOM from "react-dom/client";
+import {
+  MantineProvider,
+  createTheme,
+  useMantineColorScheme,
+} from "@mantine/core";
+import { ClerkProvider } from "@clerk/clerk-react";
+import { dark } from "@clerk/themes";
+import "@mantine/core/styles.css";
+import "@mantine/dates/styles.css";
+import App from "./App";
+import "./index.css";
+
+const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+
+if (!PUBLISHABLE_KEY) {
+  throw new Error("Missing Clerk Publishable Key");
+}
 
 const theme = createTheme({
   colors: {
@@ -21,20 +33,56 @@ const theme = createTheme({
       "#0a0a0b", // 9 - bg-primary
     ],
   },
-  primaryColor: 'blue',
-  fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',
+  primaryColor: "blue",
+  fontFamily: "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
 });
 
 // Get initial color scheme from localStorage, default to dark
 const getInitialColorScheme = () => {
-  const stored = localStorage.getItem('mantine-color-scheme');
-  return stored || 'dark';
+  const stored = localStorage.getItem("mantine-color-scheme");
+  return stored || "dark";
 };
 
-ReactDOM.createRoot(document.getElementById('root')).render(
+// Wrapper component that applies Clerk theme based on Mantine color scheme
+function ThemedClerkProvider({ children }) {
+  const { colorScheme } = useMantineColorScheme();
+
+  return (
+    <ClerkProvider
+      publishableKey={PUBLISHABLE_KEY}
+      appearance={{
+        baseTheme: colorScheme === "dark" ? dark : undefined,
+        layout: {
+          logoImageUrl: "https://in.ewu.edu/instructional-technology/wp-content/uploads/sites/355/2023/05/canvas_logo_500.png",
+          logoPlacement: "inside",
+        },
+      }}
+      localization={{
+        signIn: {
+          start: {
+            title: "Canvas Task Manager (CTM)",
+            subtitle: "Welcome! Please sign in to continue",
+          },
+        },
+        signUp: {
+          start: {
+            title: "Canvas Task Manager (CTM)",
+            subtitle: "Create your account to get started",
+          },
+        },
+      }}
+    >
+      {children}
+    </ClerkProvider>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <MantineProvider theme={theme} defaultColorScheme={getInitialColorScheme()}>
-      <App />
+      <ThemedClerkProvider>
+        <App />
+      </ThemedClerkProvider>
     </MantineProvider>
   </React.StrictMode>
 );
