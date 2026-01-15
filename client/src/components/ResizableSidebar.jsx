@@ -12,7 +12,6 @@ const MAX_SPLIT = 80; // Maximum 80% for pending section
 export default function ResizableSidebar({
   pendingItems,
   onPendingItemClick,
-  removingId,
   statusFilters,
   onStatusFiltersChange,
   classFilters,
@@ -91,7 +90,6 @@ export default function ResizableSidebar({
           <PendingSidebar
             items={pendingItems}
             onItemClick={onPendingItemClick}
-            removingId={removingId}
           />
         </div>
       </OnboardingTour.Target>

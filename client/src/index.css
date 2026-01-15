@@ -5,12 +5,13 @@
 }
 
 html, body {
-  min-height: 100vh;
-  overflow-x: hidden;
+  height: 100vh;
+  overflow: hidden;
 }
 
 #root {
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }
 
 /* Dark theme variables */
@@ -186,26 +187,6 @@ body {
 .calendar-day:active {
   transform: translateY(-1px);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-}
-
-/* Fade out animation for removing items */
-@keyframes fadeOutSlide {
-  from {
-    opacity: 1;
-    transform: translateX(0);
-    max-height: 200px;
-  }
-  to {
-    opacity: 0;
-    transform: translateX(-10px);
-    max-height: 0;
-    margin: 0;
-    padding: 0;
-  }
-}
-
-.fade-out-item {
-  animation: fadeOutSlide 0.3s ease-out forwards;
 }
 
 /* Success flash animation for inline feedback */

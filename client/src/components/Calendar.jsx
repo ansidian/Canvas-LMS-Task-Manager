@@ -122,8 +122,15 @@ export default function Calendar({
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
-      <Box style={{ overflow: "hidden" }}>
-        <Stack gap="xs">
+      <Box
+        style={{
+          height: "100%",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+        }}
+      >
+        <Stack gap="xs" style={{ flex: 1, minHeight: 0 }}>
           <SimpleGrid cols={7} spacing={0}>
             {WEEKDAYS.map((day) => (
               <Box key={day} p="xs" ta="center">
@@ -133,7 +140,17 @@ export default function Calendar({
               </Box>
             ))}
           </SimpleGrid>
-          <SimpleGrid cols={7} spacing={3} className={slideDirection}>
+          <Box
+            style={{
+              flex: 1,
+              minHeight: 0,
+              display: "grid",
+              gridTemplateColumns: "repeat(7, 1fr)",
+              gridTemplateRows: "repeat(6, 1fr)",
+              gap: "3px",
+            }}
+            className={slideDirection}
+          >
             {calendarDays.map(({ date, isCurrentMonth }) => {
               const dateKey = date.format("YYYY-MM-DD");
               const dayEvents = eventsByDate[dateKey] || [];
@@ -153,7 +170,7 @@ export default function Calendar({
                 />
               );
             })}
-          </SimpleGrid>
+          </Box>
         </Stack>
       </Box>
 

@@ -89,7 +89,6 @@ function AppContent() {
   const [createEventDate, setCreateEventDate] = useState(null);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
-  const [removingId, setRemovingId] = useState(null);
   const [statusFilters, setStatusFilters] = useState(() => {
     const saved = localStorage.getItem(STATUS_FILTERS_KEY);
     return saved ? JSON.parse(saved) : [...ALL_STATUSES];
@@ -301,9 +300,6 @@ function AppContent() {
   };
 
   const handleApprove = async (item, formData) => {
-    // Trigger animation
-    setRemovingId(item.canvas_id);
-
     try {
       const newEvent = await api("/events", {
         method: "POST",
@@ -326,7 +322,6 @@ function AppContent() {
           (p) => p.canvas_id !== item.canvas_id
         );
         setPendingItems(remaining);
-        setRemovingId(null);
 
         // Update cache
         if (remaining.length > 0) {
@@ -339,17 +334,13 @@ function AppContent() {
           localStorage.removeItem(PENDING_CACHE_KEY);
           setApprovalIndex(-1);
         }
-      }, 300);
+      }, 200);
     } catch (err) {
       console.error("Failed to approve item:", err);
-      setRemovingId(null);
     }
   };
 
   const handleReject = async (item) => {
-    // Trigger animation
-    setRemovingId(item.canvas_id);
-
     try {
       await api("/rejected", {
         method: "POST",
@@ -362,7 +353,6 @@ function AppContent() {
           (p) => p.canvas_id !== item.canvas_id
         );
         setPendingItems(remaining);
-        setRemovingId(null);
 
         // Update cache
         if (remaining.length > 0) {
@@ -375,10 +365,9 @@ function AppContent() {
           localStorage.removeItem(PENDING_CACHE_KEY);
           setApprovalIndex(-1);
         }
-      }, 300);
+      }, 200);
     } catch (err) {
       console.error("Failed to reject item:", err);
-      setRemovingId(null);
     }
   };
 
@@ -605,7 +594,7 @@ function AppContent() {
           </Group>
         </AppShell.Header>
 
-        <AppShell.Main style={{ overflow: 'hidden' }}>
+        <AppShell.Main style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 60px)' }}>
           {initialLoading ? (
             <CalendarSkeleton />
           ) : (
@@ -627,7 +616,6 @@ function AppContent() {
             <ResizableSidebar
               pendingItems={pendingItems}
               onPendingItemClick={openApprovalModal}
-              removingId={removingId}
               statusFilters={statusFilters}
               onStatusFiltersChange={setStatusFilters}
               classFilters={classFilters}
