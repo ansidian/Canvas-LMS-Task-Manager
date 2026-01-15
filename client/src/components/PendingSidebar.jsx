@@ -22,9 +22,9 @@ export default function PendingSidebar({ items, onItemClick, removingId }) {
   }
 
   return (
-    <Stack>
+    <Stack style={{ height: '100%', overflow: 'hidden' }} gap="xs" p="md">
       <Title order={5}>Pending Items ({items.length})</Title>
-      <ScrollArea h="calc(100vh - 140px)">
+      <ScrollArea style={{ flex: 1 }}>
         <Stack gap="sm">
           {items.map((item) => (
             <Paper

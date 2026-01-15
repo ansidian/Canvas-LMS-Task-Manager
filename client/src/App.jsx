@@ -514,7 +514,7 @@ function AppContent() {
         <AppShell.Header>
           <Group h="100%" px="md" justify="space-between">
             <Group>
-              <Title order={3}>Canvas Task Manager</Title>
+              <Title order={3}>Canvas Task Manager (CTM)</Title>
             </Group>
             <Group gap="xs">
               <Tooltip label="Previous month (P)">
@@ -593,7 +593,7 @@ function AppContent() {
           </Group>
         </AppShell.Header>
 
-        <AppShell.Main>
+        <AppShell.Main style={{ overflow: 'hidden' }}>
           {initialLoading ? (
             <CalendarSkeleton />
           ) : (

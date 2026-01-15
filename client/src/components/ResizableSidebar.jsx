@@ -83,7 +83,7 @@ export default function ResizableSidebar({
         <div
           style={{
             height: `${splitPosition}%`,
-            overflow: 'hidden',
+            overflow: 'auto',
             display: 'flex',
             flexDirection: 'column',
           }}
