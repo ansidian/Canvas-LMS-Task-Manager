@@ -36,7 +36,7 @@ export default function CalendarDay({
     <Paper
       ref={setNodeRef}
       p="xs"
-      h={160}
+      h={200}
       withBorder
       onDoubleClick={onDoubleClick}
       className="calendar-day"
@@ -57,7 +57,7 @@ export default function CalendarDay({
         >
           {date.date()}
         </Text>
-        <Stack gap={2} style={{ overflow: "hidden", maxHeight: 110 }}>
+        <Stack gap={2} style={{ overflow: "hidden", maxHeight: 155 }}>
           {visibleEvents.map((event) => (
             <EventCard
               key={event.id}

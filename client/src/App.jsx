@@ -45,6 +45,7 @@ import {
   CalendarSkeleton,
   PendingSidebarSkeleton,
 } from "./components/SkeletonLoaders";
+import { hasTimeComponent, extractTime } from "./utils/datetime";
 
 // Main App Component
 function AppContent() {
@@ -408,9 +409,20 @@ function AppContent() {
 
   const handleEventDrop = async (eventId, newDate) => {
     try {
+      // Find the original event to preserve time component if it exists
+      const originalEvent = events.find((e) => e.id === eventId);
+      let updatedDueDate = newDate;
+
+      // If the original event has a time component, preserve it
+      if (originalEvent && hasTimeComponent(originalEvent.due_date)) {
+        const timeString = extractTime(originalEvent.due_date);
+        // Combine new date (YYYY-MM-DD) with existing time (HH:mm)
+        updatedDueDate = `${newDate}T${timeString}:00`;
+      }
+
       const updated = await api(`/events/${eventId}`, {
         method: "PATCH",
-        body: JSON.stringify({ due_date: newDate }),
+        body: JSON.stringify({ due_date: updatedDueDate }),
       });
       setEvents((prev) => prev.map((e) => (e.id === eventId ? updated : e)));
     } catch (err) {
