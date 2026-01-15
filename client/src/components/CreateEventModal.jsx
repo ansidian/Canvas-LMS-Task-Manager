@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from "react";
 import {
   Modal,
   Stack,
@@ -7,38 +7,45 @@ import {
   Textarea,
   Button,
   Group,
-} from '@mantine/core';
-import { DatePickerInput } from '@mantine/dates';
-import dayjs from 'dayjs';
+} from "@mantine/core";
+import { DateTimePicker } from "@mantine/dates";
+import dayjs from "dayjs";
+import { toUTCString } from "../utils/datetime";
 
 const EVENT_TYPES = [
-  { value: 'assignment', label: 'Assignment' },
-  { value: 'quiz', label: 'Quiz' },
-  { value: 'exam', label: 'Exam' },
-  { value: 'homework', label: 'Homework' },
-  { value: 'lab', label: 'Lab' },
+  { value: "assignment", label: "Assignment" },
+  { value: "quiz", label: "Quiz" },
+  { value: "exam", label: "Exam" },
+  { value: "homework", label: "Homework" },
+  { value: "lab", label: "Lab" },
 ];
 
-export default function CreateEventModal({ opened, onClose, date, classes, onCreate }) {
+export default function CreateEventModal({
+  opened,
+  onClose,
+  date,
+  classes,
+  onCreate,
+}) {
   const titleRef = useRef(null);
   const [formData, setFormData] = useState({
-    title: '',
+    title: "",
     dueDate: null,
     classId: null,
-    eventType: 'assignment',
-    notes: '',
-    url: '',
+    eventType: "assignment",
+    notes: "",
+    url: "",
   });
 
   useEffect(() => {
     if (date) {
       setFormData({
-        title: '',
-        dueDate: new Date(date + 'T00:00:00'),
+        title: "",
+        dueDate: new Date(date + "T00:00:00"),
         classId: null,
-        eventType: 'assignment',
-        notes: '',
-        url: '',
+        eventType: "assignment",
+        notes: "",
+        url: "",
       });
     }
   }, [date]);
@@ -57,7 +64,7 @@ export default function CreateEventModal({ opened, onClose, date, classes, onCre
 
     onCreate({
       title: formData.title.trim(),
-      due_date: dayjs(formData.dueDate).format('YYYY-MM-DD'),
+      due_date: toUTCString(formData.dueDate),
       class_id: formData.classId ? parseInt(formData.classId) : null,
       event_type: formData.eventType,
       notes: formData.notes,
@@ -73,17 +80,48 @@ export default function CreateEventModal({ opened, onClose, date, classes, onCre
           label="Title"
           placeholder="Event title"
           value={formData.title}
-          onChange={(e) => setFormData((f) => ({ ...f, title: e.target.value }))}
+          onChange={(e) =>
+            setFormData((f) => ({ ...f, title: e.target.value }))
+          }
           required
           data-autofocus
         />
 
-        <DatePickerInput
-          label="Due Date"
+        <DateTimePicker
+          label="Due Date & Time"
+          placeholder="Pick date and optionally time"
           value={formData.dueDate}
           onChange={(v) => setFormData((f) => ({ ...f, dueDate: v }))}
           clearable={false}
           firstDayOfWeek={0}
+          valueFormat="MMM DD, YYYY hh:mm A"
+          timePickerProps={{
+            popoverProps: { withinPortal: false },
+            format: "12h",
+          }}
+          presets={[
+            {
+              value: dayjs().subtract(1, "day").format("YYYY-MM-DD"),
+              label: "Yesterday",
+            },
+            { value: dayjs().format("YYYY-MM-DD"), label: "Today" },
+            {
+              value: dayjs().add(1, "day").format("YYYY-MM-DD"),
+              label: "Tomorrow",
+            },
+            {
+              value: dayjs().add(1, "month").format("YYYY-MM-DD"),
+              label: "Next month",
+            },
+            {
+              value: dayjs().add(1, "year").format("YYYY-MM-DD"),
+              label: "Next year",
+            },
+            {
+              value: dayjs().subtract(1, "month").format("YYYY-MM-DD"),
+              label: "Last month",
+            },
+          ]}
         />
 
         <Select
@@ -114,7 +152,9 @@ export default function CreateEventModal({ opened, onClose, date, classes, onCre
           placeholder="Add any notes..."
           minRows={3}
           value={formData.notes}
-          onChange={(e) => setFormData((f) => ({ ...f, notes: e.target.value }))}
+          onChange={(e) =>
+            setFormData((f) => ({ ...f, notes: e.target.value }))
+          }
         />
 
         <Group justify="flex-end">

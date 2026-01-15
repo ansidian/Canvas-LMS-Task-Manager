@@ -1,4 +1,4 @@
-import { Paper, Text, Group } from '@mantine/core';
+import { Paper, Text, Group, Stack } from '@mantine/core';
 import { useDraggable } from '@dnd-kit/core';
 import {
   IconFileText,
@@ -6,7 +6,9 @@ import {
   IconWriting,
   IconFlask,
   IconSchool,
+  IconClock,
 } from '@tabler/icons-react';
+import { hasTimeComponent, extractTime } from '../utils/datetime';
 
 const EVENT_ICONS = {
   assignment: IconFileText,
@@ -22,6 +24,14 @@ const STATUS_COLORS = {
   complete: '#40c057',
 };
 
+// Helper to format time from 24h to 12h format
+function formatTime(time24) {
+  const [hours, minutes] = time24.split(':').map(Number);
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const hours12 = hours % 12 || 12;
+  return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`;
+}
+
 export default function EventCard({ event, color, onClick, isDragging }) {
   const { attributes, listeners, setNodeRef, isDragging: isBeingDragged } = useDraggable({
     id: event.id,
@@ -30,6 +40,13 @@ export default function EventCard({ event, color, onClick, isDragging }) {
   const Icon = EVENT_ICONS[event.event_type] || IconFileText;
   const statusColor = STATUS_COLORS[event.status] || STATUS_COLORS.incomplete;
   const gradientBackground = `linear-gradient(135deg, ${statusColor} 50%, ${color} 50%)`;
+
+  // Check if event has time information
+  const showTime = hasTimeComponent(event.due_date);
+  const timeString = showTime ? extractTime(event.due_date) : null;
+
+  // Format time as 12-hour format
+  const formattedTime = timeString ? formatTime(timeString) : null;
 
   // When being dragged, hide the original (DragOverlay shows the preview)
   if (isBeingDragged) {
@@ -41,12 +58,22 @@ export default function EventCard({ event, color, onClick, isDragging }) {
           opacity: 0.3,
         }}
       >
-        <Group gap={4} wrap="nowrap">
-          <Icon size={12} color="white" />
-          <Text size="xs" c="white" truncate fw={500}>
-            {event.title}
-          </Text>
-        </Group>
+        <Stack gap={2}>
+          <Group gap={4} wrap="nowrap">
+            <Icon size={12} color="white" />
+            <Text size="xs" c="white" truncate fw={500}>
+              {event.title}
+            </Text>
+          </Group>
+          {showTime && (
+            <Group gap={4} wrap="nowrap" ml={16}>
+              <IconClock size={10} color="white" opacity={0.8} />
+              <Text size="10px" c="white" opacity={0.8}>
+                {formattedTime}
+              </Text>
+            </Group>
+          )}
+        </Stack>
       </Paper>
     );
   }
@@ -83,12 +110,22 @@ export default function EventCard({ event, color, onClick, isDragging }) {
         if (onClick) onClick();
       }}
     >
-      <Group gap={4} wrap="nowrap">
-        <Icon size={12} color="white" />
-        <Text size="xs" c="white" truncate fw={500}>
-          {event.title}
-        </Text>
-      </Group>
+      <Stack gap={2}>
+        <Group gap={4} wrap="nowrap">
+          <Icon size={12} color="white" />
+          <Text size="xs" c="white" truncate fw={500}>
+            {event.title}
+          </Text>
+        </Group>
+        {showTime && (
+          <Group gap={4} wrap="nowrap" ml={16}>
+            <IconClock size={10} color="white" opacity={0.8} />
+            <Text size="10px" c="white" opacity={0.8}>
+              {formattedTime}
+            </Text>
+          </Group>
+        )}
+      </Stack>
     </Paper>
   );
 }

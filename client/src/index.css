@@ -258,3 +258,8 @@ body {
   text-align: center;
   color: var(--text-muted);
 }
+
+.mantine-Popover-dropdown:has(.mantine-DateTimePicker-calendarHeader) {
+  min-width: 408px !important;
+  width: 408px !important;
+}

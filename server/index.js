@@ -282,7 +282,7 @@ app.get('/api/canvas/assignments', requireAuth(), async (req, res) => {
               allAssignments.push({
                 canvas_id: `${course.id}-${assignment.id}`,
                 title: assignment.name,
-                due_date: assignment.due_at.split('T')[0],
+                due_date: assignment.due_at, // Preserve full ISO 8601 timestamp
                 course_name: course.name,
                 url: assignment.html_url,
               });

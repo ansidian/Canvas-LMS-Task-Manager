@@ -20,7 +20,7 @@ async function initializeDatabase() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id TEXT NOT NULL,
       title TEXT NOT NULL,
-      due_date DATE NOT NULL,
+      due_date DATETIME NOT NULL,
       class_id INTEGER REFERENCES classes(id) ON DELETE SET NULL,
       event_type TEXT CHECK(event_type IN ('quiz', 'assignment', 'exam', 'homework', 'lab')),
       status TEXT DEFAULT 'incomplete' CHECK(status IN ('incomplete', 'in_progress', 'complete')),

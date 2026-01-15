@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 import {
   Modal,
   Stack,
@@ -11,17 +11,18 @@ import {
   Badge,
   ActionIcon,
   Box,
-} from '@mantine/core';
-import { DatePickerInput } from '@mantine/dates';
-import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
-import dayjs from 'dayjs';
+} from "@mantine/core";
+import { DateTimePicker } from "@mantine/dates";
+import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
+import dayjs from "dayjs";
+import { parseDueDate, toUTCString } from "../utils/datetime";
 
 const EVENT_TYPES = [
-  { value: 'assignment', label: 'Assignment' },
-  { value: 'quiz', label: 'Quiz' },
-  { value: 'exam', label: 'Exam' },
-  { value: 'homework', label: 'Homework' },
-  { value: 'lab', label: 'Lab' },
+  { value: "assignment", label: "Assignment" },
+  { value: "quiz", label: "Quiz" },
+  { value: "exam", label: "Exam" },
+  { value: "homework", label: "Homework" },
+  { value: "lab", label: "Lab" },
 ];
 
 export default function ApprovalModal({
@@ -38,9 +39,9 @@ export default function ApprovalModal({
   const [formData, setFormData] = useState({
     dueDate: null,
     classId: null,
-    eventType: 'assignment',
-    notes: '',
-    url: '',
+    eventType: "assignment",
+    notes: "",
+    url: "",
   });
 
   useEffect(() => {
@@ -49,20 +50,43 @@ export default function ApprovalModal({
       const matchingClass = classes.find(
         (c) => c.name.toLowerCase() === item.course_name?.toLowerCase()
       );
+
+      // Parse the due_date (handles both date-only and datetime)
+      const { date } = parseDueDate(item.due_date);
+
+      console.log("[ApprovalModal] Parsing due date:", {
+        original: item.due_date,
+        parsed: date,
+        formatted: date ? dayjs(date).format("YYYY-MM-DD HH:mm:ss") : null,
+      });
+
       setFormData({
-        dueDate: item.due_date ? new Date(item.due_date + 'T00:00:00') : null,
+        dueDate: date,
         classId: matchingClass ? String(matchingClass.id) : null,
-        eventType: 'assignment',
-        notes: '',
-        url: item.url || '',
+        eventType: "assignment",
+        notes: "",
+        url: item.url || "",
       });
     }
   }, [item, classes]);
 
   const handleSubmit = () => {
+    // Convert to UTC ISO string (handles both date-only and datetime)
+    const dueDate = formData.dueDate
+      ? toUTCString(formData.dueDate)
+      : item.due_date;
+
+    console.log("[ApprovalModal] Submitting:", {
+      formDataDate: formData.dueDate,
+      formattedLocal: formData.dueDate
+        ? dayjs(formData.dueDate).format("YYYY-MM-DD HH:mm:ss")
+        : null,
+      convertedUTC: dueDate,
+    });
+
     onApprove(item, {
       ...formData,
-      dueDate: formData.dueDate ? dayjs(formData.dueDate).format('YYYY-MM-DD') : item.due_date,
+      dueDate,
     });
   };
 
@@ -72,7 +96,12 @@ export default function ApprovalModal({
   if (!item) return null;
 
   return (
-    <Modal opened={opened} onClose={onClose} title="Approve Assignment" size="md">
+    <Modal
+      opened={opened}
+      onClose={onClose}
+      title="Approve Assignment"
+      size="md"
+    >
       <Group justify="space-between" align="center" mb="md">
         <ActionIcon
           variant="subtle"
@@ -105,12 +134,41 @@ export default function ApprovalModal({
           </Text>
         </Box>
 
-        <DatePickerInput
-          label="Due Date"
+        <DateTimePicker
+          label="Due Date & Time"
+          placeholder="Pick date and optionally time"
           value={formData.dueDate}
           onChange={(v) => setFormData((f) => ({ ...f, dueDate: v }))}
           clearable={false}
           firstDayOfWeek={0}
+          valueFormat="MMM DD, YYYY hh:mm A"
+          presets={[
+            {
+              value: dayjs().subtract(1, "day").format("YYYY-MM-DD"),
+              label: "Yesterday",
+            },
+            { value: dayjs().format("YYYY-MM-DD"), label: "Today" },
+            {
+              value: dayjs().add(1, "day").format("YYYY-MM-DD"),
+              label: "Tomorrow",
+            },
+            {
+              value: dayjs().add(1, "month").format("YYYY-MM-DD"),
+              label: "Next month",
+            },
+            {
+              value: dayjs().add(1, "year").format("YYYY-MM-DD"),
+              label: "Next year",
+            },
+            {
+              value: dayjs().subtract(1, "month").format("YYYY-MM-DD"),
+              label: "Last month",
+            },
+          ]}
+          timePickerProps={{
+            popoverProps: { withinPortal: false },
+            format: "12h",
+          }}
         />
 
         <Select
@@ -141,7 +199,9 @@ export default function ApprovalModal({
           placeholder="Add any notes..."
           minRows={3}
           value={formData.notes}
-          onChange={(e) => setFormData((f) => ({ ...f, notes: e.target.value }))}
+          onChange={(e) =>
+            setFormData((f) => ({ ...f, notes: e.target.value }))
+          }
         />
 
         <Group justify="space-between">

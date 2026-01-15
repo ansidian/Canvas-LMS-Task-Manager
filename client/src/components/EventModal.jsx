@@ -13,9 +13,10 @@ import {
   SegmentedControl,
   Skeleton,
 } from "@mantine/core";
-import { DatePickerInput } from "@mantine/dates";
+import { DateTimePicker } from "@mantine/dates";
 import dayjs from "dayjs";
 import confetti from "canvas-confetti";
+import { parseDueDate, toUTCString } from "../utils/datetime";
 
 const EVENT_TYPES = [
   { value: "assignment", label: "Assignment" },
@@ -60,10 +61,12 @@ export default function EventModal({
 
   useEffect(() => {
     if (event) {
+      // Parse the due_date (handles both date-only and datetime)
+      const { date } = parseDueDate(event.due_date);
+
       setFormData({
         title: event.title,
-        // Add T00:00:00 to prevent timezone shift when parsing date string
-        due_date: new Date(event.due_date + "T00:00:00"),
+        due_date: date,
         class_id: event.class_id ? String(event.class_id) : null,
         event_type: event.event_type || "assignment",
         status: event.status || "incomplete",
@@ -90,7 +93,7 @@ export default function EventModal({
   const handleSubmit = () => {
     const updates = {
       title: formData.title,
-      due_date: dayjs(formData.due_date).format("YYYY-MM-DD"),
+      due_date: toUTCString(formData.due_date),
       class_id: formData.class_id ? parseInt(formData.class_id) : null,
       event_type: formData.event_type,
       status: formData.status,
@@ -174,11 +177,40 @@ export default function EventModal({
           )}
         </div>
 
-        <DatePickerInput
-          label="Due Date"
+        <DateTimePicker
+          label="Due Date & Time"
+          placeholder="Pick date and optionally time"
           value={formData.due_date}
           onChange={(v) => setFormData((f) => ({ ...f, due_date: v }))}
           firstDayOfWeek={0}
+          valueFormat="MMM DD, YYYY hh:mm A"
+          presets={[
+            {
+              value: dayjs().subtract(1, "day").format("YYYY-MM-DD"),
+              label: "Yesterday",
+            },
+            { value: dayjs().format("YYYY-MM-DD"), label: "Today" },
+            {
+              value: dayjs().add(1, "day").format("YYYY-MM-DD"),
+              label: "Tomorrow",
+            },
+            {
+              value: dayjs().add(1, "month").format("YYYY-MM-DD"),
+              label: "Next month",
+            },
+            {
+              value: dayjs().add(1, "year").format("YYYY-MM-DD"),
+              label: "Next year",
+            },
+            {
+              value: dayjs().subtract(1, "month").format("YYYY-MM-DD"),
+              label: "Last month",
+            },
+          ]}
+          timePickerProps={{
+            popoverProps: { withinPortal: false },
+            format: "12h",
+          }}
         />
 
         <Select
