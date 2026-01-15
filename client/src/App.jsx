@@ -31,7 +31,12 @@ import SettingsModal from "./components/SettingsModal";
 import ApprovalModal from "./components/ApprovalModal";
 import EventModal from "./components/EventModal";
 import CreateEventModal from "./components/CreateEventModal";
-import { CalendarSkeleton, PendingSidebarSkeleton } from "./components/SkeletonLoaders";
+import {
+  CalendarSkeleton,
+  PendingSidebarSkeleton,
+} from "./components/SkeletonLoaders";
+
+//TODO: implement Clerk auth, switch to Turso for Cloud DB, use Render for hosting
 
 // API helper
 const api = async (endpoint, options = {}) => {
@@ -92,7 +97,7 @@ export default function App() {
   useEffect(() => {
     if (classes.length > 0 && classFilters.length === 0) {
       const allClassIds = classes.map((c) => String(c.id));
-      setClassFilters([...allClassIds, 'unassigned']);
+      setClassFilters([...allClassIds, "unassigned"]);
     }
   }, [classes, classFilters.length]);
 
@@ -102,7 +107,7 @@ export default function App() {
       const statusMatch = statusFilters.includes(e.status);
       const classMatch = e.class_id
         ? classFilters.includes(String(e.class_id))
-        : classFilters.includes('unassigned');
+        : classFilters.includes("unassigned");
       return statusMatch && classMatch;
     });
   }, [events, statusFilters, classFilters]);

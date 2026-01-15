@@ -1,7 +1,7 @@
-import { createClient } from '@libsql/client';
+import { createClient } from "@libsql/client";
 
 const db = createClient({
-  url: process.env.TURSO_DATABASE_URL || 'file:server/db/canvas-tasks.db',
+  url: process.env.TURSO_DATABASE_URL || "file:server/db/canvas-tasks.db",
   authToken: process.env.TURSO_AUTH_TOKEN,
 });
 

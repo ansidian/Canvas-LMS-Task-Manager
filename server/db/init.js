@@ -1,7 +1,7 @@
-import db from './connection.js';
+import db from "./connection.js";
 
 async function initializeDatabase() {
-  console.log('Initializing database...');
+  console.log("Initializing database...");
 
   // Create classes table
   await db.execute(`
@@ -32,8 +32,10 @@ async function initializeDatabase() {
 
   // Add status column to existing events table if it doesn't exist
   try {
-    await db.execute(`ALTER TABLE events ADD COLUMN status TEXT DEFAULT 'incomplete' CHECK(status IN ('incomplete', 'in_progress', 'complete'))`);
-    console.log('Added status column to events table');
+    await db.execute(
+      `ALTER TABLE events ADD COLUMN status TEXT DEFAULT 'incomplete' CHECK(status IN ('incomplete', 'in_progress', 'complete'))`
+    );
+    console.log("Added status column to events table");
   } catch (err) {
     // Column likely already exists, ignore error
   }
@@ -47,7 +49,7 @@ async function initializeDatabase() {
     )
   `);
 
-  console.log('Database initialized successfully!');
+  console.log("Database initialized successfully!");
 }
 
 initializeDatabase().catch(console.error);
