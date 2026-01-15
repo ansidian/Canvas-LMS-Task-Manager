@@ -34,6 +34,13 @@ export default function SettingsModal({ opened, onClose, classes, onClassesChang
   const [editColor, setEditColor] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
 
+  const resetOnboarding = () => {
+    localStorage.removeItem('hasCompletedOnboarding');
+    onClose();
+    // Reload to trigger tour
+    window.location.reload();
+  };
+
   useEffect(() => {
     setCanvasUrl(localStorage.getItem('canvasUrl') || '');
     setCanvasToken(localStorage.getItem('canvasToken') || '');
@@ -104,6 +111,7 @@ export default function SettingsModal({ opened, onClose, classes, onClassesChang
         <Tabs.List>
           <Tabs.Tab value="canvas">Canvas API</Tabs.Tab>
           <Tabs.Tab value="classes">Classes</Tabs.Tab>
+          <Tabs.Tab value="help">Help</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel value="canvas" pt="md">
@@ -235,6 +243,17 @@ export default function SettingsModal({ opened, onClose, classes, onClassesChang
                 </Text>
               )}
             </Stack>
+          </Stack>
+        </Tabs.Panel>
+
+        <Tabs.Panel value="help" pt="md">
+          <Stack>
+            <Text size="sm" c="dimmed">
+              Need help getting started? Replay the onboarding tour to learn about the app's features.
+            </Text>
+            <Button onClick={resetOnboarding} variant="light">
+              Show Tour Again
+            </Button>
           </Stack>
         </Tabs.Panel>
       </Tabs>

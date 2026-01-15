@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { Stack, Box, Divider } from '@mantine/core';
+import { Stack, Divider } from '@mantine/core';
+import { OnboardingTour } from '@gfazioli/mantine-onboarding-tour';
 import PendingSidebar from './PendingSidebar';
 import FilterPanel from './FilterPanel';
 
@@ -78,20 +79,22 @@ export default function ResizableSidebar({
       }}
     >
       {/* Pending Items Section */}
-      <Box
-        style={{
-          height: `${splitPosition}%`,
-          overflow: 'hidden',
-          display: 'flex',
-          flexDirection: 'column',
-        }}
-      >
-        <PendingSidebar
-          items={pendingItems}
-          onItemClick={onPendingItemClick}
-          removingId={removingId}
-        />
-      </Box>
+      <OnboardingTour.Target id="pending-section">
+        <div
+          style={{
+            height: `${splitPosition}%`,
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <PendingSidebar
+            items={pendingItems}
+            onItemClick={onPendingItemClick}
+            removingId={removingId}
+          />
+        </div>
+      </OnboardingTour.Target>
 
       {/* Draggable Divider */}
       <Divider
@@ -106,22 +109,24 @@ export default function ResizableSidebar({
       />
 
       {/* Filter Panel Section */}
-      <Box
-        style={{
-          height: `${100 - splitPosition}%`,
-          overflow: 'auto',
-          display: 'flex',
-          flexDirection: 'column',
-        }}
-      >
-        <FilterPanel
-          statusFilters={statusFilters}
-          onStatusFiltersChange={onStatusFiltersChange}
-          classFilters={classFilters}
-          onClassFiltersChange={onClassFiltersChange}
-          classes={classes}
-        />
-      </Box>
+      <OnboardingTour.Target id="filter-section">
+        <div
+          style={{
+            height: `${100 - splitPosition}%`,
+            overflow: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <FilterPanel
+            statusFilters={statusFilters}
+            onStatusFiltersChange={onStatusFiltersChange}
+            classFilters={classFilters}
+            onClassFiltersChange={onClassFiltersChange}
+            classes={classes}
+          />
+        </div>
+      </OnboardingTour.Target>
     </Stack>
   );
 }

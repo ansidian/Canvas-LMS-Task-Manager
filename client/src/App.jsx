@@ -12,6 +12,9 @@ import {
 import { useHotkeys } from "@mantine/hooks";
 import { Spotlight, spotlight } from "@mantine/spotlight";
 import "@mantine/spotlight/styles.css";
+import { OnboardingTour } from "@gfazioli/mantine-onboarding-tour";
+import "@gfazioli/mantine-onboarding-tour/styles.css";
+import "./onboarding-tour.css";
 import {
   IconChevronLeft,
   IconChevronRight,
@@ -94,9 +97,32 @@ function AppContent() {
     const saved = localStorage.getItem(CLASS_FILTERS_KEY);
     return saved ? JSON.parse(saved) : [];
   });
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   // Current approval item based on index
   const approvalItem = approvalIndex >= 0 ? pendingItems[approvalIndex] : null;
+
+  // Onboarding tour steps
+  const tourSteps = [
+    {
+      id: "settings-button",
+      title: "Configure Canvas",
+      content:
+        "First, open Settings to enter your Canvas URL and API token. This is required to fetch your assignments. You can also manage your course classes here.",
+    },
+    {
+      id: "filter-section",
+      title: "Filters",
+      content:
+        "Filter your calendar by class or completion status to focus on what matters most to you.",
+    },
+    {
+      id: "pending-section",
+      title: "Pending Assignments",
+      content:
+        "Review and approve Canvas assignments here before they appear on your calendar. Click on any item to customize it before adding.",
+    },
+  ];
 
   // Persist status filters to localStorage
   useEffect(() => {
@@ -165,6 +191,14 @@ function AppContent() {
       await Promise.all([loadEvents(), loadClasses()]);
       loadCachedPendingItems();
       setInitialLoading(false);
+
+      // Check if this is first visit and start tour after small delay
+      const hasCompleted = localStorage.getItem("hasCompletedOnboarding");
+      if (!hasCompleted) {
+        setTimeout(() => {
+          setShowOnboarding(true);
+        }, 250);
+      }
     };
     loadInitialData();
   }, []);
@@ -417,8 +451,47 @@ function AppContent() {
   const nextMonth = () => setCurrentDate((d) => d.add(1, "month"));
   const goToToday = () => setCurrentDate(dayjs());
 
+  // Toggle body class for onboarding CSS
+  useEffect(() => {
+    if (showOnboarding) {
+      document.body.classList.add("onboarding-active");
+    } else {
+      document.body.classList.remove("onboarding-active");
+    }
+    return () => {
+      document.body.classList.remove("onboarding-active");
+    };
+  }, [showOnboarding]);
+
+  const handleTourComplete = () => {
+    localStorage.setItem("hasCompletedOnboarding", "true");
+    setShowOnboarding(false);
+  };
+
   return (
-    <>
+    <OnboardingTour
+      tour={tourSteps}
+      started={showOnboarding}
+      onOnboardingTourEnd={handleTourComplete}
+      onOnboardingTourClose={handleTourComplete}
+      withSkipButton
+      withPrevButton
+      withNextButton
+      withStepper
+      focusRevealProps={{
+        withOverlay: true,
+        disableTargetInteraction: true,
+        overlayProps: {
+          backgroundOpacity: 0.6,
+          blur: 0,
+          zIndex: 100,
+        },
+        popoverProps: {
+          zIndex: 200,
+          offset: 16,
+        },
+      }}
+    >
       <Spotlight
         actions={spotlightActions}
         nothingFound="No assignments found"
@@ -505,6 +578,7 @@ function AppContent() {
                   variant="subtle"
                   onClick={() => setSettingsOpen(true)}
                   size="lg"
+                  data-onboarding-tour-id="settings-button"
                 >
                   <IconSettings size={20} />
                 </ActionIcon>
@@ -587,7 +661,7 @@ function AppContent() {
           onCreate={handleCreateEvent}
         />
       </AppShell>
-    </>
+    </OnboardingTour>
   );
 }
 
