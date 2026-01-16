@@ -248,6 +248,80 @@ app.delete('/api/events/:id', requireAuth(), async (req, res) => {
   }
 });
 
+// ============= SETTINGS API =============
+
+// Get settings (creates default if not exists)
+app.get('/api/settings', requireAuth(), async (req, res) => {
+  const userId = req.auth().userId;
+  try {
+    // Try to get existing settings
+    let result = await db.execute({
+      sql: 'SELECT * FROM settings WHERE user_id = ?',
+      args: [userId],
+    });
+
+    // If no settings exist, create default
+    if (result.rows.length === 0) {
+      await db.execute({
+        sql: 'INSERT INTO settings (user_id) VALUES (?)',
+        args: [userId],
+      });
+      result = await db.execute({
+        sql: 'SELECT * FROM settings WHERE user_id = ?',
+        args: [userId],
+      });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Error fetching settings:', err);
+    res.status(500).json({ message: 'Failed to fetch settings' });
+  }
+});
+
+// Update settings
+app.patch('/api/settings', requireAuth(), async (req, res) => {
+  const userId = req.auth().userId;
+  const { unassigned_color } = req.body;
+  try {
+    // Ensure settings exist first
+    await db.execute({
+      sql: 'INSERT OR IGNORE INTO settings (user_id) VALUES (?)',
+      args: [userId],
+    });
+
+    // Build update query
+    const updates = [];
+    const args = [];
+
+    if (unassigned_color !== undefined) {
+      updates.push('unassigned_color = ?');
+      args.push(unassigned_color);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ message: 'No fields to update' });
+    }
+
+    updates.push('updated_at = CURRENT_TIMESTAMP');
+    args.push(userId);
+
+    await db.execute({
+      sql: `UPDATE settings SET ${updates.join(', ')} WHERE user_id = ?`,
+      args,
+    });
+
+    const updated = await db.execute({
+      sql: 'SELECT * FROM settings WHERE user_id = ?',
+      args: [userId],
+    });
+    res.json(updated.rows[0]);
+  } catch (err) {
+    console.error('Error updating settings:', err);
+    res.status(500).json({ message: 'Failed to update settings' });
+  }
+});
+
 // ============= REJECTED ITEMS API =============
 
 // Add rejected item

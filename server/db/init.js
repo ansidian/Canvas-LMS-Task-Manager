@@ -49,6 +49,17 @@ async function initializeDatabase() {
     )
   `);
 
+  // Create settings table
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS settings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL UNIQUE,
+      unassigned_color TEXT DEFAULT '#a78b71',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   console.log("Database initialized successfully!");
 }
 

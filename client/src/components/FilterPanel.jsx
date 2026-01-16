@@ -13,6 +13,7 @@ export default function FilterPanel({
   classFilters,
   onClassFiltersChange,
   classes,
+  unassignedColor = "#a78b71",
 }) {
   const [statusError, setStatusError] = useState(false);
   const [classError, setClassError] = useState(false);
@@ -53,7 +54,7 @@ export default function FilterPanel({
     {
       value: 'unassigned',
       label: 'Unassigned',
-      color: '#a78b71',
+      color: unassignedColor,
     },
   ];
 

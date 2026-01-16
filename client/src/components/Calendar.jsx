@@ -21,6 +21,7 @@ export default function Calendar({
   onEventClick,
   onEventDrop,
   onDayDoubleClick,
+  unassignedColor = "#a78b71",
 }) {
   const [activeEvent, setActiveEvent] = useState(null);
   const [slideDirection, setSlideDirection] = useState("");
@@ -111,7 +112,7 @@ export default function Calendar({
 
   const getClassColor = (classId) => {
     const cls = classes.find((c) => c.id === classId);
-    return cls?.color || "#a78b71";
+    return cls?.color || unassignedColor;
   };
 
   return (
@@ -167,6 +168,7 @@ export default function Calendar({
                   classes={classes}
                   onEventClick={onEventClick}
                   onDoubleClick={() => onDayDoubleClick(dateKey)}
+                  unassignedColor={unassignedColor}
                 />
               );
             })}

@@ -24,6 +24,7 @@ export default function FilterButton({
   classFilters,
   onClassFiltersChange,
   classes,
+  unassignedColor = "#a78b71",
 }) {
   const [opened, setOpened] = useState(false);
   const [statusError, setStatusError] = useState(false);
@@ -61,7 +62,7 @@ export default function FilterButton({
     {
       value: 'unassigned',
       label: 'Unassigned',
-      color: '#a78b71',
+      color: unassignedColor,
     },
   ];
 

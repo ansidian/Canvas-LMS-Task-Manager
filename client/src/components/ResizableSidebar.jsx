@@ -17,6 +17,7 @@ export default function ResizableSidebar({
   classFilters,
   onClassFiltersChange,
   classes,
+  unassignedColor = "#a78b71",
 }) {
   // Filter out pending items from unsynced classes
   const filteredPendingItems = useMemo(() => {
@@ -136,6 +137,7 @@ export default function ResizableSidebar({
             classFilters={classFilters}
             onClassFiltersChange={onClassFiltersChange}
             classes={classes}
+            unassignedColor={unassignedColor}
           />
         </div>
       </OnboardingTour.Target>

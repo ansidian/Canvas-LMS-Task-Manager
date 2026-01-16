@@ -216,10 +216,17 @@ export default function EventModal({
         <Select
           label="Class"
           placeholder="Select a class"
-          data={classes.map((c) => ({
-            value: String(c.id),
-            label: c.name,
-          }))}
+          data={classes
+            .filter(
+              (c) =>
+                !c.canvas_course_id ||
+                c.is_synced ||
+                (event && c.id === event.class_id)
+            )
+            .map((c) => ({
+              value: String(c.id),
+              label: c.name,
+            }))}
           value={formData.class_id}
           onChange={(v) => setFormData((f) => ({ ...f, class_id: v }))}
           clearable

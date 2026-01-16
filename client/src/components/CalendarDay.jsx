@@ -16,6 +16,7 @@ export default function CalendarDay({
   classes,
   onEventClick,
   onDoubleClick,
+  unassignedColor = "#a78b71",
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: dateKey,
@@ -27,7 +28,7 @@ export default function CalendarDay({
 
   const getClassColor = (classId) => {
     const cls = classes.find((c) => c.id === classId);
-    return cls?.color || "#a78b71";
+    return cls?.color || unassignedColor;
   };
 
   // Measure actual rendered event heights and calculate how many fit

@@ -108,6 +108,7 @@ function AppContent() {
   });
   const [highlightCredentials, setHighlightCredentials] = useState(false);
   const [, setTickForTooltip] = useState(0);
+  const [unassignedColor, setUnassignedColor] = useState("#a78b71");
 
   // Update tooltip every 30 seconds to keep timing fresh
   useEffect(() => {
@@ -226,11 +227,11 @@ function AppContent() {
         description: `${cls?.name || "No class"} • Due: ${dayjs(
           event.due_date
         ).format("MMM D, YYYY")}`,
-        leftSection: <StatusIcon size={20} color={cls?.color || "#a78b71"} />,
+        leftSection: <StatusIcon size={20} color={cls?.color || unassignedColor} />,
         onClick: () => setSelectedEvent(event),
       };
     });
-  }, [events, classes]);
+  }, [events, classes, unassignedColor]);
 
   // Keyboard shortcuts
   useHotkeys([
@@ -246,7 +247,7 @@ function AppContent() {
   // Load initial data and cached pending items
   useEffect(() => {
     const loadInitialData = async () => {
-      await Promise.all([loadEvents(), loadClasses()]);
+      await Promise.all([loadEvents(), loadClasses(), loadSettings()]);
       loadCachedPendingItems();
       setInitialLoading(false);
 
@@ -298,6 +299,17 @@ function AppContent() {
       setClasses(data);
     } catch (err) {
       console.error("Failed to load classes:", err);
+    }
+  };
+
+  const loadSettings = async () => {
+    try {
+      const data = await api("/settings");
+      if (data.unassigned_color) {
+        setUnassignedColor(data.unassigned_color);
+      }
+    } catch (err) {
+      console.error("Failed to load settings:", err);
     }
   };
 
@@ -408,6 +420,45 @@ function AppContent() {
   };
 
   const handleApprove = async (item, formData) => {
+    // Capture current state for potential rollback
+    const previousPendingItems = pendingItems;
+    const previousApprovalIndex = approvalIndex;
+    const previousEvents = events;
+
+    // Create optimistic event with temporary ID
+    const tempId = `temp-${Date.now()}`;
+    const optimisticEvent = {
+      id: tempId,
+      title: item.title,
+      due_date: formData.dueDate || item.due_date,
+      class_id: formData.classId ? parseInt(formData.classId) : null,
+      event_type: formData.eventType,
+      status: "incomplete",
+      notes: formData.notes,
+      url: formData.url || item.url,
+      canvas_id: item.canvas_id,
+    };
+
+    // Optimistic update: add event and remove from pending
+    setEvents((prev) => [...prev, optimisticEvent]);
+
+    const remaining = pendingItems.filter(
+      (p) => p.canvas_id !== item.canvas_id
+    );
+    setPendingItems(remaining);
+
+    // Update cache and approval index
+    if (remaining.length > 0) {
+      localStorage.setItem(PENDING_CACHE_KEY, JSON.stringify(remaining));
+      if (approvalIndex >= remaining.length) {
+        setApprovalIndex(remaining.length - 1);
+      }
+    } else {
+      localStorage.removeItem(PENDING_CACHE_KEY);
+      setApprovalIndex(-1);
+    }
+
+    // Make API call in background
     try {
       const newEvent = await api("/events", {
         method: "POST",
@@ -422,60 +473,54 @@ function AppContent() {
           canvas_id: item.canvas_id,
         }),
       });
-      setEvents((prev) => [...prev, newEvent]);
-
-      // Wait for animation to complete before removing
-      setTimeout(() => {
-        const remaining = pendingItems.filter(
-          (p) => p.canvas_id !== item.canvas_id
-        );
-        setPendingItems(remaining);
-
-        // Update cache
-        if (remaining.length > 0) {
-          localStorage.setItem(PENDING_CACHE_KEY, JSON.stringify(remaining));
-          // Stay at same index if possible, otherwise go to previous
-          if (approvalIndex >= remaining.length) {
-            setApprovalIndex(remaining.length - 1);
-          }
-        } else {
-          localStorage.removeItem(PENDING_CACHE_KEY);
-          setApprovalIndex(-1);
-        }
-      }, 200);
+      // Replace optimistic event with real one from server
+      setEvents((prev) =>
+        prev.map((e) => (e.id === tempId ? newEvent : e))
+      );
     } catch (err) {
+      // Rollback on error (silent fail)
       console.error("Failed to approve item:", err);
+      setEvents(previousEvents);
+      setPendingItems(previousPendingItems);
+      localStorage.setItem(PENDING_CACHE_KEY, JSON.stringify(previousPendingItems));
+      setApprovalIndex(previousApprovalIndex);
     }
   };
 
   const handleReject = async (item) => {
+    // Capture current state for potential rollback
+    const previousPendingItems = pendingItems;
+    const previousApprovalIndex = approvalIndex;
+
+    // Optimistic update: remove item immediately
+    const remaining = pendingItems.filter(
+      (p) => p.canvas_id !== item.canvas_id
+    );
+    setPendingItems(remaining);
+
+    // Update cache and approval index
+    if (remaining.length > 0) {
+      localStorage.setItem(PENDING_CACHE_KEY, JSON.stringify(remaining));
+      if (approvalIndex >= remaining.length) {
+        setApprovalIndex(remaining.length - 1);
+      }
+    } else {
+      localStorage.removeItem(PENDING_CACHE_KEY);
+      setApprovalIndex(-1);
+    }
+
+    // Make API call in background
     try {
       await api("/rejected", {
         method: "POST",
         body: JSON.stringify({ canvas_id: item.canvas_id }),
       });
-
-      // Wait for animation to complete before removing
-      setTimeout(() => {
-        const remaining = pendingItems.filter(
-          (p) => p.canvas_id !== item.canvas_id
-        );
-        setPendingItems(remaining);
-
-        // Update cache
-        if (remaining.length > 0) {
-          localStorage.setItem(PENDING_CACHE_KEY, JSON.stringify(remaining));
-          // Stay at same index if possible, otherwise go to previous
-          if (approvalIndex >= remaining.length) {
-            setApprovalIndex(remaining.length - 1);
-          }
-        } else {
-          localStorage.removeItem(PENDING_CACHE_KEY);
-          setApprovalIndex(-1);
-        }
-      }, 200);
     } catch (err) {
+      // Rollback on error (silent fail)
       console.error("Failed to reject item:", err);
+      setPendingItems(previousPendingItems);
+      localStorage.setItem(PENDING_CACHE_KEY, JSON.stringify(previousPendingItems));
+      setApprovalIndex(previousApprovalIndex);
     }
   };
 
@@ -720,6 +765,7 @@ function AppContent() {
               onEventClick={setSelectedEvent}
               onEventDrop={handleEventDrop}
               onDayDoubleClick={handleDayDoubleClick}
+              unassignedColor={unassignedColor}
             />
           )}
         </AppShell.Main>
@@ -736,6 +782,7 @@ function AppContent() {
               classFilters={classFilters}
               onClassFiltersChange={setClassFilters}
               classes={classes}
+              unassignedColor={unassignedColor}
             />
           )}
         </AppShell.Aside>
@@ -752,6 +799,8 @@ function AppContent() {
           }}
           highlightCredentials={highlightCredentials}
           onHighlightClear={() => setHighlightCredentials(false)}
+          unassignedColor={unassignedColor}
+          onUnassignedColorChange={setUnassignedColor}
         />
 
         <ApprovalModal

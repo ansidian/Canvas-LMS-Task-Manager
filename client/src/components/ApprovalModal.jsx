@@ -133,7 +133,9 @@ function Card({
           <Select
             label="Class"
             placeholder="Select a class"
-            data={classes.map((c) => ({ value: String(c.id), label: c.name }))}
+            data={classes
+              .filter((c) => !c.canvas_course_id || c.is_synced)
+              .map((c) => ({ value: String(c.id), label: c.name }))}
             value={formData.classId}
             onChange={(v) => setFormData((f) => ({ ...f, classId: v }))}
             clearable

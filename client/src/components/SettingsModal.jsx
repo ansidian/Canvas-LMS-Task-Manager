@@ -34,6 +34,8 @@ export default function SettingsModal({
   onClassUpdate,
   highlightCredentials = false,
   onHighlightClear,
+  unassignedColor = "#a78b71",
+  onUnassignedColorChange,
 }) {
   const { getToken } = useAuth();
 
@@ -59,6 +61,8 @@ export default function SettingsModal({
   const [editName, setEditName] = useState("");
   const [editColor, setEditColor] = useState("");
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [editingUnassigned, setEditingUnassigned] = useState(false);
+  const [editUnassignedColor, setEditUnassignedColor] = useState("");
 
   const resetOnboarding = () => {
     localStorage.removeItem("hasCompletedOnboarding");
@@ -163,6 +167,36 @@ export default function SettingsModal({
     }
   };
 
+  const startEditingUnassigned = () => {
+    setEditingUnassigned(true);
+    setEditUnassignedColor(unassignedColor);
+  };
+
+  const cancelEditingUnassigned = () => {
+    setEditingUnassigned(false);
+    setEditUnassignedColor("");
+  };
+
+  const saveUnassignedColor = async () => {
+    if (!editUnassignedColor) return;
+
+    // Optimistic update
+    const previousColor = unassignedColor;
+    onUnassignedColorChange(editUnassignedColor);
+    setEditingUnassigned(false);
+
+    try {
+      await api("/settings", {
+        method: "PATCH",
+        body: JSON.stringify({ unassigned_color: editUnassignedColor }),
+      });
+    } catch (err) {
+      // Revert on error
+      console.error("Failed to update unassigned color:", err);
+      onUnassignedColorChange(previousColor);
+    }
+  };
+
   return (
     <Modal opened={opened} onClose={onClose} title="Settings" size="lg">
       <Tabs defaultValue="canvas">
@@ -240,6 +274,64 @@ export default function SettingsModal({
             </Group>
 
             <Stack gap="xs">
+              <Divider label="Unassigned" labelPosition="left" />
+              <Paper p="sm" withBorder>
+                {editingUnassigned ? (
+                  <Group align="flex-end">
+                    <Text size="sm" style={{ flex: 1 }}>
+                      Unassigned
+                    </Text>
+                    <ColorInput
+                      value={editUnassignedColor}
+                      onChange={setEditUnassignedColor}
+                      w={100}
+                      size="xs"
+                    />
+                    <ActionIcon
+                      variant="filled"
+                      color="green"
+                      onClick={saveUnassignedColor}
+                      size="sm"
+                    >
+                      <IconCheck size={14} />
+                    </ActionIcon>
+                    <ActionIcon
+                      variant="subtle"
+                      color="gray"
+                      onClick={cancelEditingUnassigned}
+                      size="sm"
+                    >
+                      <IconX size={14} />
+                    </ActionIcon>
+                  </Group>
+                ) : (
+                  <Group justify="space-between" wrap="nowrap">
+                    <Group wrap="nowrap" style={{ minWidth: 0 }}>
+                      <div
+                        style={{
+                          width: 16,
+                          height: 16,
+                          borderRadius: 4,
+                          backgroundColor: unassignedColor,
+                          flexShrink: 0,
+                        }}
+                      />
+                      <Text size="sm" truncate style={{ minWidth: 0 }}>
+                        Unassigned
+                      </Text>
+                    </Group>
+                    <Group gap="xs" wrap="nowrap">
+                      <ActionIcon
+                        variant="subtle"
+                        onClick={startEditingUnassigned}
+                      >
+                        <IconEdit size={16} />
+                      </ActionIcon>
+                    </Group>
+                  </Group>
+                )}
+              </Paper>
+
               {classes.filter((cls) => cls.canvas_course_id).length > 0 && (
                 <Divider label="From Canvas" labelPosition="left" />
               )}
