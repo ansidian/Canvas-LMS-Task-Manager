@@ -203,6 +203,22 @@ body {
   animation: successFlash 0.6s ease-out;
 }
 
+/* Credential highlight pulse animation */
+@keyframes credentialPulse {
+  0%, 100% {
+    border-color: var(--border-primary);
+    box-shadow: none;
+  }
+  50% {
+    border-color: #ef4444;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+  }
+}
+
+.credential-highlight input {
+  animation: credentialPulse 0.4s ease-in-out 3;
+}
+
 /* Skeleton loader pulse */
 @keyframes skeletonPulse {
   0%, 100% {

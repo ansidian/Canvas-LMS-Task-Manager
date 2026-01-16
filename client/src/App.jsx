@@ -75,6 +75,10 @@ function AppContent() {
   const PENDING_CACHE_KEY = "canvas_pending_items";
   const STATUS_FILTERS_KEY = "calendar_status_filters";
   const CLASS_FILTERS_KEY = "calendar_class_filters";
+  const LAST_FETCH_KEY = "canvas_last_fetch_timestamp";
+
+  // Auto-fetch interval (5 minutes)
+  const FETCH_INTERVAL_MS = 5 * 60 * 1000;
 
   const ALL_STATUSES = ["incomplete", "in_progress", "complete"];
 
@@ -98,6 +102,36 @@ function AppContent() {
     return saved ? JSON.parse(saved) : [];
   });
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [lastFetchTime, setLastFetchTime] = useState(() => {
+    const saved = localStorage.getItem("canvas_last_fetch_timestamp");
+    return saved ? parseInt(saved, 10) : null;
+  });
+  const [highlightCredentials, setHighlightCredentials] = useState(false);
+  const [, setTickForTooltip] = useState(0);
+
+  // Update tooltip every 30 seconds to keep timing fresh
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTickForTooltip((t) => t + 1);
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Fetch button update
+  const getFetchTooltip = () => {
+    if (!lastFetchTime) {
+      return "Fetch Canvas assignments";
+    }
+    const elapsed = Date.now() - lastFetchTime;
+    const remaining = FETCH_INTERVAL_MS - elapsed;
+    const elapsedMin = Math.floor(elapsed / 60000);
+    const remainingMin = Math.max(0, Math.ceil(remaining / 60000));
+
+    if (remaining <= 0) {
+      return `Last fetched ${elapsedMin}m ago, refetch on next load`;
+    }
+    return `Last fetched ${elapsedMin}m ago, refetching in ${remainingMin}m`;
+  };
 
   // Current approval item based on index
   const approvalItem = approvalIndex >= 0 ? pendingItems[approvalIndex] : null;
@@ -213,6 +247,14 @@ function AppContent() {
           setShowOnboarding(true);
         }, 250);
       }
+
+      // Auto-fetch
+      const lastFetch = localStorage.getItem(LAST_FETCH_KEY);
+      const isStale =
+        !lastFetch || Date.now() - parseInt(lastFetch, 10) > FETCH_INTERVAL_MS;
+      if (isStale) {
+        fetchCanvasAssignments({ silent: true });
+      }
     };
     loadInitialData();
   }, []);
@@ -317,12 +359,15 @@ function AppContent() {
     }
   };
 
-  const fetchCanvasAssignments = async () => {
+  const fetchCanvasAssignments = async ({ silent = false } = {}) => {
     const canvasUrl = localStorage.getItem("canvasUrl");
     const canvasToken = localStorage.getItem("canvasToken");
 
     if (!canvasUrl || !canvasToken) {
-      setSettingsOpen(true);
+      if (!silent) {
+        setHighlightCredentials(true);
+        setSettingsOpen(true);
+      }
       return;
     }
 
@@ -339,7 +384,13 @@ function AppContent() {
       await ensureClassesExist(data.courses);
 
       setPendingItems(data.assignments);
+
+      // Update last fetch timestamp
+      const now = Date.now();
+      localStorage.setItem(LAST_FETCH_KEY, String(now));
+      setLastFetchTime(now);
     } catch (err) {
+      // Silent fail for network/API errors
       console.error("Failed to fetch Canvas assignments:", err);
     } finally {
       setLoading(false);
@@ -598,10 +649,10 @@ function AppContent() {
                   <IconSearch size={20} />
                 </ActionIcon>
               </Tooltip>
-              <Tooltip label="Fetch Canvas assignments">
+              <Tooltip label={getFetchTooltip()}>
                 <ActionIcon
                   variant="subtle"
-                  onClick={fetchCanvasAssignments}
+                  onClick={() => fetchCanvasAssignments()}
                   loading={loading}
                   size="lg"
                 >
@@ -684,6 +735,8 @@ function AppContent() {
           onClose={() => setSettingsOpen(false)}
           classes={classes}
           onClassesChange={loadClasses}
+          highlightCredentials={highlightCredentials}
+          onHighlightClear={() => setHighlightCredentials(false)}
         />
 
         <ApprovalModal

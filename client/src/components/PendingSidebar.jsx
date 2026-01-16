@@ -13,7 +13,7 @@ import dayjs from "dayjs";
 export default function PendingSidebar({ items, onItemClick }) {
   if (items.length === 0) {
     return (
-      <Stack>
+      <Stack p="md">
         <Title order={5}>Pending Items</Title>
         <Text c="dimmed" size="sm">
           No pending assignments. Click the refresh button to fetch from Canvas.

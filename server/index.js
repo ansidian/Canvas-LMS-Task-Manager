@@ -293,27 +293,11 @@ app.get('/api/canvas/assignments', requireAuth(), async (req, res) => {
 
     const courses = await coursesRes.json();
 
-    // Get user's classes to check which courses are synced
-    const userClasses = await db.execute({
-      sql: 'SELECT canvas_course_id, is_synced FROM classes WHERE user_id = ? AND canvas_course_id IS NOT NULL',
-      args: [userId],
-    });
-
-    // Build a map of canvas_course_id -> is_synced
-    const syncStatusMap = new Map();
-    for (const cls of userClasses.rows) {
-      syncStatusMap.set(cls.canvas_course_id, cls.is_synced);
-    }
-
-    // Fetch assignments from each course (only if synced or not yet in DB)
+    // Fetch assignments from all courses (sync filtering happens client-side)
     const allAssignments = [];
 
     for (const course of courses) {
-      // Skip courses that are explicitly not synced
       const courseIdStr = String(course.id);
-      if (syncStatusMap.has(courseIdStr) && !syncStatusMap.get(courseIdStr)) {
-        continue;
-      }
 
       try {
         const assignmentsRes = await fetch(

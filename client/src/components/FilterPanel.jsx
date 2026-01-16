@@ -1,12 +1,5 @@
 import { useState } from 'react';
-import {
-  Stack,
-  Text,
-  Checkbox,
-  Divider,
-  Group,
-  Box,
-} from '@mantine/core';
+import { Stack, Text, Divider, Group, Box } from '@mantine/core';
 
 const STATUS_COLORS = {
   incomplete: '#94a3b8',
@@ -71,70 +64,41 @@ export default function FilterPanel({
         <Text size="sm" fw={600}>
           Status
         </Text>
-        <Checkbox.Group value={statusFilters} onChange={handleStatusChange}>
-          <Stack gap="xs">
-            <Checkbox
-              value="incomplete"
-              label={
-                <Group gap="xs" wrap="nowrap">
-                  <Box
-                    style={{
-                      width: 12,
-                      height: 12,
-                      backgroundColor: STATUS_COLORS.incomplete,
-                      borderRadius: '50%',
-                      flexShrink: 0,
-                    }}
-                  />
-                  <Text size="sm">Incomplete</Text>
-                </Group>
-              }
-              styles={{
-                label: { cursor: 'pointer' },
-              }}
-            />
-            <Checkbox
-              value="in_progress"
-              label={
-                <Group gap="xs" wrap="nowrap">
-                  <Box
-                    style={{
-                      width: 12,
-                      height: 12,
-                      backgroundColor: STATUS_COLORS.in_progress,
-                      borderRadius: '50%',
-                      flexShrink: 0,
-                    }}
-                  />
-                  <Text size="sm">In Progress</Text>
-                </Group>
-              }
-              styles={{
-                label: { cursor: 'pointer' },
-              }}
-            />
-            <Checkbox
-              value="complete"
-              label={
-                <Group gap="xs" wrap="nowrap">
-                  <Box
-                    style={{
-                      width: 12,
-                      height: 12,
-                      backgroundColor: STATUS_COLORS.complete,
-                      borderRadius: '50%',
-                      flexShrink: 0,
-                    }}
-                  />
-                  <Text size="sm">Complete</Text>
-                </Group>
-              }
-              styles={{
-                label: { cursor: 'pointer' },
-              }}
-            />
-          </Stack>
-        </Checkbox.Group>
+        <Stack gap="xs">
+          {[
+            { value: 'incomplete', label: 'Incomplete', color: STATUS_COLORS.incomplete },
+            { value: 'in_progress', label: 'In Progress', color: STATUS_COLORS.in_progress },
+            { value: 'complete', label: 'Complete', color: STATUS_COLORS.complete },
+          ].map((option) => {
+            const isChecked = statusFilters.includes(option.value);
+            return (
+              <Group
+                key={option.value}
+                gap="xs"
+                wrap="nowrap"
+                style={{ cursor: 'pointer' }}
+                onClick={() => {
+                  const newFilters = isChecked
+                    ? statusFilters.filter((v) => v !== option.value)
+                    : [...statusFilters, option.value];
+                  handleStatusChange(newFilters);
+                }}
+              >
+                <Box
+                  style={{
+                    width: 12,
+                    height: 12,
+                    backgroundColor: isChecked ? option.color : 'transparent',
+                    border: `2px solid ${option.color}`,
+                    borderRadius: '50%',
+                    flexShrink: 0,
+                  }}
+                />
+                <Text size="sm">{option.label}</Text>
+              </Group>
+            );
+          })}
+        </Stack>
         {statusError && (
           <Text size="xs" c="red" style={{ marginTop: -4 }}>
             At least one status must be selected
@@ -149,39 +113,37 @@ export default function FilterPanel({
         <Text size="sm" fw={600}>
           Classes
         </Text>
-        <Checkbox.Group value={classFilters} onChange={handleClassChange}>
-          <Stack gap="xs">
-            {classOptions.map((option) => (
-              <Checkbox
+        <Stack gap="xs">
+          {classOptions.map((option) => {
+            const isChecked = classFilters.includes(option.value);
+            return (
+              <Group
                 key={option.value}
-                value={option.value}
-                label={
-                  <Group gap="xs" wrap="nowrap">
-                    <Box
-                      style={{
-                        width: 12,
-                        height: 12,
-                        backgroundColor: option.color,
-                        borderRadius: 2,
-                        flexShrink: 0,
-                      }}
-                    />
-                    <Text size="sm">{option.label}</Text>
-                  </Group>
-                }
-                styles={{
-                  input: {
-                    borderRadius: 2,
-                    cursor: 'pointer',
-                  },
-                  label: {
-                    cursor: 'pointer',
-                  },
+                gap="xs"
+                wrap="nowrap"
+                style={{ cursor: 'pointer' }}
+                onClick={() => {
+                  const newFilters = isChecked
+                    ? classFilters.filter((v) => v !== option.value)
+                    : [...classFilters, option.value];
+                  handleClassChange(newFilters);
                 }}
-              />
-            ))}
-          </Stack>
-        </Checkbox.Group>
+              >
+                <Box
+                  style={{
+                    width: 12,
+                    height: 12,
+                    backgroundColor: isChecked ? option.color : 'transparent',
+                    border: `2px solid ${option.color}`,
+                    borderRadius: 2,
+                    flexShrink: 0,
+                  }}
+                />
+                <Text size="sm">{option.label}</Text>
+              </Group>
+            );
+          })}
+        </Stack>
         {classError && (
           <Text size="xs" c="red" style={{ marginTop: -4 }}>
             At least one class must be selected

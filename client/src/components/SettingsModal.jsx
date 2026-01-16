@@ -31,6 +31,8 @@ export default function SettingsModal({
   onClose,
   classes,
   onClassesChange,
+  highlightCredentials = false,
+  onHighlightClear,
 }) {
   const { getToken } = useAuth();
 
@@ -65,9 +67,21 @@ export default function SettingsModal({
   };
 
   useEffect(() => {
-    setCanvasUrl(localStorage.getItem("canvasUrl") || "");
+    setCanvasUrl(
+      localStorage.getItem("canvasUrl") || "https://calstatela.instructure.com"
+    );
     setCanvasToken(localStorage.getItem("canvasToken") || "");
   }, [opened]);
+
+  // Clear highlight after animation completes (3 pulses × 0.4s = 1.2s)
+  useEffect(() => {
+    if (highlightCredentials && onHighlightClear) {
+      const timer = setTimeout(() => {
+        onHighlightClear();
+      }, 1200);
+      return () => clearTimeout(timer);
+    }
+  }, [highlightCredentials, onHighlightClear]);
 
   const saveCanvasSettings = () => {
     localStorage.setItem("canvasUrl", canvasUrl);
@@ -161,10 +175,13 @@ export default function SettingsModal({
             </Text>
             <TextInput
               label="Canvas URL"
-              placeholder="https://canvas.myschool.edu"
+              placeholder="https://calstatela.instructure.com"
               value={canvasUrl}
               onChange={(e) => setCanvasUrl(e.target.value)}
               description="Your institution's Canvas URL"
+              className={
+                highlightCredentials && !canvasUrl ? "credential-highlight" : ""
+              }
             />
             <PasswordInput
               label="API Token"
@@ -172,6 +189,11 @@ export default function SettingsModal({
               value={canvasToken}
               onChange={(e) => setCanvasToken(e.target.value)}
               description="Generated from Canvas settings"
+              className={
+                highlightCredentials && !canvasToken
+                  ? "credential-highlight"
+                  : ""
+              }
             />
             <Group justify="flex-end">
               <Button
@@ -219,91 +241,91 @@ export default function SettingsModal({
                 .filter((cls) => cls.canvas_course_id)
                 .map((cls) => (
                   <Paper key={cls.id} p="sm" withBorder>
-                  {editingClassId === cls.id ? (
-                    <Group align="flex-end">
-                      <TextInput
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
-                        style={{ flex: 1 }}
-                        size="xs"
-                      />
-                      <ColorInput
-                        value={editColor}
-                        onChange={setEditColor}
-                        w={100}
-                        size="xs"
-                      />
-                      <ActionIcon
-                        variant="filled"
-                        color="green"
-                        onClick={saveEdit}
-                        size="sm"
-                      >
-                        <IconCheck size={14} />
-                      </ActionIcon>
-                      <ActionIcon
-                        variant="subtle"
-                        color="gray"
-                        onClick={cancelEditing}
-                        size="sm"
-                      >
-                        <IconX size={14} />
-                      </ActionIcon>
-                    </Group>
-                  ) : (
-                    <Group justify="space-between" wrap="nowrap">
-                      <Group wrap="nowrap" style={{ minWidth: 0 }}>
-                        <div
-                          style={{
-                            width: 16,
-                            height: 16,
-                            borderRadius: 4,
-                            backgroundColor: cls.color,
-                            flexShrink: 0,
-                          }}
+                    {editingClassId === cls.id ? (
+                      <Group align="flex-end">
+                        <TextInput
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          style={{ flex: 1 }}
+                          size="xs"
                         />
-                        <Text size="sm" truncate style={{ minWidth: 0 }}>
-                          {cls.name}
-                        </Text>
+                        <ColorInput
+                          value={editColor}
+                          onChange={setEditColor}
+                          w={100}
+                          size="xs"
+                        />
+                        <ActionIcon
+                          variant="filled"
+                          color="green"
+                          onClick={saveEdit}
+                          size="sm"
+                        >
+                          <IconCheck size={14} />
+                        </ActionIcon>
+                        <ActionIcon
+                          variant="subtle"
+                          color="gray"
+                          onClick={cancelEditing}
+                          size="sm"
+                        >
+                          <IconX size={14} />
+                        </ActionIcon>
                       </Group>
-                      <Group gap="xs" wrap="nowrap">
-                        {cls.canvas_course_id && (
-                          <Tooltip
-                            label={
-                              cls.is_synced
-                                ? "Assignments from this Canvas course will appear in your pending items"
-                                : "Assignments from this Canvas course will be ignored"
-                            }
-                            multiline
-                            w={220}
+                    ) : (
+                      <Group justify="space-between" wrap="nowrap">
+                        <Group wrap="nowrap" style={{ minWidth: 0 }}>
+                          <div
+                            style={{
+                              width: 16,
+                              height: 16,
+                              borderRadius: 4,
+                              backgroundColor: cls.color,
+                              flexShrink: 0,
+                            }}
+                          />
+                          <Text size="sm" truncate style={{ minWidth: 0 }}>
+                            {cls.name}
+                          </Text>
+                        </Group>
+                        <Group gap="xs" wrap="nowrap">
+                          {cls.canvas_course_id && (
+                            <Tooltip
+                              label={
+                                cls.is_synced
+                                  ? "Assignments from this Canvas course will appear in your pending items"
+                                  : "Assignments from this Canvas course will be ignored"
+                              }
+                              multiline
+                              w={220}
+                            >
+                              <div>
+                                <Switch
+                                  size="xs"
+                                  checked={!!cls.is_synced}
+                                  onChange={() => toggleSync(cls)}
+                                  label={<IconRefresh size={14} />}
+                                  styles={{ label: { paddingLeft: 4 } }}
+                                />
+                              </div>
+                            </Tooltip>
+                          )}
+                          <ActionIcon
+                            variant="subtle"
+                            onClick={() => startEditing(cls)}
                           >
-                            <div>
-                              <Switch
-                                size="xs"
-                                checked={!!cls.is_synced}
-                                onChange={() => toggleSync(cls)}
-                                label={<IconRefresh size={14} />}
-                                styles={{ label: { paddingLeft: 4 } }}
-                              />
-                            </div>
-                          </Tooltip>
-                        )}
-                        <ActionIcon
-                          variant="subtle"
-                          onClick={() => startEditing(cls)}
-                        >
-                          <IconEdit size={16} />
-                        </ActionIcon>
-                        <ActionIcon
-                          variant="subtle"
-                          color="red"
-                          onClick={() => deleteClass(cls.id)}
-                        >
-                          <IconTrash size={16} />
-                        </ActionIcon>
+                            <IconEdit size={16} />
+                          </ActionIcon>
+                          <ActionIcon
+                            variant="subtle"
+                            color="red"
+                            onClick={() => deleteClass(cls.id)}
+                          >
+                            <IconTrash size={16} />
+                          </ActionIcon>
+                        </Group>
                       </Group>
-                    </Group>
-                  )}
+                    )}
                   </Paper>
                 ))}
               {classes.filter((cls) => !cls.canvas_course_id).length > 0 && (
