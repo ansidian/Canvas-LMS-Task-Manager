@@ -170,7 +170,7 @@ function AppContent() {
         description: `${cls?.name || "No class"} • Due: ${dayjs(
           event.due_date
         ).format("MMM D, YYYY")}`,
-        leftSection: <StatusIcon size={20} color={cls?.color || "#868e96"} />,
+        leftSection: <StatusIcon size={20} color={cls?.color || "#a78b71"} />,
         onClick: () => setSelectedEvent(event),
       };
     });
@@ -179,7 +179,9 @@ function AppContent() {
   // Keyboard shortcuts
   useHotkeys([
     ["n", () => setCurrentDate((d) => d.add(1, "month"))],
+    ["ArrowRight", () => setCurrentDate((d) => d.add(1, "month"))],
     ["p", () => setCurrentDate((d) => d.subtract(1, "month"))],
+    ["ArrowLeft", () => setCurrentDate((d) => d.subtract(1, "month"))],
     ["t", () => setCurrentDate(dayjs())],
     ["mod+j", () => toggleColorScheme()],
     ["mod+k", () => spotlight.open()],
@@ -594,7 +596,14 @@ function AppContent() {
           </Group>
         </AppShell.Header>
 
-        <AppShell.Main style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 60px)' }}>
+        <AppShell.Main
+          style={{
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+            height: "calc(100vh - 60px)",
+          }}
+        >
           {initialLoading ? (
             <CalendarSkeleton />
           ) : (

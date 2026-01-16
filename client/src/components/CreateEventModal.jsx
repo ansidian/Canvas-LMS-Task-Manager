@@ -7,6 +7,8 @@ import {
   Textarea,
   Button,
   Group,
+  Box,
+  Text,
 } from "@mantine/core";
 import { DateTimePicker } from "@mantine/dates";
 import dayjs from "dayjs";
@@ -131,6 +133,38 @@ export default function CreateEventModal({
           value={formData.classId}
           onChange={(v) => setFormData((f) => ({ ...f, classId: v }))}
           clearable
+          renderOption={({ option }) => {
+            const cls = classes.find((c) => String(c.id) === option.value);
+            return (
+              <Group gap="xs" wrap="nowrap">
+                <Box
+                  style={{
+                    width: 12,
+                    height: 12,
+                    backgroundColor: cls?.color || "#a78b71",
+                    borderRadius: 2,
+                    flexShrink: 0,
+                  }}
+                />
+                <Text size="sm">{option.label}</Text>
+              </Group>
+            );
+          }}
+          leftSection={
+            formData.classId ? (
+              <Box
+                style={{
+                  width: 12,
+                  height: 12,
+                  backgroundColor:
+                    classes.find((c) => String(c.id) === formData.classId)
+                      ?.color || "#a78b71",
+                  borderRadius: 2,
+                  flexShrink: 0,
+                }}
+              />
+            ) : null
+          }
         />
 
         <Select

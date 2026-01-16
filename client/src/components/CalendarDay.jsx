@@ -30,7 +30,7 @@ export default function CalendarDay({
 
   const getClassColor = (classId) => {
     const cls = classes.find((c) => c.id === classId);
-    return cls?.color || "#868e96";
+    return cls?.color || "#a78b71";
   };
 
   // Calculate how many events can fit based on container height

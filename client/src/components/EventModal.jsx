@@ -27,7 +27,7 @@ const EVENT_TYPES = [
 ];
 
 const STATUS_COLORS = {
-  incomplete: "#868e96",
+  incomplete: "#94a3b8",
   in_progress: "#7950f2",
   complete: "#40c057",
 };
@@ -231,7 +231,7 @@ export default function EventModal({
                   style={{
                     width: 12,
                     height: 12,
-                    backgroundColor: cls?.color || "#868e96",
+                    backgroundColor: cls?.color || "#a78b71",
                     borderRadius: 2,
                     flexShrink: 0,
                   }}
@@ -248,7 +248,7 @@ export default function EventModal({
                   height: 12,
                   backgroundColor:
                     classes.find((c) => String(c.id) === formData.class_id)
-                      ?.color || "#868e96",
+                      ?.color || "#a78b71",
                   borderRadius: 2,
                   flexShrink: 0,
                 }}

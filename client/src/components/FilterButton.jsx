@@ -13,7 +13,7 @@ import {
 import { IconFilter } from '@tabler/icons-react';
 
 const STATUS_COLORS = {
-  incomplete: '#868e96',
+  incomplete: '#94a3b8',
   in_progress: '#7950f2',
   complete: '#40c057',
 };
@@ -61,7 +61,7 @@ export default function FilterButton({
     {
       value: 'unassigned',
       label: 'Unassigned',
-      color: '#868e96',
+      color: '#a78b71',
     },
   ];
 
