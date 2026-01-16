@@ -1,15 +1,11 @@
 import { Paper, Text, Stack, Popover } from "@mantine/core";
 import { useDroppable } from "@dnd-kit/core";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import EventCard from "./EventCard";
-import { hasTimeComponent } from "../utils/datetime";
 
-// Estimated heights for calculating how many events fit
-const EVENT_HEIGHT_BASIC = 22; // Event without time (padding 4*2 + line ~14)
-const EVENT_HEIGHT_WITH_TIME = 34; // Event with time shown (adds ~12 for time row)
 const EVENT_GAP = 2;
-const MORE_TEXT_HEIGHT = 16;
+const MORE_TEXT_HEIGHT = 14; // Mantine xs text (~12px font + line-height)
 
 export default function CalendarDay({
   date,
@@ -25,34 +21,33 @@ export default function CalendarDay({
     id: dateKey,
   });
   const [popoverOpened, setPopoverOpened] = useState(false);
-  const [maxVisible, setMaxVisible] = useState(3);
+  const [maxVisible, setMaxVisible] = useState(events.length);
   const containerRef = useRef(null);
+  const measureRef = useRef(null);
 
   const getClassColor = (classId) => {
     const cls = classes.find((c) => c.id === classId);
     return cls?.color || "#a78b71";
   };
 
-  // Calculate how many events can fit based on container height
+  // Measure actual rendered event heights and calculate how many fit
   const calculateMaxVisible = useCallback(() => {
-    if (!containerRef.current || events.length === 0) return;
+    if (!containerRef.current || !measureRef.current || events.length === 0) {
+      setMaxVisible(events.length);
+      return;
+    }
 
     const containerHeight = containerRef.current.clientHeight;
-
     if (containerHeight === 0) return;
 
+    const eventElements = measureRef.current.children;
     let totalHeight = 0;
     let count = 0;
 
-    for (let i = 0; i < events.length; i++) {
-      const event = events[i];
-      const eventHeight = hasTimeComponent(event.due_date)
-        ? EVENT_HEIGHT_WITH_TIME
-        : EVENT_HEIGHT_BASIC;
-
+    for (let i = 0; i < eventElements.length; i++) {
+      const el = eventElements[i];
+      const eventHeight = el.getBoundingClientRect().height;
       const hasMoreAfterThis = i < events.length - 1;
-
-      // Only reserve space for "+N more" if we're not showing all events
       const wouldNeedMore = hasMoreAfterThis && count + 1 < events.length;
       const reservedHeight = wouldNeedMore ? MORE_TEXT_HEIGHT : 0;
 
@@ -64,14 +59,21 @@ export default function CalendarDay({
       }
     }
 
-    // Ensure at least 1 event shows if there are events
     setMaxVisible(Math.max(1, count));
   }, [events]);
 
-  // Recalculate on mount, resize, and when events change
-  useEffect(() => {
+  // Measure after render
+  useLayoutEffect(() => {
     calculateMaxVisible();
+  }, [calculateMaxVisible]);
 
+  // Close popover when events change (e.g., after drag-drop)
+  useEffect(() => {
+    setPopoverOpened(false);
+  }, [events]);
+
+  // Recalculate on resize
+  useEffect(() => {
     const resizeObserver = new ResizeObserver(() => {
       calculateMaxVisible();
     });
@@ -119,6 +121,7 @@ export default function CalendarDay({
         <div
           ref={containerRef}
           style={{
+            position: "relative",
             overflow: "hidden",
             flex: 1,
             minHeight: 0,
@@ -127,6 +130,33 @@ export default function CalendarDay({
             gap: "2px",
           }}
         >
+          {/* Hidden measurement layer - always rendered to measure heights */}
+          {events.length > 0 && (
+            <div
+              ref={measureRef}
+              style={{
+                visibility: "hidden",
+                position: "absolute",
+                left: 0,
+                right: 0,
+                display: "flex",
+                flexDirection: "column",
+                gap: "2px",
+                pointerEvents: "none",
+              }}
+              aria-hidden="true"
+            >
+              {events.map((event) => (
+                <div key={event.id}>
+                  <EventCard
+                    event={event}
+                    color={getClassColor(event.class_id)}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+          {/* Visible events */}
           <AnimatePresence initial={false}>
             {visibleEvents.map((event) => (
               <motion.div

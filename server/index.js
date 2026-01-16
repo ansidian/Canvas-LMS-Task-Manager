@@ -41,11 +41,11 @@ app.get('/api/classes', requireAuth(), async (req, res) => {
 // Create class
 app.post('/api/classes', requireAuth(), async (req, res) => {
   const userId = req.auth().userId;
-  const { name, color } = req.body;
+  const { name, color, canvas_course_id } = req.body;
   try {
     const result = await db.execute({
-      sql: 'INSERT INTO classes (user_id, name, color) VALUES (?, ?, ?)',
-      args: [userId, name, color || '#228be6'],
+      sql: 'INSERT INTO classes (user_id, name, color, canvas_course_id) VALUES (?, ?, ?, ?)',
+      args: [userId, name, color || '#3498db', canvas_course_id || null],
     });
     const newClass = await db.execute({
       sql: 'SELECT * FROM classes WHERE id = ? AND user_id = ?',
@@ -62,12 +62,40 @@ app.post('/api/classes', requireAuth(), async (req, res) => {
 app.patch('/api/classes/:id', requireAuth(), async (req, res) => {
   const userId = req.auth().userId;
   const { id } = req.params;
-  const { name, color } = req.body;
+  const { name, color, canvas_course_id, is_synced } = req.body;
   try {
+    // Build update query dynamically based on provided fields
+    const updates = [];
+    const args = [];
+
+    if (name !== undefined) {
+      updates.push('name = ?');
+      args.push(name);
+    }
+    if (color !== undefined) {
+      updates.push('color = ?');
+      args.push(color);
+    }
+    if (canvas_course_id !== undefined) {
+      updates.push('canvas_course_id = ?');
+      args.push(canvas_course_id);
+    }
+    if (is_synced !== undefined) {
+      updates.push('is_synced = ?');
+      args.push(is_synced ? 1 : 0);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ message: 'No fields to update' });
+    }
+
+    args.push(id, userId);
+
     await db.execute({
-      sql: 'UPDATE classes SET name = ?, color = ? WHERE id = ? AND user_id = ?',
-      args: [name, color, id, userId],
+      sql: `UPDATE classes SET ${updates.join(', ')} WHERE id = ? AND user_id = ?`,
+      args,
     });
+
     const updated = await db.execute({
       sql: 'SELECT * FROM classes WHERE id = ? AND user_id = ?',
       args: [id, userId],
@@ -265,10 +293,28 @@ app.get('/api/canvas/assignments', requireAuth(), async (req, res) => {
 
     const courses = await coursesRes.json();
 
-    // Fetch assignments from each course
+    // Get user's classes to check which courses are synced
+    const userClasses = await db.execute({
+      sql: 'SELECT canvas_course_id, is_synced FROM classes WHERE user_id = ? AND canvas_course_id IS NOT NULL',
+      args: [userId],
+    });
+
+    // Build a map of canvas_course_id -> is_synced
+    const syncStatusMap = new Map();
+    for (const cls of userClasses.rows) {
+      syncStatusMap.set(cls.canvas_course_id, cls.is_synced);
+    }
+
+    // Fetch assignments from each course (only if synced or not yet in DB)
     const allAssignments = [];
 
     for (const course of courses) {
+      // Skip courses that are explicitly not synced
+      const courseIdStr = String(course.id);
+      if (syncStatusMap.has(courseIdStr) && !syncStatusMap.get(courseIdStr)) {
+        continue;
+      }
+
       try {
         const assignmentsRes = await fetch(
           `${baseUrl}/api/v1/courses/${course.id}/assignments?per_page=100`,
@@ -281,6 +327,7 @@ app.get('/api/canvas/assignments', requireAuth(), async (req, res) => {
             if (assignment.due_at) {
               allAssignments.push({
                 canvas_id: `${course.id}-${assignment.id}`,
+                canvas_course_id: courseIdStr,
                 title: assignment.name,
                 due_date: assignment.due_at, // Preserve full ISO 8601 timestamp
                 course_name: course.name,
@@ -311,7 +358,13 @@ app.get('/api/canvas/assignments', requireAuth(), async (req, res) => {
 
     const pendingAssignments = allAssignments.filter((a) => !existingIds.has(a.canvas_id));
 
-    res.json(pendingAssignments);
+    // Return both assignments and all courses (for class creation)
+    const canvasCourses = courses.map((c) => ({
+      canvas_course_id: String(c.id),
+      name: c.name,
+    }));
+
+    res.json({ assignments: pendingAssignments, courses: canvasCourses });
   } catch (err) {
     console.error('Error fetching Canvas assignments:', err);
     res.status(500).json({ message: 'Failed to fetch Canvas assignments' });

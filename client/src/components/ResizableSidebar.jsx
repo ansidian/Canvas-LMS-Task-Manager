@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Stack, Divider } from '@mantine/core';
 import { OnboardingTour } from '@gfazioli/mantine-onboarding-tour';
 import PendingSidebar from './PendingSidebar';
@@ -18,6 +18,20 @@ export default function ResizableSidebar({
   onClassFiltersChange,
   classes,
 }) {
+  // Filter out pending items from unsynced classes
+  const filteredPendingItems = useMemo(() => {
+    // Build a set of unsynced canvas_course_ids
+    const unsyncedCourseIds = new Set(
+      classes
+        .filter((cls) => cls.canvas_course_id && !cls.is_synced)
+        .map((cls) => cls.canvas_course_id)
+    );
+
+    return pendingItems.filter(
+      (item) => !unsyncedCourseIds.has(item.canvas_course_id)
+    );
+  }, [pendingItems, classes]);
+
   const [splitPosition, setSplitPosition] = useState(() => {
     const saved = localStorage.getItem(SPLIT_POSITION_KEY);
     return saved ? parseFloat(saved) : DEFAULT_SPLIT;
@@ -88,7 +102,7 @@ export default function ResizableSidebar({
           }}
         >
           <PendingSidebar
-            items={pendingItems}
+            items={filteredPendingItems}
             onItemClick={onPendingItemClick}
           />
         </div>

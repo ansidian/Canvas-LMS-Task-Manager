@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 import {
   Modal,
   Tabs,
@@ -12,43 +12,65 @@ import {
   ColorInput,
   ActionIcon,
   Anchor,
-} from '@mantine/core';
-import { IconTrash, IconPlus, IconEdit, IconCheck, IconX } from '@tabler/icons-react';
+  Switch,
+  Tooltip,
+} from "@mantine/core";
+import {
+  IconTrash,
+  IconPlus,
+  IconEdit,
+  IconCheck,
+  IconX,
+  IconRefresh,
+} from "@tabler/icons-react";
+import { useAuth } from "@clerk/clerk-react";
 
-const api = async (endpoint, options = {}) => {
-  const res = await fetch(`/api${endpoint}`, {
-    headers: { 'Content-Type': 'application/json', ...options.headers },
-    ...options,
-  });
-  if (!res.ok) throw new Error('Request failed');
-  return res.json();
-};
+export default function SettingsModal({
+  opened,
+  onClose,
+  classes,
+  onClassesChange,
+}) {
+  const { getToken } = useAuth();
 
-export default function SettingsModal({ opened, onClose, classes, onClassesChange }) {
-  const [canvasUrl, setCanvasUrl] = useState('');
-  const [canvasToken, setCanvasToken] = useState('');
-  const [newClassName, setNewClassName] = useState('');
-  const [newClassColor, setNewClassColor] = useState('#228be6');
+  // API helper with Clerk auth
+  const api = async (endpoint, options = {}) => {
+    const token = await getToken();
+    const res = await fetch(`/api${endpoint}`, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        ...options.headers,
+      },
+      ...options,
+    });
+    if (!res.ok) throw new Error("Request failed");
+    return res.json();
+  };
+  const [canvasUrl, setCanvasUrl] = useState("");
+  const [canvasToken, setCanvasToken] = useState("");
+  const [newClassName, setNewClassName] = useState("");
+  const [newClassColor, setNewClassColor] = useState("#228be6");
   const [editingClassId, setEditingClassId] = useState(null);
-  const [editName, setEditName] = useState('');
-  const [editColor, setEditColor] = useState('');
+  const [editName, setEditName] = useState("");
+  const [editColor, setEditColor] = useState("");
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   const resetOnboarding = () => {
-    localStorage.removeItem('hasCompletedOnboarding');
+    localStorage.removeItem("hasCompletedOnboarding");
     onClose();
     // Reload to trigger tour
     window.location.reload();
   };
 
   useEffect(() => {
-    setCanvasUrl(localStorage.getItem('canvasUrl') || '');
-    setCanvasToken(localStorage.getItem('canvasToken') || '');
+    setCanvasUrl(localStorage.getItem("canvasUrl") || "");
+    setCanvasToken(localStorage.getItem("canvasToken") || "");
   }, [opened]);
 
   const saveCanvasSettings = () => {
-    localStorage.setItem('canvasUrl', canvasUrl);
-    localStorage.setItem('canvasToken', canvasToken);
+    localStorage.setItem("canvasUrl", canvasUrl);
+    localStorage.setItem("canvasToken", canvasToken);
 
     // Show success feedback
     setSaveSuccess(true);
@@ -58,24 +80,27 @@ export default function SettingsModal({ opened, onClose, classes, onClassesChang
   const addClass = async () => {
     if (!newClassName.trim()) return;
     try {
-      await api('/classes', {
-        method: 'POST',
-        body: JSON.stringify({ name: newClassName.trim(), color: newClassColor }),
+      await api("/classes", {
+        method: "POST",
+        body: JSON.stringify({
+          name: newClassName.trim(),
+          color: newClassColor,
+        }),
       });
-      setNewClassName('');
-      setNewClassColor('#228be6');
+      setNewClassName("");
+      setNewClassColor("#228be6");
       onClassesChange();
     } catch (err) {
-      console.error('Failed to add class:', err);
+      console.error("Failed to add class:", err);
     }
   };
 
   const deleteClass = async (id) => {
     try {
-      await api(`/classes/${id}`, { method: 'DELETE' });
+      await api(`/classes/${id}`, { method: "DELETE" });
       onClassesChange();
     } catch (err) {
-      console.error('Failed to delete class:', err);
+      console.error("Failed to delete class:", err);
     }
   };
 
@@ -87,21 +112,33 @@ export default function SettingsModal({ opened, onClose, classes, onClassesChang
 
   const cancelEditing = () => {
     setEditingClassId(null);
-    setEditName('');
-    setEditColor('');
+    setEditName("");
+    setEditColor("");
   };
 
   const saveEdit = async () => {
     if (!editName.trim()) return;
     try {
       await api(`/classes/${editingClassId}`, {
-        method: 'PATCH',
+        method: "PATCH",
         body: JSON.stringify({ name: editName.trim(), color: editColor }),
       });
       setEditingClassId(null);
       onClassesChange();
     } catch (err) {
-      console.error('Failed to update class:', err);
+      console.error("Failed to update class:", err);
+    }
+  };
+
+  const toggleSync = async (cls) => {
+    try {
+      await api(`/classes/${cls.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ is_synced: !cls.is_synced }),
+      });
+      onClassesChange();
+    } catch (err) {
+      console.error("Failed to toggle sync:", err);
     }
   };
 
@@ -117,8 +154,9 @@ export default function SettingsModal({ opened, onClose, classes, onClassesChang
         <Tabs.Panel value="canvas" pt="md">
           <Stack>
             <Text size="sm" c="dimmed">
-              Connect to your Canvas LMS to fetch assignments. You can generate an API token in
-              Canvas under Account &gt; Settings &gt; Approved Integrations.
+              Connect to your Canvas LMS to fetch assignments. You can generate
+              an API token in Canvas under Account &gt; Settings &gt; Approved
+              Integrations.
             </Text>
             <TextInput
               label="Canvas URL"
@@ -137,10 +175,10 @@ export default function SettingsModal({ opened, onClose, classes, onClassesChang
             <Group justify="flex-end">
               <Button
                 onClick={saveCanvasSettings}
-                color={saveSuccess ? 'green' : 'blue'}
-                className={saveSuccess ? 'success-flash' : ''}
+                color={saveSuccess ? "green" : "blue"}
+                className={saveSuccess ? "success-flash" : ""}
               >
-                {saveSuccess ? '✓ Saved' : 'Save Settings'}
+                {saveSuccess ? "✓ Saved" : "Save Settings"}
               </Button>
             </Group>
           </Stack>
@@ -149,7 +187,8 @@ export default function SettingsModal({ opened, onClose, classes, onClassesChang
         <Tabs.Panel value="classes" pt="md">
           <Stack>
             <Text size="sm" c="dimmed">
-              Manage your classes. Each class has a color that will be shown on calendar events.
+              Manage your classes. Each class has a color that will be shown on
+              calendar events.
             </Text>
 
             <Group align="flex-end">
@@ -206,19 +245,39 @@ export default function SettingsModal({ opened, onClose, classes, onClassesChang
                       </ActionIcon>
                     </Group>
                   ) : (
-                    <Group justify="space-between">
-                      <Group>
+                    <Group justify="space-between" wrap="nowrap">
+                      <Group wrap="nowrap" style={{ minWidth: 0 }}>
                         <div
                           style={{
                             width: 16,
                             height: 16,
                             borderRadius: 4,
                             backgroundColor: cls.color,
+                            flexShrink: 0,
                           }}
                         />
-                        <Text size="sm">{cls.name}</Text>
+                        <Text size="sm" truncate style={{ minWidth: 0 }}>
+                          {cls.name}
+                        </Text>
                       </Group>
-                      <Group gap="xs">
+                      <Group gap="xs" wrap="nowrap">
+                        {cls.canvas_course_id && (
+                          <Tooltip
+                            label={
+                              cls.is_synced
+                                ? "Syncing from Canvas"
+                                : "Not syncing from Canvas"
+                            }
+                          >
+                            <Switch
+                              size="xs"
+                              checked={!!cls.is_synced}
+                              onChange={() => toggleSync(cls)}
+                              label={<IconRefresh size={14} />}
+                              styles={{ label: { paddingLeft: 4 } }}
+                            />
+                          </Tooltip>
+                        )}
                         <ActionIcon
                           variant="subtle"
                           onClick={() => startEditing(cls)}
@@ -249,7 +308,8 @@ export default function SettingsModal({ opened, onClose, classes, onClassesChang
         <Tabs.Panel value="help" pt="md">
           <Stack>
             <Text size="sm" c="dimmed">
-              Need help getting started? Replay the onboarding tour to learn about the app's features.
+              Need help getting started? Replay the onboarding tour to learn
+              about the app's features.
             </Text>
             <Button onClick={resetOnboarding} variant="light">
               Show Tour Again

@@ -9,7 +9,9 @@ async function initializeDatabase() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id TEXT NOT NULL,
       name TEXT NOT NULL,
-      color TEXT NOT NULL DEFAULT '#228be6',
+      color TEXT DEFAULT '#3498db',
+      canvas_course_id TEXT,
+      is_synced INTEGER NOT NULL DEFAULT 1,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
@@ -20,27 +22,21 @@ async function initializeDatabase() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id TEXT NOT NULL,
       title TEXT NOT NULL,
-      due_date DATETIME NOT NULL,
-      class_id INTEGER REFERENCES classes(id) ON DELETE SET NULL,
-      event_type TEXT CHECK(event_type IN ('quiz', 'assignment', 'exam', 'homework', 'lab')),
-      status TEXT DEFAULT 'incomplete' CHECK(status IN ('incomplete', 'in_progress', 'complete')),
+      description TEXT,
+      due_date DATE NOT NULL,
+      due_time TIME,
+      status TEXT DEFAULT 'incomplete',
+      class_id INTEGER,
+      canvas_id TEXT,
+      canvas_url TEXT,
+      event_type TEXT,
       notes TEXT,
       url TEXT,
-      canvas_id TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (class_id) REFERENCES classes(id)
     )
   `);
-
-  // Add status column to existing events table if it doesn't exist
-  try {
-    await db.execute(
-      `ALTER TABLE events ADD COLUMN status TEXT DEFAULT 'incomplete' CHECK(status IN ('incomplete', 'in_progress', 'complete'))`
-    );
-    console.log("Added status column to events table");
-  } catch (err) {
-    // Column likely already exists, ignore error
-  }
 
   // Create rejected_items table
   await db.execute(`

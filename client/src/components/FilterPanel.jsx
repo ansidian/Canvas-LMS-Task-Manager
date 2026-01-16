@@ -47,8 +47,12 @@ export default function FilterPanel({
   };
 
   // Build class options including "Unassigned"
+  // Hide classes that are linked to Canvas but have sync disabled
+  const syncedClasses = classes.filter(
+    (cls) => !cls.canvas_course_id || cls.is_synced
+  );
   const classOptions = [
-    ...classes.map((cls) => ({
+    ...syncedClasses.map((cls) => ({
       value: String(cls.id),
       label: cls.name,
       color: cls.color,

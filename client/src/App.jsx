@@ -153,6 +153,18 @@ function AppContent() {
     });
   }, [events, statusFilters, classFilters]);
 
+  // Filter out pending items from unsynced classes
+  const filteredPendingItems = useMemo(() => {
+    const unsyncedCourseIds = new Set(
+      classes
+        .filter((cls) => cls.canvas_course_id && !cls.is_synced)
+        .map((cls) => cls.canvas_course_id)
+    );
+    return pendingItems.filter(
+      (item) => !unsyncedCourseIds.has(item.canvas_course_id)
+    );
+  }, [pendingItems, classes]);
+
   // Spotlight actions for searching events
   const spotlightActions = useMemo(() => {
     return events.map((event) => {
@@ -237,12 +249,17 @@ function AppContent() {
     }
   };
 
-  // Auto-create classes from course names
-  const ensureClassesExist = async (courseNames) => {
-    const existingNames = new Set(classes.map((c) => c.name.toLowerCase()));
-    const newCourses = [...new Set(courseNames)].filter(
-      (name) => name && !existingNames.has(name.toLowerCase())
-    );
+  // Auto-create classes from Canvas courses
+  const ensureClassesExist = async (canvasCourses) => {
+    // Build a map of existing classes by canvas_course_id
+    const existingByCanvasId = new Map();
+    const existingByName = new Map();
+    for (const cls of classes) {
+      if (cls.canvas_course_id) {
+        existingByCanvasId.set(cls.canvas_course_id, cls);
+      }
+      existingByName.set(cls.name.toLowerCase(), cls);
+    }
 
     const colors = [
       "#228be6",
@@ -253,21 +270,49 @@ function AppContent() {
       "#fd7e14",
       "#20c997",
     ];
-    for (const courseName of newCourses) {
-      try {
-        await api("/classes", {
-          method: "POST",
-          body: JSON.stringify({
-            name: courseName,
-            color: colors[Math.floor(Math.random() * colors.length)],
-          }),
-        });
-      } catch (err) {
-        console.error("Failed to create class:", err);
+
+    let needsReload = false;
+
+    for (const course of canvasCourses) {
+      const { canvas_course_id, name } = course;
+
+      // Already linked by canvas_course_id - nothing to do
+      if (existingByCanvasId.has(canvas_course_id)) {
+        continue;
+      }
+
+      // Check if there's a class with matching name that needs linking
+      const matchingClass = existingByName.get(name.toLowerCase());
+      if (matchingClass && !matchingClass.canvas_course_id) {
+        // Link existing class to Canvas course
+        try {
+          await api(`/classes/${matchingClass.id}`, {
+            method: "PATCH",
+            body: JSON.stringify({ canvas_course_id }),
+          });
+          needsReload = true;
+        } catch (err) {
+          console.error("Failed to link class:", err);
+        }
+      } else if (!matchingClass) {
+        // Create new class for this Canvas course
+        try {
+          await api("/classes", {
+            method: "POST",
+            body: JSON.stringify({
+              name,
+              color: colors[Math.floor(Math.random() * colors.length)],
+              canvas_course_id,
+            }),
+          });
+          needsReload = true;
+        } catch (err) {
+          console.error("Failed to create class:", err);
+        }
       }
     }
 
-    if (newCourses.length > 0) {
+    if (needsReload) {
       await loadClasses();
     }
   };
@@ -290,10 +335,10 @@ function AppContent() {
         },
       });
 
-      const courseNames = data.map((item) => item.course_name);
-      await ensureClassesExist(courseNames);
+      // Create classes for all Canvas courses (even those without assignments)
+      await ensureClassesExist(data.courses);
 
-      setPendingItems(data);
+      setPendingItems(data.assignments);
     } catch (err) {
       console.error("Failed to fetch Canvas assignments:", err);
     } finally {
@@ -510,7 +555,7 @@ function AppContent() {
         aside={{
           width: 320,
           breakpoint: "sm",
-          collapsed: { mobile: pendingItems.length === 0 },
+          collapsed: { mobile: filteredPendingItems.length === 0 },
         }}
         padding="md"
       >
@@ -586,9 +631,9 @@ function AppContent() {
                   <IconSettings size={20} />
                 </ActionIcon>
               </Tooltip>
-              {pendingItems.length > 0 && (
+              {filteredPendingItems.length > 0 && (
                 <Badge color="red" variant="filled">
-                  {pendingItems.length} pending
+                  {filteredPendingItems.length} pending
                 </Badge>
               )}
               <UserButton />
@@ -648,7 +693,7 @@ function AppContent() {
           classes={classes}
           onApprove={handleApprove}
           onReject={handleReject}
-          pendingCount={pendingItems.length}
+          pendingCount={filteredPendingItems.length}
           currentIndex={approvalIndex}
           onNavigate={navigateApproval}
         />

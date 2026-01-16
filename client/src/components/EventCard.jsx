@@ -39,7 +39,7 @@ export default function EventCard({ event, color, onClick, isDragging }) {
 
   const Icon = EVENT_ICONS[event.event_type] || IconFileText;
   const statusColor = STATUS_COLORS[event.status] || STATUS_COLORS.incomplete;
-  const gradientBackground = `linear-gradient(135deg, ${statusColor} 50%, ${color} 50%)`;
+  const gradientBackground = `linear-gradient(90deg, ${statusColor} 10%, ${color} 10%)`;
 
   // Check if event has time information
   const showTime = hasTimeComponent(event.due_date);
