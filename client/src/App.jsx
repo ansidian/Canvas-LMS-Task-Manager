@@ -168,13 +168,23 @@ function AppContent() {
     localStorage.setItem(CLASS_FILTERS_KEY, JSON.stringify(classFilters));
   }, [classFilters]);
 
-  // Initialize class filters with all classes when classes load
+  // Initialize class filters and add new classes to filters
   useEffect(() => {
-    if (classes.length > 0 && classFilters.length === 0) {
+    if (classes.length > 0) {
       const allClassIds = classes.map((c) => String(c.id));
-      setClassFilters([...allClassIds, "unassigned"]);
+
+      if (classFilters.length === 0) {
+        // First time: enable all classes
+        setClassFilters([...allClassIds, "unassigned"]);
+      } else {
+        // Add any new classes to filters (auto-enable them)
+        const newClassIds = allClassIds.filter((id) => !classFilters.includes(id));
+        if (newClassIds.length > 0) {
+          setClassFilters((prev) => [...prev, ...newClassIds]);
+        }
+      }
     }
-  }, [classes, classFilters.length]);
+  }, [classes]);
 
   // Filtered events based on status and class filters
   const filteredEvents = useMemo(() => {
@@ -735,6 +745,11 @@ function AppContent() {
           onClose={() => setSettingsOpen(false)}
           classes={classes}
           onClassesChange={loadClasses}
+          onClassUpdate={(updatedClass) => {
+            setClasses((prev) =>
+              prev.map((c) => (c.id === updatedClass.id ? updatedClass : c))
+            );
+          }}
           highlightCredentials={highlightCredentials}
           onHighlightClear={() => setHighlightCredentials(false)}
         />

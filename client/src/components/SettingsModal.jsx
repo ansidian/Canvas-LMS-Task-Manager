@@ -31,6 +31,7 @@ export default function SettingsModal({
   onClose,
   classes,
   onClassesChange,
+  onClassUpdate,
   highlightCredentials = false,
   onHighlightClear,
 }) {
@@ -146,14 +147,19 @@ export default function SettingsModal({
   };
 
   const toggleSync = async (cls) => {
+    const newSyncState = !cls.is_synced;
+
+    onClassUpdate({ ...cls, is_synced: newSyncState ? 1 : 0 });
+
     try {
       await api(`/classes/${cls.id}`, {
         method: "PATCH",
-        body: JSON.stringify({ is_synced: !cls.is_synced }),
+        body: JSON.stringify({ is_synced: newSyncState }),
       });
-      onClassesChange();
     } catch (err) {
+      // Revert on error
       console.error("Failed to toggle sync:", err);
+      onClassUpdate(cls);
     }
   };
 
