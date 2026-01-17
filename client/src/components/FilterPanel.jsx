@@ -16,7 +16,6 @@ export default function FilterPanel({
   unassignedColor = "#a78b71",
 }) {
   const [statusError, setStatusError] = useState(false);
-  const [classError, setClassError] = useState(false);
 
   const handleStatusChange = (values) => {
     // Require at least one status to be selected
@@ -30,14 +29,7 @@ export default function FilterPanel({
   };
 
   const handleClassChange = (values) => {
-    // Require at least one class to be selected
-    if (values.length > 0) {
-      onClassFiltersChange(values);
-      setClassError(false);
-    } else {
-      setClassError(true);
-      setTimeout(() => setClassError(false), 2000);
-    }
+    onClassFiltersChange(values);
   };
 
   // Build class options including "Unassigned"
@@ -145,11 +137,6 @@ export default function FilterPanel({
             );
           })}
         </Stack>
-        {classError && (
-          <Text size="xs" c="red" style={{ marginTop: -4 }}>
-            At least one class must be selected
-          </Text>
-        )}
       </Stack>
     </Stack>
   );

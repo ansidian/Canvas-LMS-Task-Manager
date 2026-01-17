@@ -79,6 +79,7 @@ function AppContent() {
   const STATUS_FILTERS_KEY = "calendar_status_filters";
   const CLASS_FILTERS_KEY = "calendar_class_filters";
   const LAST_FETCH_KEY = "canvas_last_fetch_timestamp";
+  const SEEN_CLASSES_KEY = "calendar_seen_classes";
 
   // Auto-fetch interval (5 minutes)
   const FETCH_INTERVAL_MS = 5 * 60 * 1000;
@@ -145,8 +146,7 @@ function AppContent() {
     {
       id: "settings-button",
       title: "Configure Canvas",
-      content:
-        "First, open Settings to enter your Canvas URL and API token. This is required to fetch your assignments. You can also manage your course classes here.",
+      content: `First, open Settings (⇧${modKey},) to enter your Canvas URL and API token. This is required to fetch your assignments. You can also manage and choose to disable certain classes here.`,
     },
     {
       id: "filter-section",
@@ -159,6 +159,11 @@ function AppContent() {
       title: "Pending Assignments",
       content:
         "Review and approve Canvas assignments here before they appear on your calendar. Click on any item to customize it before adding.",
+    },
+    {
+      id: "header-utilities",
+      title: "Quick Actions",
+      content: `Find assignments instantly (${modKey}+K), import them from Canvas (R), and toggle between light or dark mode (${modKey}+J).`,
     },
   ];
 
@@ -176,24 +181,23 @@ function AppContent() {
   useEffect(() => {
     if (classes.length > 0) {
       const allClassIds = classes.map((c) => String(c.id));
+      const hasLocalStorageKey =
+        localStorage.getItem(CLASS_FILTERS_KEY) !== null;
 
-      if (classFilters.length === 0) {
-        // First time: enable all classes
+      if (!hasLocalStorageKey) {
         setClassFilters([...allClassIds, "unassigned"]);
+        localStorage.setItem(SEEN_CLASSES_KEY, JSON.stringify(allClassIds));
       } else {
-        // Add any new classes to filters (auto-enable them)
-        const newClassIds = allClassIds.filter(
-          (id) => !classFilters.includes(id)
+        const seenClasses = JSON.parse(
+          localStorage.getItem(SEEN_CLASSES_KEY) || "[]"
         );
-        const hasUnassigned = classFilters.includes("unassigned");
-        if (newClassIds.length > 0 || !hasUnassigned) {
-          setClassFilters((prev) => {
-            const updated = [...prev, ...newClassIds];
-            if (!hasUnassigned) {
-              updated.push("unassigned");
-            }
-            return updated;
-          });
+        const genuinelyNewClassIds = allClassIds.filter(
+          (id) => !seenClasses.includes(id)
+        );
+
+        if (genuinelyNewClassIds.length > 0) {
+          setClassFilters((prev) => [...prev, ...genuinelyNewClassIds]);
+          localStorage.setItem(SEEN_CLASSES_KEY, JSON.stringify(allClassIds));
         }
       }
     }
@@ -256,6 +260,7 @@ function AppContent() {
     ["t", () => setCurrentDate(dayjs())],
     ["mod+j", () => toggleColorScheme()],
     ["mod+k", () => spotlight.open()],
+    ["r", () => fetchCanvasAssignments()],
     ["shift+mod+,", () => setSettingsOpen(true)],
   ]);
 
@@ -266,7 +271,7 @@ function AppContent() {
       loadCachedPendingItems();
       setInitialLoading(false);
 
-      // Check if this is first visit and start tour after small delay
+      // Check if this is first visit and start onboarding
       const hasCompleted = localStorage.getItem("hasCompletedOnboarding");
       if (!hasCompleted) {
         setTimeout(() => {
@@ -719,38 +724,40 @@ function AppContent() {
               </Tooltip>
             </Group>
             <Group>
-              <Tooltip label={`Search (${modKey}+K)`}>
-                <ActionIcon
-                  variant="subtle"
-                  onClick={() => spotlight.open()}
-                  size="lg"
-                >
-                  <IconSearch size={20} />
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label={getFetchTooltip()}>
-                <ActionIcon
-                  variant="subtle"
-                  onClick={() => fetchCanvasAssignments()}
-                  loading={loading}
-                  size="lg"
-                >
-                  <IconRefresh size={20} />
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label={`Toggle theme (${modKey}+J)`}>
-                <ActionIcon
-                  variant="subtle"
-                  onClick={toggleColorScheme}
-                  size="lg"
-                >
-                  {colorScheme === "dark" ? (
-                    <IconSun size={20} />
-                  ) : (
-                    <IconMoon size={20} />
-                  )}
-                </ActionIcon>
-              </Tooltip>
+              <Group gap="xs" data-onboarding-tour-id="header-utilities">
+                <Tooltip label={`Search (${modKey}+K)`}>
+                  <ActionIcon
+                    variant="subtle"
+                    onClick={() => spotlight.open()}
+                    size="lg"
+                  >
+                    <IconSearch size={20} />
+                  </ActionIcon>
+                </Tooltip>
+                <Tooltip label={getFetchTooltip()}>
+                  <ActionIcon
+                    variant="subtle"
+                    onClick={() => fetchCanvasAssignments()}
+                    loading={loading}
+                    size="lg"
+                  >
+                    <IconRefresh size={20} />
+                  </ActionIcon>
+                </Tooltip>
+                <Tooltip label={`Toggle theme (${modKey}+J)`}>
+                  <ActionIcon
+                    variant="subtle"
+                    onClick={toggleColorScheme}
+                    size="lg"
+                  >
+                    {colorScheme === "dark" ? (
+                      <IconSun size={20} />
+                    ) : (
+                      <IconMoon size={20} />
+                    )}
+                  </ActionIcon>
+                </Tooltip>
+              </Group>
               <Tooltip label={`Settings (⇧${modKey},)`}>
                 <ActionIcon
                   variant="subtle"

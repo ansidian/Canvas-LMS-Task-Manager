@@ -215,8 +215,10 @@ body {
   }
 }
 
-.credential-highlight input {
-  animation: credentialPulse 0.4s ease-in-out 3;
+.credential-highlight input,
+.credential-highlight .mantine-Input-input,
+.credential-highlight .mantine-PasswordInput-input {
+  animation: credentialPulse 0.4s ease-in-out 3 !important;
 }
 
 /* Skeleton loader pulse */

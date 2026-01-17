@@ -222,6 +222,7 @@ export default function SettingsModal({
               className={
                 highlightCredentials && !canvasUrl ? "credential-highlight" : ""
               }
+              data-highlight={highlightCredentials && !canvasUrl}
             />
             <PasswordInput
               label="API Token"
@@ -234,6 +235,7 @@ export default function SettingsModal({
                   ? "credential-highlight"
                   : ""
               }
+              data-highlight={highlightCredentials && !canvasToken}
             />
             <Group justify="flex-end">
               <Button
