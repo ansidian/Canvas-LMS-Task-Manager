@@ -472,6 +472,8 @@ function AppContent() {
       status: "incomplete",
       notes: formData.notes,
       url: formData.url || item.url,
+      description: item.description ?? null,
+      points_possible: item.points_possible ?? null,
       canvas_id: item.canvas_id,
     };
 
@@ -500,12 +502,14 @@ function AppContent() {
         method: "POST",
         body: JSON.stringify({
           title: item.title,
+          description: item.description ?? null,
           due_date: formData.dueDate || item.due_date,
           class_id: formData.classId ? parseInt(formData.classId) : null,
           event_type: formData.eventType,
           status: "incomplete",
           notes: formData.notes,
           url: formData.url || item.url,
+          points_possible: item.points_possible ?? null,
           canvas_id: item.canvas_id,
         }),
       });

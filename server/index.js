@@ -197,12 +197,35 @@ app.get('/api/events', requireAuth(), async (req, res) => {
 // Create event
 app.post('/api/events', requireAuth(), async (req, res) => {
   const userId = req.auth().userId;
-  const { title, due_date, class_id, event_type, status, notes, url, canvas_id } = req.body;
+  const {
+    title,
+    description,
+    due_date,
+    class_id,
+    event_type,
+    status,
+    notes,
+    url,
+    canvas_id,
+    points_possible,
+  } = req.body;
   try {
     const result = await db.execute({
-      sql: `INSERT INTO events (user_id, title, due_date, class_id, event_type, status, notes, url, canvas_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      args: [userId, title, due_date, class_id || null, event_type, status || 'incomplete', notes || null, url || null, canvas_id || null],
+      sql: `INSERT INTO events (user_id, title, description, due_date, class_id, event_type, status, notes, url, canvas_id, points_possible)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        userId,
+        title,
+        description ?? null,
+        due_date,
+        class_id || null,
+        event_type,
+        status || 'incomplete',
+        notes ?? null,
+        url ?? null,
+        canvas_id ?? null,
+        points_possible ?? null,
+      ],
     });
     const newEvent = await db.execute({
       sql: `SELECT e.*, c.name as class_name, c.color as class_color
@@ -222,7 +245,17 @@ app.post('/api/events', requireAuth(), async (req, res) => {
 app.patch('/api/events/:id', requireAuth(), async (req, res) => {
   const userId = req.auth().userId;
   const { id } = req.params;
-  const { title, due_date, class_id, event_type, status, notes, url } = req.body;
+  const {
+    title,
+    description,
+    due_date,
+    class_id,
+    event_type,
+    status,
+    notes,
+    url,
+    points_possible,
+  } = req.body;
 
   try {
     // Build update query dynamically based on provided fields
@@ -232,6 +265,10 @@ app.patch('/api/events/:id', requireAuth(), async (req, res) => {
     if (title !== undefined) {
       updates.push('title = ?');
       args.push(title);
+    }
+    if (description !== undefined) {
+      updates.push('description = ?');
+      args.push(description);
     }
     if (due_date !== undefined) {
       updates.push('due_date = ?');
@@ -256,6 +293,10 @@ app.patch('/api/events/:id', requireAuth(), async (req, res) => {
     if (url !== undefined) {
       updates.push('url = ?');
       args.push(url);
+    }
+    if (points_possible !== undefined) {
+      updates.push('points_possible = ?');
+      args.push(points_possible);
     }
 
     updates.push('updated_at = CURRENT_TIMESTAMP');
@@ -438,6 +479,8 @@ app.get('/api/canvas/assignments', requireAuth(), async (req, res) => {
                 due_date: assignment.due_at, // Preserve full ISO 8601 timestamp
                 course_name: course.name,
                 url: assignment.html_url,
+                description: assignment.description,
+                points_possible: assignment.points_possible,
               });
             }
           }
