@@ -12,6 +12,7 @@ import {
   Box,
   SegmentedControl,
   Skeleton,
+  useMantineColorScheme,
 } from "@mantine/core";
 import { DateTimePicker } from "@mantine/dates";
 import dayjs from "dayjs";
@@ -46,6 +47,7 @@ export default function EventModal({
   onUpdate,
   onDelete,
 }) {
+  const { colorScheme } = useMantineColorScheme();
   const [formData, setFormData] = useState({
     title: "",
     due_date: null,
@@ -158,7 +160,10 @@ export default function EventModal({
               data={STATUS_OPTIONS}
               styles={{
                 root: {
-                  backgroundColor: "var(--mantine-color-dark-6)",
+                  backgroundColor:
+                    colorScheme === "dark"
+                      ? "var(--mantine-color-dark-6)"
+                      : "var(--mantine-color-gray-1)",
                   padding: 4,
                 },
                 indicator: {

@@ -11,6 +11,7 @@ import {
   ActionIcon,
   Box,
   Paper,
+  Anchor,
 } from "@mantine/core";
 import { DateTimePicker } from "@mantine/dates";
 import { IconChevronLeft, IconChevronRight, IconX } from "@tabler/icons-react";
@@ -188,6 +189,12 @@ function Card({
               setFormData((f) => ({ ...f, url: e.target.value }))
             }
           />
+
+          {formData.url && (
+            <Anchor href={formData.url} target="_blank" size="sm">
+              Open in Canvas
+            </Anchor>
+          )}
 
           <Textarea
             label="Notes"
