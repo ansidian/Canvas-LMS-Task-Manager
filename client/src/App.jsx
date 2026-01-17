@@ -47,6 +47,9 @@ import {
 } from "./components/SkeletonLoaders";
 import { hasTimeComponent, extractTime } from "./utils/datetime";
 
+const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+const modKey = isMac ? "⌘" : "Ctrl";
+
 // Main App Component
 function AppContent() {
   const { getToken } = useAuth();
@@ -182,8 +185,15 @@ function AppContent() {
         const newClassIds = allClassIds.filter(
           (id) => !classFilters.includes(id)
         );
-        if (newClassIds.length > 0) {
-          setClassFilters((prev) => [...prev, ...newClassIds]);
+        const hasUnassigned = classFilters.includes("unassigned");
+        if (newClassIds.length > 0 || !hasUnassigned) {
+          setClassFilters((prev) => {
+            const updated = [...prev, ...newClassIds];
+            if (!hasUnassigned) {
+              updated.push("unassigned");
+            }
+            return updated;
+          });
         }
       }
     }
@@ -246,6 +256,7 @@ function AppContent() {
     ["t", () => setCurrentDate(dayjs())],
     ["mod+j", () => toggleColorScheme()],
     ["mod+k", () => spotlight.open()],
+    ["shift+mod+,", () => setSettingsOpen(true)],
   ]);
 
   // Load initial data and cached pending items
@@ -708,7 +719,7 @@ function AppContent() {
               </Tooltip>
             </Group>
             <Group>
-              <Tooltip label="Search (Ctrl+K)">
+              <Tooltip label={`Search (${modKey}+K)`}>
                 <ActionIcon
                   variant="subtle"
                   onClick={() => spotlight.open()}
@@ -727,7 +738,7 @@ function AppContent() {
                   <IconRefresh size={20} />
                 </ActionIcon>
               </Tooltip>
-              <Tooltip label="Toggle theme (Ctrl+J)">
+              <Tooltip label={`Toggle theme (${modKey}+J)`}>
                 <ActionIcon
                   variant="subtle"
                   onClick={toggleColorScheme}
@@ -740,7 +751,7 @@ function AppContent() {
                   )}
                 </ActionIcon>
               </Tooltip>
-              <Tooltip label="Settings">
+              <Tooltip label={`Settings (⇧${modKey},)`}>
                 <ActionIcon
                   variant="subtle"
                   onClick={() => setSettingsOpen(true)}
