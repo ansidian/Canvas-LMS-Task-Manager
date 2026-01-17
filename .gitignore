@@ -1,6 +1,7 @@
 .claude/*
 PROJECT.md
 CLAUDE.md
+DOCUMENTATION.md
 node_modules/
 client/node_modules/
 client/dist/
