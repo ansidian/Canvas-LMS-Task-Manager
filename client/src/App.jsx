@@ -146,7 +146,7 @@ function AppContent() {
     {
       id: "settings-button",
       title: "Configure Canvas",
-      content: `First, open Settings (⇧${modKey},) to enter your Canvas URL and API token. This is required to fetch your assignments. You can also manage and choose to disable certain classes here.`,
+      content: `First, open Settings (${modKey},) to enter your Canvas URL and API token. This is required to fetch your assignments. You can also manage and choose to disable certain classes here.`,
     },
     {
       id: "filter-section",
@@ -189,10 +189,10 @@ function AppContent() {
         localStorage.setItem(SEEN_CLASSES_KEY, JSON.stringify(allClassIds));
       } else {
         const seenClasses = JSON.parse(
-          localStorage.getItem(SEEN_CLASSES_KEY) || "[]"
+          localStorage.getItem(SEEN_CLASSES_KEY) || "[]",
         );
         const genuinelyNewClassIds = allClassIds.filter(
-          (id) => !seenClasses.includes(id)
+          (id) => !seenClasses.includes(id),
         );
 
         if (genuinelyNewClassIds.length > 0) {
@@ -219,10 +219,10 @@ function AppContent() {
     const unsyncedCourseIds = new Set(
       classes
         .filter((cls) => cls.canvas_course_id && !cls.is_synced)
-        .map((cls) => cls.canvas_course_id)
+        .map((cls) => cls.canvas_course_id),
     );
     return pendingItems.filter(
-      (item) => !unsyncedCourseIds.has(item.canvas_course_id)
+      (item) => !unsyncedCourseIds.has(item.canvas_course_id),
     );
   }, [pendingItems, classes]);
 
@@ -241,7 +241,7 @@ function AppContent() {
         id: String(event.id),
         label: event.title,
         description: `${cls?.name || "No class"} • Due: ${dayjs(
-          event.due_date
+          event.due_date,
         ).format("MMM D, YYYY")}`,
         leftSection: (
           <StatusIcon size={20} color={cls?.color || unassignedColor} />
@@ -261,7 +261,7 @@ function AppContent() {
     ["mod+j", () => toggleColorScheme()],
     ["mod+k", () => spotlight.open()],
     ["r", () => fetchCanvasAssignments()],
-    ["shift+mod+,", () => setSettingsOpen(true)],
+    ["mod+,", () => setSettingsOpen(true)],
   ]);
 
   // Load initial data and cached pending items
@@ -468,7 +468,7 @@ function AppContent() {
     setEvents((prev) => [...prev, optimisticEvent]);
 
     const remaining = pendingItems.filter(
-      (p) => p.canvas_id !== item.canvas_id
+      (p) => p.canvas_id !== item.canvas_id,
     );
     setPendingItems(remaining);
 
@@ -507,7 +507,7 @@ function AppContent() {
       setPendingItems(previousPendingItems);
       localStorage.setItem(
         PENDING_CACHE_KEY,
-        JSON.stringify(previousPendingItems)
+        JSON.stringify(previousPendingItems),
       );
       setApprovalIndex(previousApprovalIndex);
     }
@@ -520,7 +520,7 @@ function AppContent() {
 
     // Optimistic update: remove item immediately
     const remaining = pendingItems.filter(
-      (p) => p.canvas_id !== item.canvas_id
+      (p) => p.canvas_id !== item.canvas_id,
     );
     setPendingItems(remaining);
 
@@ -547,7 +547,7 @@ function AppContent() {
       setPendingItems(previousPendingItems);
       localStorage.setItem(
         PENDING_CACHE_KEY,
-        JSON.stringify(previousPendingItems)
+        JSON.stringify(previousPendingItems),
       );
       setApprovalIndex(previousApprovalIndex);
     }
@@ -758,7 +758,7 @@ function AppContent() {
                   </ActionIcon>
                 </Tooltip>
               </Group>
-              <Tooltip label={`Settings (⇧${modKey},)`}>
+              <Tooltip label={`Settings (${modKey}+,)`}>
                 <ActionIcon
                   variant="subtle"
                   onClick={() => setSettingsOpen(true)}
@@ -825,7 +825,7 @@ function AppContent() {
           onClassesChange={loadClasses}
           onClassUpdate={(updatedClass) => {
             setClasses((prev) =>
-              prev.map((c) => (c.id === updatedClass.id ? updatedClass : c))
+              prev.map((c) => (c.id === updatedClass.id ? updatedClass : c)),
             );
           }}
           highlightCredentials={highlightCredentials}

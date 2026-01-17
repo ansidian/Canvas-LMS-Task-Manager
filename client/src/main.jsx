@@ -53,8 +53,14 @@ function ThemedClerkProvider({ children }) {
       appearance={{
         baseTheme: colorScheme === "dark" ? dark : undefined,
         layout: {
-          logoImageUrl: "https://in.ewu.edu/instructional-technology/wp-content/uploads/sites/355/2023/05/canvas_logo_500.png",
+          logoImageUrl: "https://ctm.andysu.tech/icon.png",
           logoPlacement: "inside",
+        },
+        elements: {
+          logoBox: {
+            pointerEvents: "none",
+            cursor: "default",
+          },
         },
       }}
       localization={{
@@ -84,5 +90,5 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <App />
       </ThemedClerkProvider>
     </MantineProvider>
-  </React.StrictMode>
+  </React.StrictMode>,
 );
