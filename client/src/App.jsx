@@ -103,7 +103,7 @@ function AppContent() {
   });
   const [classFilters, setClassFilters] = useState(() => {
     const saved = localStorage.getItem(CLASS_FILTERS_KEY);
-    return saved ? JSON.parse(saved) : [];
+    return saved ? JSON.parse(saved) : ["unassigned"];
   });
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [lastFetchTime, setLastFetchTime] = useState(() => {
