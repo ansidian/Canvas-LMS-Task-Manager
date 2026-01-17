@@ -28,6 +28,32 @@ const EVENT_TYPES = [
 	{ value: "lab", label: "Lab" },
 ];
 
+const detectEventTypeFromTitle = (title) => {
+	if (!title) return null;
+	const normalized = title.toLowerCase();
+	const rules = [
+		{ type: "quiz", patterns: [/\bquiz\b/, /\bqz\b/] },
+		{
+			type: "exam",
+			patterns: [/\bexam\b/, /\bmidterm\b/, /\bfinal\b/, /\btest\b/],
+		},
+		{
+			type: "homework",
+			patterns: [/\bhomework\b/, /\bhw\b/, /\bpset\b/, /problem set/],
+		},
+		{ type: "lab", patterns: [/\blab\b/] },
+		{ type: "assignment", patterns: [/\bassignment\b/, /\bassign\b/] },
+	];
+
+	for (const rule of rules) {
+		if (rule.patterns.some((pattern) => pattern.test(normalized))) {
+			return rule.type;
+		}
+	}
+
+	return null;
+};
+
 function Card({
 	item,
 	classes,
@@ -39,6 +65,7 @@ function Card({
 	exitDirection,
 	showDescriptionFullscreen,
 	setShowDescriptionFullscreen,
+	eventTypePulse,
 }) {
 	const [showDescriptionPreview, setShowDescriptionPreview] =
 		useState(false);
@@ -238,6 +265,9 @@ function Card({
 						onChange={(v) =>
 							setFormData((f) => ({ ...f, eventType: v }))
 						}
+						classNames={{
+							input: eventTypePulse ? "event-type-pulse" : undefined,
+						}}
 					/>
 
 					<TextInput
@@ -400,13 +430,22 @@ export default function ApprovalModal({
 	const [exitDirection, setExitDirection] = useState(null);
 	const [showDescriptionFullscreen, setShowDescriptionFullscreen] =
 		useState(false);
+	const [eventTypePulse, setEventTypePulse] = useState(false);
+	const eventTypePulseTimeoutRef = useRef(null);
 
 	useEffect(() => {
+		if (eventTypePulseTimeoutRef.current) {
+			clearTimeout(eventTypePulseTimeoutRef.current);
+			eventTypePulseTimeoutRef.current = null;
+		}
+		setEventTypePulse(false);
+
 		if (item) {
 			// Auto-select class if course name matches
 			const matchingClass = classes.find(
 				(c) => c.name.toLowerCase() === item.course_name?.toLowerCase(),
 			);
+			const detectedType = detectEventTypeFromTitle(item.title);
 
 			// Parse the due_date (handles both date-only and datetime)
 			const { date } = parseDueDate(item.due_date);
@@ -422,12 +461,28 @@ export default function ApprovalModal({
 			setFormData({
 				dueDate: date,
 				classId: matchingClass ? String(matchingClass.id) : null,
-				eventType: "assignment",
+				eventType: detectedType || "assignment",
 				notes: "",
 				url: item.url || "",
 			});
 			setExitDirection(null);
 			setShowDescriptionFullscreen(false);
+
+			if (detectedType && detectedType !== "assignment") {
+				const rafId = requestAnimationFrame(() => {
+					setEventTypePulse(true);
+				});
+				eventTypePulseTimeoutRef.current = setTimeout(() => {
+					setEventTypePulse(false);
+				}, 1200);
+				return () => {
+					cancelAnimationFrame(rafId);
+					if (eventTypePulseTimeoutRef.current) {
+						clearTimeout(eventTypePulseTimeoutRef.current);
+						eventTypePulseTimeoutRef.current = null;
+					}
+				};
+			}
 		}
 	}, [item, classes]);
 
@@ -482,6 +537,24 @@ export default function ApprovalModal({
 				if (e.target === e.currentTarget) onClose();
 			}}
 		>
+			<style>{`
+				@keyframes eventTypePulse {
+					0% {
+						box-shadow: 0 0 0 0 rgba(34, 139, 230, 0.45);
+						border-color: var(--mantine-color-blue-6);
+					}
+					70% {
+						box-shadow: 0 0 0 8px rgba(34, 139, 230, 0);
+					}
+					100% {
+						box-shadow: 0 0 0 0 rgba(34, 139, 230, 0);
+					}
+				}
+
+				.event-type-pulse {
+					animation: eventTypePulse 1.1s ease-out 1;
+				}
+			`}</style>
 			{/* Close button */}
 			<ActionIcon
 				variant="subtle"
@@ -644,6 +717,7 @@ export default function ApprovalModal({
 							onReject={handleRejectClick}
 							onClose={onClose}
 							exitDirection={exitDirection}
+							eventTypePulse={eventTypePulse}
 							showDescriptionFullscreen={
 								showDescriptionFullscreen
 							}
