@@ -179,7 +179,9 @@ function AppContent() {
         setClassFilters([...allClassIds, "unassigned"]);
       } else {
         // Add any new classes to filters (auto-enable them)
-        const newClassIds = allClassIds.filter((id) => !classFilters.includes(id));
+        const newClassIds = allClassIds.filter(
+          (id) => !classFilters.includes(id)
+        );
         if (newClassIds.length > 0) {
           setClassFilters((prev) => [...prev, ...newClassIds]);
         }
@@ -218,8 +220,8 @@ function AppContent() {
         event.status === "complete"
           ? IconCircleCheck
           : event.status === "in_progress"
-          ? IconCircleHalf2
-          : IconCircle;
+            ? IconCircleHalf2
+            : IconCircle;
 
       return {
         id: String(event.id),
@@ -227,7 +229,9 @@ function AppContent() {
         description: `${cls?.name || "No class"} • Due: ${dayjs(
           event.due_date
         ).format("MMM D, YYYY")}`,
-        leftSection: <StatusIcon size={20} color={cls?.color || unassignedColor} />,
+        leftSection: (
+          <StatusIcon size={20} color={cls?.color || unassignedColor} />
+        ),
         onClick: () => setSelectedEvent(event),
       };
     });
@@ -297,8 +301,10 @@ function AppContent() {
     try {
       const data = await api("/classes");
       setClasses(data);
+      return data;
     } catch (err) {
       console.error("Failed to load classes:", err);
+      return [];
     }
   };
 
@@ -314,11 +320,11 @@ function AppContent() {
   };
 
   // Auto-create classes from Canvas courses
-  const ensureClassesExist = async (canvasCourses) => {
+  const ensureClassesExist = async (canvasCourses, existingClasses) => {
     // Build a map of existing classes by canvas_course_id
     const existingByCanvasId = new Map();
     const existingByName = new Map();
-    for (const cls of classes) {
+    for (const cls of existingClasses) {
       if (cls.canvas_course_id) {
         existingByCanvasId.set(cls.canvas_course_id, cls);
       }
@@ -395,6 +401,9 @@ function AppContent() {
 
     setLoading(true);
     try {
+      // Fetch fresh classes to avoid race condition with stale state
+      const currentClasses = await loadClasses();
+
       const data = await api("/canvas/assignments", {
         headers: {
           "X-Canvas-Url": canvasUrl,
@@ -403,7 +412,7 @@ function AppContent() {
       });
 
       // Create classes for all Canvas courses (even those without assignments)
-      await ensureClassesExist(data.courses);
+      await ensureClassesExist(data.courses, currentClasses);
 
       setPendingItems(data.assignments);
 
@@ -474,15 +483,16 @@ function AppContent() {
         }),
       });
       // Replace optimistic event with real one from server
-      setEvents((prev) =>
-        prev.map((e) => (e.id === tempId ? newEvent : e))
-      );
+      setEvents((prev) => prev.map((e) => (e.id === tempId ? newEvent : e)));
     } catch (err) {
       // Rollback on error (silent fail)
       console.error("Failed to approve item:", err);
       setEvents(previousEvents);
       setPendingItems(previousPendingItems);
-      localStorage.setItem(PENDING_CACHE_KEY, JSON.stringify(previousPendingItems));
+      localStorage.setItem(
+        PENDING_CACHE_KEY,
+        JSON.stringify(previousPendingItems)
+      );
       setApprovalIndex(previousApprovalIndex);
     }
   };
@@ -519,7 +529,10 @@ function AppContent() {
       // Rollback on error (silent fail)
       console.error("Failed to reject item:", err);
       setPendingItems(previousPendingItems);
-      localStorage.setItem(PENDING_CACHE_KEY, JSON.stringify(previousPendingItems));
+      localStorage.setItem(
+        PENDING_CACHE_KEY,
+        JSON.stringify(previousPendingItems)
+      );
       setApprovalIndex(previousApprovalIndex);
     }
   };
