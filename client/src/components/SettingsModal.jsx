@@ -17,6 +17,20 @@ import {
   Divider,
 } from "@mantine/core";
 import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import {
   IconTrash,
   IconPlus,
   IconEdit,
@@ -25,12 +39,38 @@ import {
   IconRefresh,
 } from "@tabler/icons-react";
 import { useAuth } from "@clerk/clerk-react";
+import { reorderSubset } from "../utils/reorder";
+
+function SortableClassRow({ id, disabled, children }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id, disabled });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    cursor: disabled ? "default" : isDragging ? "grabbing" : "grab",
+    opacity: isDragging ? 0.6 : 1,
+  };
+
+  return (
+    <Paper ref={setNodeRef} p="sm" withBorder style={style} {...attributes} {...listeners}>
+      {children}
+    </Paper>
+  );
+}
 
 export default function SettingsModal({
   opened,
   onClose,
   classes,
   onClassesChange,
+  onClassesReorder,
   onClassUpdate,
   highlightCredentials = false,
   onHighlightClear,
@@ -38,6 +78,11 @@ export default function SettingsModal({
   onUnassignedColorChange,
 }) {
   const { getToken } = useAuth();
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 6 },
+    })
+  );
 
   // API helper with Clerk auth
   const api = async (endpoint, options = {}) => {
@@ -197,6 +242,25 @@ export default function SettingsModal({
     }
   };
 
+  const canvasClasses = classes.filter((cls) => cls.canvas_course_id);
+  const customClasses = classes.filter((cls) => !cls.canvas_course_id);
+
+  const handleSectionDragEnd = (sectionIds) => (event) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = sectionIds.indexOf(active.id);
+    const newIndex = sectionIds.indexOf(over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+
+    const reorderedSection = arrayMove(sectionIds, oldIndex, newIndex);
+    const fullIds = classes.map((cls) => String(cls.id));
+    const nextOrder = reorderSubset(fullIds, reorderedSection);
+    if (onClassesReorder) {
+      onClassesReorder(nextOrder);
+    }
+  };
+
   return (
     <Modal opened={opened} onClose={onClose} title="Settings" size="lg">
       <Tabs defaultValue="canvas">
@@ -334,173 +398,211 @@ export default function SettingsModal({
                 )}
               </Paper>
 
-              {classes.filter((cls) => cls.canvas_course_id).length > 0 && (
+              {canvasClasses.length > 0 && (
                 <Divider label="From Canvas" labelPosition="left" />
               )}
-              {classes
-                .filter((cls) => cls.canvas_course_id)
-                .map((cls) => (
-                  <Paper key={cls.id} p="sm" withBorder>
-                    {editingClassId === cls.id ? (
-                      <Group align="flex-end">
-                        <TextInput
-                          value={editName}
-                          onChange={(e) => setEditName(e.target.value)}
-                          style={{ flex: 1 }}
-                          size="xs"
-                        />
-                        <ColorInput
-                          value={editColor}
-                          onChange={setEditColor}
-                          w={100}
-                          size="xs"
-                        />
-                        <ActionIcon
-                          variant="filled"
-                          color="green"
-                          onClick={saveEdit}
-                          size="sm"
+              {canvasClasses.length > 0 && (
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleSectionDragEnd(
+                    canvasClasses.map((cls) => String(cls.id)),
+                  )}
+                >
+                  <SortableContext
+                    items={canvasClasses.map((cls) => String(cls.id))}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <Stack gap="xs">
+                      {canvasClasses.map((cls) => (
+                        <SortableClassRow
+                          key={cls.id}
+                          id={String(cls.id)}
+                          disabled={editingClassId === cls.id}
                         >
-                          <IconCheck size={14} />
-                        </ActionIcon>
-                        <ActionIcon
-                          variant="subtle"
-                          color="gray"
-                          onClick={cancelEditing}
-                          size="sm"
-                        >
-                          <IconX size={14} />
-                        </ActionIcon>
-                      </Group>
-                    ) : (
-                      <Group justify="space-between" wrap="nowrap">
-                        <Group wrap="nowrap" style={{ minWidth: 0 }}>
-                          <div
-                            style={{
-                              width: 16,
-                              height: 16,
-                              borderRadius: 4,
-                              backgroundColor: cls.color,
-                              flexShrink: 0,
-                            }}
-                          />
-                          <Text size="sm" truncate style={{ minWidth: 0 }}>
-                            {cls.name}
-                          </Text>
-                        </Group>
-                        <Group gap="xs" wrap="nowrap">
-                          {cls.canvas_course_id && (
-                            <Tooltip
-                              label={
-                                cls.is_synced
-                                  ? "Assignments from this Canvas course will appear in your pending items"
-                                  : "Assignments from this Canvas course will be ignored"
-                              }
-                              multiline
-                              w={220}
-                            >
-                              <div>
-                                <Switch
-                                  size="xs"
-                                  checked={!!cls.is_synced}
-                                  onChange={() => toggleSync(cls)}
-                                  label={<IconRefresh size={14} />}
-                                  styles={{ label: { paddingLeft: 4 } }}
+                          {editingClassId === cls.id ? (
+                            <Group align="flex-end">
+                              <TextInput
+                                value={editName}
+                                onChange={(e) => setEditName(e.target.value)}
+                                style={{ flex: 1 }}
+                                size="xs"
+                              />
+                              <ColorInput
+                                value={editColor}
+                                onChange={setEditColor}
+                                w={100}
+                                size="xs"
+                              />
+                              <ActionIcon
+                                variant="filled"
+                                color="green"
+                                onClick={saveEdit}
+                                size="sm"
+                              >
+                                <IconCheck size={14} />
+                              </ActionIcon>
+                              <ActionIcon
+                                variant="subtle"
+                                color="gray"
+                                onClick={cancelEditing}
+                                size="sm"
+                              >
+                                <IconX size={14} />
+                              </ActionIcon>
+                            </Group>
+                          ) : (
+                            <Group justify="space-between" wrap="nowrap">
+                              <Group wrap="nowrap" style={{ minWidth: 0 }}>
+                                <div
+                                  style={{
+                                    width: 16,
+                                    height: 16,
+                                    borderRadius: 4,
+                                    backgroundColor: cls.color,
+                                    flexShrink: 0,
+                                  }}
                                 />
-                              </div>
-                            </Tooltip>
+                                <Text size="sm" truncate style={{ minWidth: 0 }}>
+                                  {cls.name}
+                                </Text>
+                              </Group>
+                              <Group gap="xs" wrap="nowrap">
+                                {cls.canvas_course_id && (
+                                  <Tooltip
+                                    label={
+                                      cls.is_synced
+                                        ? "Assignments from this Canvas course will appear in your pending items"
+                                        : "Assignments from this Canvas course will be ignored"
+                                    }
+                                    multiline
+                                    w={220}
+                                  >
+                                    <div>
+                                      <Switch
+                                        size="xs"
+                                        checked={!!cls.is_synced}
+                                        onChange={() => toggleSync(cls)}
+                                        label={<IconRefresh size={14} />}
+                                        styles={{ label: { paddingLeft: 4 } }}
+                                      />
+                                    </div>
+                                  </Tooltip>
+                                )}
+                                <ActionIcon
+                                  variant="subtle"
+                                  onClick={() => startEditing(cls)}
+                                >
+                                  <IconEdit size={16} />
+                                </ActionIcon>
+                                <ActionIcon
+                                  variant="subtle"
+                                  color="red"
+                                  onClick={() => deleteClass(cls.id)}
+                                >
+                                  <IconTrash size={16} />
+                                </ActionIcon>
+                              </Group>
+                            </Group>
                           )}
-                          <ActionIcon
-                            variant="subtle"
-                            onClick={() => startEditing(cls)}
-                          >
-                            <IconEdit size={16} />
-                          </ActionIcon>
-                          <ActionIcon
-                            variant="subtle"
-                            color="red"
-                            onClick={() => deleteClass(cls.id)}
-                          >
-                            <IconTrash size={16} />
-                          </ActionIcon>
-                        </Group>
-                      </Group>
-                    )}
-                  </Paper>
-                ))}
-              {classes.filter((cls) => !cls.canvas_course_id).length > 0 && (
+                        </SortableClassRow>
+                      ))}
+                    </Stack>
+                  </SortableContext>
+                </DndContext>
+              )}
+              {customClasses.length > 0 && (
                 <Divider label="Custom" labelPosition="left" />
               )}
-              {classes
-                .filter((cls) => !cls.canvas_course_id)
-                .map((cls) => (
-                  <Paper key={cls.id} p="sm" withBorder>
-                    {editingClassId === cls.id ? (
-                      <Group align="flex-end">
-                        <TextInput
-                          value={editName}
-                          onChange={(e) => setEditName(e.target.value)}
-                          style={{ flex: 1 }}
-                          size="xs"
-                        />
-                        <ColorInput
-                          value={editColor}
-                          onChange={setEditColor}
-                          w={100}
-                          size="xs"
-                        />
-                        <ActionIcon
-                          variant="filled"
-                          color="green"
-                          onClick={saveEdit}
-                          size="sm"
+              {customClasses.length > 0 && (
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleSectionDragEnd(
+                    customClasses.map((cls) => String(cls.id)),
+                  )}
+                >
+                  <SortableContext
+                    items={customClasses.map((cls) => String(cls.id))}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <Stack gap="xs">
+                      {customClasses.map((cls) => (
+                        <SortableClassRow
+                          key={cls.id}
+                          id={String(cls.id)}
+                          disabled={editingClassId === cls.id}
                         >
-                          <IconCheck size={14} />
-                        </ActionIcon>
-                        <ActionIcon
-                          variant="subtle"
-                          color="gray"
-                          onClick={cancelEditing}
-                          size="sm"
-                        >
-                          <IconX size={14} />
-                        </ActionIcon>
-                      </Group>
-                    ) : (
-                      <Group justify="space-between" wrap="nowrap">
-                        <Group wrap="nowrap" style={{ minWidth: 0 }}>
-                          <div
-                            style={{
-                              width: 16,
-                              height: 16,
-                              borderRadius: 4,
-                              backgroundColor: cls.color,
-                              flexShrink: 0,
-                            }}
-                          />
-                          <Text size="sm" truncate style={{ minWidth: 0 }}>
-                            {cls.name}
-                          </Text>
-                        </Group>
-                        <Group gap="xs" wrap="nowrap">
-                          <ActionIcon
-                            variant="subtle"
-                            onClick={() => startEditing(cls)}
-                          >
-                            <IconEdit size={16} />
-                          </ActionIcon>
-                          <ActionIcon
-                            variant="subtle"
-                            color="red"
-                            onClick={() => deleteClass(cls.id)}
-                          >
-                            <IconTrash size={16} />
-                          </ActionIcon>
-                        </Group>
-                      </Group>
-                    )}
-                  </Paper>
-                ))}
+                          {editingClassId === cls.id ? (
+                            <Group align="flex-end">
+                              <TextInput
+                                value={editName}
+                                onChange={(e) => setEditName(e.target.value)}
+                                style={{ flex: 1 }}
+                                size="xs"
+                              />
+                              <ColorInput
+                                value={editColor}
+                                onChange={setEditColor}
+                                w={100}
+                                size="xs"
+                              />
+                              <ActionIcon
+                                variant="filled"
+                                color="green"
+                                onClick={saveEdit}
+                                size="sm"
+                              >
+                                <IconCheck size={14} />
+                              </ActionIcon>
+                              <ActionIcon
+                                variant="subtle"
+                                color="gray"
+                                onClick={cancelEditing}
+                                size="sm"
+                              >
+                                <IconX size={14} />
+                              </ActionIcon>
+                            </Group>
+                          ) : (
+                            <Group justify="space-between" wrap="nowrap">
+                              <Group wrap="nowrap" style={{ minWidth: 0 }}>
+                                <div
+                                  style={{
+                                    width: 16,
+                                    height: 16,
+                                    borderRadius: 4,
+                                    backgroundColor: cls.color,
+                                    flexShrink: 0,
+                                  }}
+                                />
+                                <Text size="sm" truncate style={{ minWidth: 0 }}>
+                                  {cls.name}
+                                </Text>
+                              </Group>
+                              <Group gap="xs" wrap="nowrap">
+                                <ActionIcon
+                                  variant="subtle"
+                                  onClick={() => startEditing(cls)}
+                                >
+                                  <IconEdit size={16} />
+                                </ActionIcon>
+                                <ActionIcon
+                                  variant="subtle"
+                                  color="red"
+                                  onClick={() => deleteClass(cls.id)}
+                                >
+                                  <IconTrash size={16} />
+                                </ActionIcon>
+                              </Group>
+                            </Group>
+                          )}
+                        </SortableClassRow>
+                      ))}
+                    </Stack>
+                  </SortableContext>
+                </DndContext>
+              )}
               {classes.length === 0 && (
                 <Text size="sm" c="dimmed" ta="center">
                   No classes yet. Add one above.

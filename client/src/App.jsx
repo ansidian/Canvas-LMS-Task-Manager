@@ -80,6 +80,7 @@ function AppContent() {
   const CLASS_FILTERS_KEY = "calendar_class_filters";
   const LAST_FETCH_KEY = "canvas_last_fetch_timestamp";
   const SEEN_CLASSES_KEY = "calendar_seen_classes";
+  const UNASSIGNED_ORDER_KEY = "calendar_unassigned_order_index";
 
   // Auto-fetch interval (5 minutes)
   const FETCH_INTERVAL_MS = 5 * 60 * 1000;
@@ -104,6 +105,10 @@ function AppContent() {
   const [classFilters, setClassFilters] = useState(() => {
     const saved = localStorage.getItem(CLASS_FILTERS_KEY);
     return saved ? JSON.parse(saved) : ["unassigned"];
+  });
+  const [unassignedIndex, setUnassignedIndex] = useState(() => {
+    const saved = localStorage.getItem(UNASSIGNED_ORDER_KEY);
+    return saved !== null ? parseInt(saved, 10) : null;
   });
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [lastFetchTime, setLastFetchTime] = useState(() => {
@@ -176,6 +181,12 @@ function AppContent() {
   useEffect(() => {
     localStorage.setItem(CLASS_FILTERS_KEY, JSON.stringify(classFilters));
   }, [classFilters]);
+
+  useEffect(() => {
+    if (Number.isInteger(unassignedIndex)) {
+      localStorage.setItem(UNASSIGNED_ORDER_KEY, String(unassignedIndex));
+    }
+  }, [unassignedIndex]);
 
   // Initialize class filters and add new classes to filters
   useEffect(() => {
@@ -601,6 +612,33 @@ function AppContent() {
     }
   };
 
+  const handleClassesReorder = async (orderedIds) => {
+    const previousClasses = classes;
+    const classById = new Map(
+      classes.map((cls) => [String(cls.id), cls]),
+    );
+    const optimistic = orderedIds
+      .map((id, index) => {
+        const cls = classById.get(id);
+        if (!cls) return null;
+        return { ...cls, sort_order: index };
+      })
+      .filter(Boolean);
+
+    setClasses(optimistic);
+
+    try {
+      const updated = await api("/classes/order", {
+        method: "PATCH",
+        body: JSON.stringify({ orderedIds }),
+      });
+      setClasses(updated);
+    } catch (err) {
+      console.error("Failed to reorder classes:", err);
+      setClasses(previousClasses);
+    }
+  };
+
   const handleCreateEvent = async (eventData) => {
     try {
       const newEvent = await api("/events", {
@@ -814,6 +852,9 @@ function AppContent() {
               onClassFiltersChange={setClassFilters}
               classes={classes}
               unassignedColor={unassignedColor}
+              unassignedIndex={unassignedIndex}
+              onUnassignedIndexChange={setUnassignedIndex}
+              onClassesReorder={handleClassesReorder}
             />
           )}
         </AppShell.Aside>
@@ -823,6 +864,7 @@ function AppContent() {
           onClose={() => setSettingsOpen(false)}
           classes={classes}
           onClassesChange={loadClasses}
+          onClassesReorder={handleClassesReorder}
           onClassUpdate={(updatedClass) => {
             setClasses((prev) =>
               prev.map((c) => (c.id === updatedClass.id ? updatedClass : c)),
