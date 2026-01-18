@@ -79,6 +79,7 @@ function Card({
   const descriptionLayoutId = `description-${item.canvas_id}`;
   const previewSize = { width: 280, height: 140, contentWidth: 640 };
   const shakeControls = useAnimation();
+  const prevShakeSignalRef = useRef(shakeSignal);
 
   useLayoutEffect(() => {
     if (!showDescriptionPreview || !previewContentRef.current) return;
@@ -94,11 +95,14 @@ function Card({
   }, [showDescriptionPreview, item.description]);
 
   useEffect(() => {
-    if (!shakeSignal) return;
-    shakeControls.start({
-      x: [0, -8, 8, -6, 6, 0],
-      transition: { duration: 0.35 },
-    });
+    // shake when shakeSignal increases (not on initial mount)
+    if (shakeSignal > 0 && shakeSignal !== prevShakeSignalRef.current) {
+      shakeControls.start({
+        x: [0, -8, 8, -6, 6, 0],
+        transition: { duration: 0.35 },
+      });
+    }
+    prevShakeSignalRef.current = shakeSignal;
   }, [shakeSignal, shakeControls]);
 
   const handleSubmit = () => {
