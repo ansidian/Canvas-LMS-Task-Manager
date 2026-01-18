@@ -568,7 +568,7 @@ function AppContent() {
     }
   };
 
-  const handleEventUpdate = async (eventId, updates) => {
+  const handleEventUpdate = async (eventId, updates, options = {}) => {
     console.log("[App] handleEventUpdate called:", { eventId, updates });
     try {
       const updated = await api(`/events/${eventId}`, {
@@ -577,7 +577,15 @@ function AppContent() {
       });
       console.log("[App] Server response:", updated);
       setEvents((prev) => prev.map((e) => (e.id === eventId ? updated : e)));
-      setSelectedEvent(null);
+      if (options.keepOpen) {
+        if (options.closeDelayMs) {
+          setTimeout(() => {
+            setSelectedEvent(null);
+          }, options.closeDelayMs);
+        }
+      } else {
+        setSelectedEvent(null);
+      }
     } catch (err) {
       console.error("Failed to update event:", err);
     }

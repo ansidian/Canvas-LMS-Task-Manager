@@ -13,6 +13,7 @@ import {
 	Badge,
 	SegmentedControl,
 	Skeleton,
+	FileInput,
 	useMantineColorScheme,
 	TypographyStylesProvider,
 	Portal,
@@ -21,6 +22,7 @@ import { DateTimePicker } from "@mantine/dates";
 import dayjs from "dayjs";
 import confetti from "canvas-confetti";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "@clerk/clerk-react";
 import { parseDueDate, toUTCString } from "../utils/datetime";
 
 const EVENT_TYPES = [
@@ -43,6 +45,13 @@ const STATUS_OPTIONS = [
 	{ value: "complete", label: "Complete" },
 ];
 
+const parseCanvasIds = (canvasId) => {
+	if (!canvasId || typeof canvasId !== "string") return null;
+	const [courseId, assignmentId] = canvasId.split("-");
+	if (!courseId || !assignmentId) return null;
+	return { courseId, assignmentId };
+};
+
 export default function EventModal({
 	opened,
 	onClose,
@@ -52,6 +61,7 @@ export default function EventModal({
 	onDelete,
 }) {
 	const { colorScheme } = useMantineColorScheme();
+	const { getToken } = useAuth();
 	const [formData, setFormData] = useState({
 		title: "",
 		due_date: null,
@@ -70,6 +80,149 @@ export default function EventModal({
 	const [previewScale, setPreviewScale] = useState(0.25);
 	const previewContentRef = useRef(null);
 	const previewSize = { width: 280, height: 140, contentWidth: 640 };
+	const [assignmentInfo, setAssignmentInfo] = useState(null);
+	const [assignmentLoading, setAssignmentLoading] = useState(false);
+	const [assignmentError, setAssignmentError] = useState("");
+	const [submissionInfo, setSubmissionInfo] = useState(null);
+	const [submissionLoading, setSubmissionLoading] = useState(false);
+	const [selectedFiles, setSelectedFiles] = useState([]);
+	const [submissionComment, setSubmissionComment] = useState("");
+	const [submissionType, setSubmissionType] = useState("");
+	const [submissionBody, setSubmissionBody] = useState("");
+	const [submissionUrl, setSubmissionUrl] = useState("");
+	const [submissionError, setSubmissionError] = useState("");
+	const [isSubmitting, setIsSubmitting] = useState(false);
+
+	const getCanvasCredentials = () => {
+		const canvasUrl = localStorage.getItem("canvasUrl");
+		const canvasToken = localStorage.getItem("canvasToken");
+		return { canvasUrl, canvasToken };
+	};
+
+	const buildAcceptList = (extensions) => {
+		if (!Array.isArray(extensions) || extensions.length === 0)
+			return undefined;
+		return extensions
+			.map((ext) => (ext.startsWith(".") ? ext : `.${ext}`))
+			.join(",");
+	};
+
+	const fetchAssignmentInfo = async (canvasIds, signal) => {
+		const { canvasUrl, canvasToken } = getCanvasCredentials();
+		if (!canvasUrl || !canvasToken) {
+			throw new Error("Canvas URL or token missing");
+		}
+		const token = await getToken();
+		const res = await fetch(
+			`/api/canvas/assignment?courseId=${canvasIds.courseId}&assignmentId=${canvasIds.assignmentId}`,
+			{
+				headers: {
+					Authorization: `Bearer ${token}`,
+					"X-Canvas-Url": canvasUrl,
+					"X-Canvas-Token": canvasToken,
+				},
+				signal,
+			},
+		);
+		if (!res.ok) {
+			const err = await res
+				.json()
+				.catch(() => ({ message: "Request failed" }));
+			throw new Error(err.message || "Request failed");
+		}
+		return res.json();
+	};
+
+	const fetchSubmissionInfo = async (canvasIds, signal) => {
+		const { canvasUrl, canvasToken } = getCanvasCredentials();
+		if (!canvasUrl || !canvasToken) {
+			throw new Error("Canvas URL or token missing");
+		}
+		const token = await getToken();
+		const res = await fetch(
+			`/api/canvas/submissions/self?courseId=${canvasIds.courseId}&assignmentId=${canvasIds.assignmentId}`,
+			{
+				headers: {
+					Authorization: `Bearer ${token}`,
+					"X-Canvas-Url": canvasUrl,
+					"X-Canvas-Token": canvasToken,
+				},
+				signal,
+			},
+		);
+		if (!res.ok) {
+			const err = await res
+				.json()
+				.catch(() => ({ message: "Request failed" }));
+			throw new Error(err.message || "Request failed");
+		}
+		return res.json();
+	};
+
+	const submitCanvasFiles = async (canvasIds, files) => {
+		const { canvasUrl, canvasToken } = getCanvasCredentials();
+		if (!canvasUrl || !canvasToken) {
+			throw new Error("Canvas URL or token missing");
+		}
+		const token = await getToken();
+		const formData = new FormData();
+		formData.append("courseId", canvasIds.courseId);
+		formData.append("assignmentId", canvasIds.assignmentId);
+		if (submissionComment.trim()) {
+			formData.append("comment", submissionComment.trim());
+		}
+		files.forEach((file) => {
+			formData.append("files", file);
+		});
+		const res = await fetch("/api/canvas/submissions/upload", {
+			method: "POST",
+			headers: {
+				Authorization: `Bearer ${token}`,
+				"X-Canvas-Url": canvasUrl,
+				"X-Canvas-Token": canvasToken,
+			},
+			body: formData,
+		});
+		if (!res.ok) {
+			const err = await res
+				.json()
+				.catch(() => ({ message: "Submission failed" }));
+			throw new Error(err.message || "Submission failed");
+		}
+		return res.json();
+	};
+
+	const submitCanvasEntry = async (canvasIds, payload) => {
+		const { canvasUrl, canvasToken } = getCanvasCredentials();
+		if (!canvasUrl || !canvasToken) {
+			throw new Error("Canvas URL or token missing");
+		}
+		const token = await getToken();
+		const res = await fetch("/api/canvas/submissions/submit", {
+			method: "POST",
+			headers: {
+				Authorization: `Bearer ${token}`,
+				"X-Canvas-Url": canvasUrl,
+				"X-Canvas-Token": canvasToken,
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify({
+				courseId: canvasIds.courseId,
+				assignmentId: canvasIds.assignmentId,
+				submissionType: payload.submissionType,
+				body: payload.body,
+				url: payload.url,
+				comment: payload.comment,
+			}),
+		});
+		if (!res.ok) {
+			const err = await res
+				.json()
+				.catch(() => ({ message: "Submission failed" }));
+			throw new Error(err.message || "Submission failed");
+		}
+		return res.json();
+	};
 
 	useLayoutEffect(() => {
 		if (!event || !showDescriptionPreview || !previewContentRef.current) {
@@ -91,6 +244,71 @@ export default function EventModal({
 		previewSize.width,
 		previewSize.contentWidth,
 	]);
+
+	useEffect(() => {
+		setAssignmentInfo(null);
+		setAssignmentError("");
+		setAssignmentLoading(false);
+		setSubmissionInfo(null);
+		setSubmissionLoading(false);
+		setSelectedFiles([]);
+		setSubmissionComment("");
+		setSubmissionType("");
+		setSubmissionBody("");
+		setSubmissionUrl("");
+		setSubmissionError("");
+		setIsSubmitting(false);
+
+		if (!event) return;
+
+		const canvasIds = parseCanvasIds(event.canvas_id);
+		if (!canvasIds) return;
+
+		const controller = new AbortController();
+		setAssignmentLoading(true);
+		setSubmissionLoading(true);
+
+		fetchAssignmentInfo(canvasIds, controller.signal)
+			.then((data) => {
+				setAssignmentInfo(data);
+				const types = data?.submission_types || [];
+				if (types.includes("online_upload")) {
+					setSubmissionType("online_upload");
+				} else if (types.includes("online_text_entry")) {
+					setSubmissionType("online_text_entry");
+				} else if (types.includes("online_url")) {
+					setSubmissionType("online_url");
+				}
+			})
+			.catch((err) => {
+				setAssignmentError(
+					err.message || "Failed to load Canvas assignment",
+				);
+			})
+			.finally(() => {
+				setAssignmentLoading(false);
+			});
+
+		fetchSubmissionInfo(canvasIds, controller.signal)
+			.then((data) => {
+				setSubmissionInfo(data);
+				if (data?.submitted_at && event.status !== "complete") {
+					onUpdate(
+						event.id,
+						{ status: "complete" },
+						{ keepOpen: true },
+					);
+				}
+			})
+			.catch((err) => {
+				console.warn("Failed to load Canvas submission:", err);
+			})
+			.finally(() => {
+				setSubmissionLoading(false);
+			});
+
+		return () => controller.abort();
+	}, [event]);
 
 	useEffect(() => {
 		if (event) {
@@ -123,6 +341,82 @@ export default function EventModal({
 			return () => clearTimeout(timer);
 		}
 	}, [opened]);
+
+	const handleCanvasSubmission = async () => {
+		if (!event) return;
+		const canvasIds = parseCanvasIds(event.canvas_id);
+		if (!canvasIds) {
+			setSubmissionError(
+				"This event is not linked to a Canvas assignment.",
+			);
+			return;
+		}
+		if (assignmentInfo?.quiz_id) {
+			setSubmissionError("Canvas quizzes must be submitted in Canvas.");
+			return;
+		}
+		if (assignmentInfo?.locked_for_user) {
+			setSubmissionError("Canvas has locked this assignment.");
+			return;
+		}
+		if (!submissionType) {
+			setSubmissionError("Select a submission type.");
+			return;
+		}
+		if (submissionType === "online_upload" && !selectedFiles.length) {
+			setSubmissionError("Select at least one file to submit.");
+			return;
+		}
+		if (submissionType === "online_text_entry" && !submissionBody.trim()) {
+			setSubmissionError("Enter text to submit.");
+			return;
+		}
+		if (submissionType === "online_url" && !submissionUrl.trim()) {
+			setSubmissionError("Enter a URL to submit.");
+			return;
+		}
+
+		setIsSubmitting(true);
+		setSubmissionError("");
+
+		try {
+			const result =
+				submissionType === "online_upload"
+					? await submitCanvasFiles(canvasIds, selectedFiles)
+					: await submitCanvasEntry(canvasIds, {
+							submissionType,
+							body: submissionBody.trim(),
+							url: submissionUrl.trim(),
+							comment: submissionComment.trim(),
+						});
+			const submission = result.submission || {};
+			const confirmed =
+				submission.workflow_state === "submitted" ||
+				Boolean(submission.submitted_at);
+
+			if (!confirmed) {
+				setSubmissionError(
+					"Canvas did not confirm the submission yet. Try again later.",
+				);
+				return;
+			}
+
+			setSubmissionInfo(submission);
+			onUpdate(event.id, { status: "complete" });
+			setTimeout(() => {
+				confetti({
+					particleCount: 50,
+					spread: 60,
+					origin: { y: 0.6 },
+					colors: ["#3b82f6", "#10b981", "#f59e0b", "#a855f7"],
+				});
+			}, 150);
+		} catch (err) {
+			setSubmissionError(err.message || "Submission failed");
+		} finally {
+			setIsSubmitting(false);
+		}
+	};
 
 	const handleSubmit = () => {
 		const updates = {
@@ -169,6 +463,22 @@ export default function EventModal({
 
 	if (!event) return null;
 
+	const canvasIds = parseCanvasIds(event.canvas_id);
+	const submissionTypes = assignmentInfo?.submission_types || [];
+	const supportsFileUpload = submissionTypes.includes("online_upload");
+	const supportsTextEntry = submissionTypes.includes("online_text_entry");
+	const supportsUrl = submissionTypes.includes("online_url");
+	const submissionOptions = [
+		supportsFileUpload && { value: "online_upload", label: "File upload" },
+		supportsTextEntry && {
+			value: "online_text_entry",
+			label: "Text entry",
+		},
+		supportsUrl && { value: "online_url", label: "Website URL" },
+	].filter(Boolean);
+	const submissionExists = Boolean(submissionInfo?.submitted_at);
+	const isCanvasLocked = Boolean(assignmentInfo?.locked_for_user);
+	const acceptList = buildAcceptList(assignmentInfo?.allowed_extensions);
 	const descriptionLayoutId = `description-${event.id}`;
 
 	return (
@@ -221,9 +531,9 @@ export default function EventModal({
 											"1px solid var(--mantine-color-default-border)",
 									}}
 								>
-					<Group justify="space-between">
-						<Text fw={600}>{event.title}</Text>
-						<Button
+									<Group justify="space-between">
+										<Text fw={600}>{event.title}</Text>
+										<Button
 											size="xs"
 											variant="subtle"
 											onClick={() =>
@@ -456,6 +766,187 @@ export default function EventModal({
 								</Badge>
 							</Group>
 						)}
+
+					{canvasIds && (
+						<Box>
+							<Text size="sm" fw={500} mb={4}>
+								Canvas Submission
+							</Text>
+							{assignmentLoading && (
+								<Skeleton height={48} radius="sm" />
+							)}
+							{submissionLoading && (
+								<Skeleton height={32} radius="sm" />
+							)}
+							{!assignmentLoading && assignmentError && (
+								<Text size="sm" c="red">
+									{assignmentError}
+								</Text>
+							)}
+							{!assignmentLoading && !assignmentError && (
+								<Stack gap="xs">
+									{submissionExists && (
+										<Text size="sm" c="green">
+											Submitted{" "}
+											{dayjs(
+												submissionInfo.submitted_at,
+											).format("MMM D, YYYY h:mm A")}
+										</Text>
+									)}
+									{assignmentInfo?.quiz_id && (
+										<Text size="sm" c="dimmed">
+											This looks like a quiz. Use Open in
+											Canvas.
+										</Text>
+									)}
+									{isCanvasLocked && (
+										<Text size="sm" c="red">
+											Canvas has locked this assignment.
+										</Text>
+									)}
+									{submissionOptions.length > 1 && (
+										<Select
+											label="Submission type"
+											value={submissionType}
+											onChange={(value) =>
+												setSubmissionType(value || "")
+											}
+											data={submissionOptions}
+											disabled={isCanvasLocked}
+										/>
+									)}
+									{submissionType === "online_upload" && (
+										<>
+											<FileInput
+												label="Upload file(s)"
+												placeholder="Select file(s)"
+												multiple
+												clearable
+												accept={acceptList}
+												disabled={isCanvasLocked}
+												value={selectedFiles}
+												onChange={(value) => {
+													const next = Array.isArray(
+														value,
+													)
+														? value
+														: value
+															? [value]
+															: [];
+													setSelectedFiles(next);
+													setSubmissionError("");
+												}}
+											/>
+											{assignmentInfo?.allowed_extensions
+												?.length > 0 && (
+												<Text size="xs" c="dimmed">
+													Allowed:{" "}
+													{assignmentInfo.allowed_extensions.join(
+														", ",
+													)}
+												</Text>
+											)}
+										</>
+									)}
+									{submissionType === "online_text_entry" && (
+										<Textarea
+											label="Submission text"
+											minRows={4}
+											disabled={isCanvasLocked}
+											value={submissionBody}
+											onChange={(e) =>
+												setSubmissionBody(
+													e.target.value,
+												)
+											}
+										/>
+									)}
+									{submissionType === "online_url" && (
+										<TextInput
+											label="Submission URL"
+											placeholder="https://"
+											disabled={isCanvasLocked}
+											value={submissionUrl}
+											onChange={(e) =>
+												setSubmissionUrl(e.target.value)
+											}
+										/>
+									)}
+									{submissionOptions.length > 0 && (
+										<Textarea
+											label="Comments..."
+											minRows={2}
+											disabled={isCanvasLocked}
+											value={submissionComment}
+											onChange={(e) =>
+												setSubmissionComment(
+													e.target.value,
+												)
+											}
+										/>
+									)}
+									{submissionOptions.length > 0 ? (
+										<Button
+											onClick={handleCanvasSubmission}
+											loading={isSubmitting}
+											disabled={
+												isSubmitting ||
+												isCanvasLocked ||
+												(submissionType ===
+													"online_upload" &&
+													selectedFiles.length ===
+														0) ||
+												(submissionType ===
+													"online_text_entry" &&
+													!submissionBody.trim()) ||
+												(submissionType ===
+													"online_url" &&
+													!submissionUrl.trim())
+											}
+										>
+											{submissionExists
+												? "Resubmit to Canvas"
+												: "Submit to Canvas"}
+										</Button>
+									) : (
+										<Text size="sm" c="dimmed">
+											This assignment cannot be submitted
+											in CTM. Use Open in Canvas.
+										</Text>
+									)}
+									{submissionInfo?.attachments?.length >
+										0 && (
+										<Box>
+											<Text size="xs" fw={500}>
+												Submitted files
+											</Text>
+											<Stack gap={2}>
+												{submissionInfo.attachments.map(
+													(file) => (
+														<Anchor
+															key={file.id}
+															href={file.url}
+															target="_blank"
+															size="xs"
+														>
+															{file.display_name ||
+																file.filename ||
+																file.id}
+														</Anchor>
+													),
+												)}
+											</Stack>
+										</Box>
+									)}
+									{submissionError && (
+										<Text size="sm" c="red">
+											{submissionError}
+										</Text>
+									)}
+								</Stack>
+							)}
+						</Box>
+					)}
 
 					{event.description && (
 						<Box>
