@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
   AppShell,
   Title,
@@ -118,6 +118,17 @@ function AppContent() {
   const [highlightCredentials, setHighlightCredentials] = useState(false);
   const [, setTickForTooltip] = useState(0);
   const [unassignedColor, setUnassignedColor] = useState("#a78b71");
+  const fetchInFlightRef = useRef(false);
+  const fetchRequestIdRef = useRef(0);
+  const eventUpdateRequestRef = useRef(new Map());
+
+  const classesById = useMemo(() => {
+    const map = new Map();
+    classes.forEach((cls) => {
+      map.set(cls.id, cls);
+    });
+    return map;
+  }, [classes]);
 
   // Update tooltip every 30 seconds to keep timing fresh
   useEffect(() => {
@@ -215,15 +226,17 @@ function AppContent() {
   }, [classes]);
 
   // Filtered events based on status and class filters
+  const statusFilterSet = useMemo(() => new Set(statusFilters), [statusFilters]);
+  const classFilterSet = useMemo(() => new Set(classFilters), [classFilters]);
   const filteredEvents = useMemo(() => {
     return events.filter((e) => {
-      const statusMatch = statusFilters.includes(e.status);
+      const statusMatch = statusFilterSet.has(e.status);
       const classMatch = e.class_id
-        ? classFilters.includes(String(e.class_id))
-        : classFilters.includes("unassigned");
+        ? classFilterSet.has(String(e.class_id))
+        : classFilterSet.has("unassigned");
       return statusMatch && classMatch;
     });
-  }, [events, statusFilters, classFilters]);
+  }, [events, statusFilterSet, classFilterSet]);
 
   // Filter out pending items from unsynced classes
   const filteredPendingItems = useMemo(() => {
@@ -240,7 +253,7 @@ function AppContent() {
   // Spotlight actions for searching events
   const spotlightActions = useMemo(() => {
     return events.map((event) => {
-      const cls = classes.find((c) => c.id === event.class_id);
+      const cls = classesById.get(event.class_id);
       const StatusIcon =
         event.status === "complete"
           ? IconCircleCheck
@@ -260,7 +273,7 @@ function AppContent() {
         onClick: () => setSelectedEvent(event),
       };
     });
-  }, [events, classes, unassignedColor]);
+  }, [events, classesById, unassignedColor]);
 
   // Keyboard shortcuts
   useHotkeys([
@@ -426,6 +439,10 @@ function AppContent() {
       return;
     }
 
+    if (fetchInFlightRef.current) return;
+    fetchInFlightRef.current = true;
+    const requestId = fetchRequestIdRef.current + 1;
+    fetchRequestIdRef.current = requestId;
     setLoading(true);
     try {
       // Fetch fresh classes to avoid race condition with stale state
@@ -441,6 +458,7 @@ function AppContent() {
       // Create classes for all Canvas courses (even those without assignments)
       await ensureClassesExist(data.courses, currentClasses);
 
+      if (fetchRequestIdRef.current !== requestId) return;
       setPendingItems(data.assignments);
 
       // Update last fetch timestamp
@@ -451,7 +469,10 @@ function AppContent() {
       // Silent fail for network/API errors
       console.error("Failed to fetch Canvas assignments:", err);
     } finally {
-      setLoading(false);
+      if (fetchRequestIdRef.current === requestId) {
+        setLoading(false);
+      }
+      fetchInFlightRef.current = false;
     }
   };
 
@@ -570,12 +591,15 @@ function AppContent() {
 
   const handleEventUpdate = async (eventId, updates, options = {}) => {
     console.log("[App] handleEventUpdate called:", { eventId, updates });
+    const requestId = (eventUpdateRequestRef.current.get(eventId) || 0) + 1;
+    eventUpdateRequestRef.current.set(eventId, requestId);
     try {
       const updated = await api(`/events/${eventId}`, {
         method: "PATCH",
         body: JSON.stringify(updates),
       });
       console.log("[App] Server response:", updated);
+      if (eventUpdateRequestRef.current.get(eventId) !== requestId) return;
       setEvents((prev) => prev.map((e) => (e.id === eventId ? updated : e)));
       if (options.keepOpen) {
         if (options.closeDelayMs) {

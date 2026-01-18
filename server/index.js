@@ -17,6 +17,58 @@ const upload = multer({
   limits: { fileSize: 50 * 1024 * 1024, files: 10 },
 });
 
+const CONCURRENT_ASSIGNMENT_FETCHES = 5;
+
+const getNextLink = (linkHeader) => {
+  if (!linkHeader) return null;
+  const parts = linkHeader.split(',');
+  for (const part of parts) {
+    const [urlPart, relPart] = part.split(';').map((item) => item.trim());
+    if (!urlPart || !relPart) continue;
+    if (relPart === 'rel="next"') {
+      return urlPart.replace(/^<|>$/g, '');
+    }
+  }
+  return null;
+};
+
+const fetchAllPages = async (url, headers) => {
+  const results = [];
+  let nextUrl = url;
+
+  while (nextUrl) {
+    const res = await fetch(nextUrl, { headers });
+    if (!res.ok) {
+      throw new Error(`Canvas API error: ${res.status}`);
+    }
+    const data = await res.json();
+    results.push(...data);
+    nextUrl = getNextLink(res.headers.get('link'));
+  }
+
+  return results;
+};
+
+const mapLimit = async (items, limit, mapper) => {
+  const results = new Array(items.length);
+  let index = 0;
+
+  const workers = Array.from(
+    { length: Math.min(limit, items.length) },
+    () =>
+      (async () => {
+        while (index < items.length) {
+          const currentIndex = index;
+          index += 1;
+          results[currentIndex] = await mapper(items[currentIndex]);
+        }
+      })(),
+  );
+
+  await Promise.all(workers);
+  return results;
+};
+
 app.use(cors());
 app.use(express.json());
 app.use(clerkMiddleware());
@@ -450,48 +502,50 @@ app.get('/api/canvas/assignments', requireAuth(), async (req, res) => {
     // Normalize URL (remove trailing slash)
     const baseUrl = canvasUrl.replace(/\/$/, '');
 
-    // Fetch courses
-    const coursesRes = await fetch(`${baseUrl}/api/v1/courses?enrollment_state=active&per_page=100`, {
-      headers: { Authorization: `Bearer ${canvasToken}` },
-    });
-
-    if (!coursesRes.ok) {
-      throw new Error(`Canvas API error: ${coursesRes.status}`);
-    }
-
-    const courses = await coursesRes.json();
+    const headers = { Authorization: `Bearer ${canvasToken}` };
+    const courses = await fetchAllPages(
+      `${baseUrl}/api/v1/courses?enrollment_state=active&per_page=100`,
+      headers,
+    );
 
     // Fetch assignments from all courses (sync filtering happens client-side)
     const allAssignments = [];
 
-    for (const course of courses) {
-      const courseIdStr = String(course.id);
-
-      try {
-        const assignmentsRes = await fetch(
-          `${baseUrl}/api/v1/courses/${course.id}/assignments?per_page=100`,
-          { headers: { Authorization: `Bearer ${canvasToken}` } }
-        );
-
-        if (assignmentsRes.ok) {
-          const assignments = await assignmentsRes.json();
-          for (const assignment of assignments) {
-            if (assignment.due_at) {
-              allAssignments.push({
-                canvas_id: `${course.id}-${assignment.id}`,
-                canvas_course_id: courseIdStr,
-                title: assignment.name,
-                due_date: assignment.due_at, // Preserve full ISO 8601 timestamp
-                course_name: course.name,
-                url: assignment.html_url,
-                description: assignment.description,
-                points_possible: assignment.points_possible,
-              });
-            }
-          }
+    const assignmentResults = await mapLimit(
+      courses,
+      CONCURRENT_ASSIGNMENT_FETCHES,
+      async (course) => {
+        try {
+          const assignments = await fetchAllPages(
+            `${baseUrl}/api/v1/courses/${course.id}/assignments?per_page=100`,
+            headers,
+          );
+          return { course, assignments };
+        } catch (err) {
+          console.error(
+            `Error fetching assignments for course ${course.id}:`,
+            err,
+          );
+          return { course, assignments: [] };
         }
-      } catch (err) {
-        console.error(`Error fetching assignments for course ${course.id}:`, err);
+      },
+    );
+
+    for (const { course, assignments } of assignmentResults) {
+      const courseIdStr = String(course.id);
+      for (const assignment of assignments) {
+        if (assignment.due_at) {
+          allAssignments.push({
+            canvas_id: `${course.id}-${assignment.id}`,
+            canvas_course_id: courseIdStr,
+            title: assignment.name,
+            due_date: assignment.due_at, // Preserve full ISO 8601 timestamp
+            course_name: course.name,
+            url: assignment.html_url,
+            description: assignment.description,
+            points_possible: assignment.points_possible,
+          });
+        }
       }
     }
 

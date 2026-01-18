@@ -772,6 +772,8 @@ export default function EventModal({
 									setFormData((f) => ({ ...f, status: v }));
 									markUserEdited();
 								}}
+								color={STATUS_COLORS[formData.status]}
+								autoContrast
 								data={STATUS_OPTIONS}
 								styles={{
 									root: {
@@ -782,14 +784,7 @@ export default function EventModal({
 										padding: 4,
 									},
 									indicator: {
-										backgroundColor:
-											STATUS_COLORS[formData.status],
 										boxShadow: "none",
-									},
-									label: {
-										"&[data-active]": {
-											color: "white",
-										},
 									},
 								}}
 							/>
