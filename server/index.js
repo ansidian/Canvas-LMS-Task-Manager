@@ -1,11 +1,11 @@
-import 'dotenv/config';
-import express from 'express';
-import cors from 'cors';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-import { clerkMiddleware, requireAuth } from '@clerk/express';
-import multer from 'multer';
-import db from './db/connection.js';
+import "dotenv/config";
+import express from "express";
+import cors from "cors";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
+import { clerkMiddleware, requireAuth } from "@clerk/express";
+import multer from "multer";
+import db from "./db/connection.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -21,12 +21,12 @@ const CONCURRENT_ASSIGNMENT_FETCHES = 5;
 
 const getNextLink = (linkHeader) => {
   if (!linkHeader) return null;
-  const parts = linkHeader.split(',');
+  const parts = linkHeader.split(",");
   for (const part of parts) {
-    const [urlPart, relPart] = part.split(';').map((item) => item.trim());
+    const [urlPart, relPart] = part.split(";").map((item) => item.trim());
     if (!urlPart || !relPart) continue;
     if (relPart === 'rel="next"') {
-      return urlPart.replace(/^<|>$/g, '');
+      return urlPart.replace(/^<|>$/g, "");
     }
   }
   return null;
@@ -43,7 +43,7 @@ const fetchAllPages = async (url, headers) => {
     }
     const data = await res.json();
     results.push(...data);
-    nextUrl = getNextLink(res.headers.get('link'));
+    nextUrl = getNextLink(res.headers.get("link"));
   }
 
   return results;
@@ -53,16 +53,14 @@ const mapLimit = async (items, limit, mapper) => {
   const results = new Array(items.length);
   let index = 0;
 
-  const workers = Array.from(
-    { length: Math.min(limit, items.length) },
-    () =>
-      (async () => {
-        while (index < items.length) {
-          const currentIndex = index;
-          index += 1;
-          results[currentIndex] = await mapper(items[currentIndex]);
-        }
-      })(),
+  const workers = Array.from({ length: Math.min(limit, items.length) }, () =>
+    (async () => {
+      while (index < items.length) {
+        const currentIndex = index;
+        index += 1;
+        results[currentIndex] = await mapper(items[currentIndex]);
+      }
+    })(),
   );
 
   await Promise.all(workers);
@@ -74,92 +72,94 @@ app.use(express.json());
 app.use(clerkMiddleware());
 
 // Serve static files in production
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(join(__dirname, '../client/dist')));
+if (process.env.NODE_ENV === "production") {
+  app.use(express.static(join(__dirname, "../client/dist")));
 }
 
 // ============= CLASSES API =============
 
 // Get all classes
-app.get('/api/classes', requireAuth(), async (req, res) => {
+app.get("/api/classes", requireAuth(), async (req, res) => {
   const userId = req.auth().userId;
   try {
     const result = await db.execute({
-      sql: 'SELECT * FROM classes WHERE user_id = ? ORDER BY sort_order, name',
+      sql: "SELECT * FROM classes WHERE user_id = ? ORDER BY sort_order, name",
       args: [userId],
     });
     res.json(result.rows);
   } catch (err) {
-    console.error('Error fetching classes:', err);
-    res.status(500).json({ message: 'Failed to fetch classes' });
+    console.error("Error fetching classes:", err);
+    res.status(500).json({ message: "Failed to fetch classes" });
   }
 });
 
 // Create class
-app.post('/api/classes', requireAuth(), async (req, res) => {
+app.post("/api/classes", requireAuth(), async (req, res) => {
   const userId = req.auth().userId;
   const { name, color, canvas_course_id } = req.body;
   try {
     const maxSortOrderResult = await db.execute({
-      sql: 'SELECT COALESCE(MAX(sort_order), -1) AS max_sort_order FROM classes WHERE user_id = ?',
+      sql: "SELECT COALESCE(MAX(sort_order), -1) AS max_sort_order FROM classes WHERE user_id = ?",
       args: [userId],
     });
     const maxSortOrder = maxSortOrderResult.rows[0]?.max_sort_order ?? -1;
     const nextSortOrder = Number(maxSortOrder) + 1;
 
     const result = await db.execute({
-      sql: 'INSERT INTO classes (user_id, name, color, canvas_course_id, sort_order) VALUES (?, ?, ?, ?, ?)',
+      sql: "INSERT INTO classes (user_id, name, color, canvas_course_id, sort_order) VALUES (?, ?, ?, ?, ?)",
       args: [
         userId,
         name,
-        color || '#3498db',
+        color || "#3498db",
         canvas_course_id || null,
         nextSortOrder,
       ],
     });
     const newClass = await db.execute({
-      sql: 'SELECT * FROM classes WHERE id = ? AND user_id = ?',
+      sql: "SELECT * FROM classes WHERE id = ? AND user_id = ?",
       args: [result.lastInsertRowid, userId],
     });
     res.status(201).json(newClass.rows[0]);
   } catch (err) {
-    console.error('Error creating class:', err);
-    res.status(500).json({ message: 'Failed to create class' });
+    console.error("Error creating class:", err);
+    res.status(500).json({ message: "Failed to create class" });
   }
 });
 
 // Update class order
-app.patch('/api/classes/order', requireAuth(), async (req, res) => {
+app.patch("/api/classes/order", requireAuth(), async (req, res) => {
   const userId = req.auth().userId;
   const { orderedIds } = req.body;
 
   if (!Array.isArray(orderedIds) || orderedIds.length === 0) {
-    return res.status(400).json({ message: 'orderedIds must be a non-empty array' });
+    return res
+      .status(400)
+      .json({ message: "orderedIds must be a non-empty array" });
   }
 
   try {
     for (let index = 0; index < orderedIds.length; index += 1) {
       const classId = orderedIds[index];
       await db.execute({
-        sql: 'UPDATE classes SET sort_order = ? WHERE id = ? AND user_id = ?',
+        sql: "UPDATE classes SET sort_order = ? WHERE id = ? AND user_id = ?",
         args: [index, classId, userId],
       });
     }
 
     const updated = await db.execute({
-      sql: 'SELECT * FROM classes WHERE user_id = ? ORDER BY sort_order, name',
+      sql: "SELECT * FROM classes WHERE user_id = ? ORDER BY sort_order, name",
       args: [userId],
     });
 
     res.json(updated.rows);
   } catch (err) {
-    console.error('Error updating class order:', err);
-    res.status(500).json({ message: 'Failed to update class order' });
+    console.error("Error updating class order:", err);
+    res.status(500).json({ message: "Failed to update class order" });
   }
 });
 
 // Update class
-app.patch('/api/classes/:id', requireAuth(), async (req, res) => {
+app.patch("/api/classes/:id", requireAuth(), async (req, res) => {
   const userId = req.auth().userId;
   const { id } = req.params;
   const { name, color, canvas_course_id, is_synced, sort_order } = req.body;
@@ -169,69 +169,68 @@ app.patch('/api/classes/:id', requireAuth(), async (req, res) => {
     const args = [];
 
     if (name !== undefined) {
-      updates.push('name = ?');
+      updates.push("name = ?");
       args.push(name);
     }
     if (color !== undefined) {
-      updates.push('color = ?');
+      updates.push("color = ?");
       args.push(color);
     }
     if (canvas_course_id !== undefined) {
-      updates.push('canvas_course_id = ?');
+      updates.push("canvas_course_id = ?");
       args.push(canvas_course_id);
     }
     if (is_synced !== undefined) {
-      updates.push('is_synced = ?');
+      updates.push("is_synced = ?");
       args.push(is_synced ? 1 : 0);
     }
     if (sort_order !== undefined) {
-      updates.push('sort_order = ?');
+      updates.push("sort_order = ?");
       args.push(sort_order);
     }
 
     if (updates.length === 0) {
-      return res.status(400).json({ message: 'No fields to update' });
+      return res.status(400).json({ message: "No fields to update" });
     }
 
     args.push(id, userId);
 
     await db.execute({
-      sql: `UPDATE classes SET ${updates.join(', ')} WHERE id = ? AND user_id = ?`,
+      sql: `UPDATE classes SET ${updates.join(", ")} WHERE id = ? AND user_id = ?`,
       args,
     });
 
     const updated = await db.execute({
-      sql: 'SELECT * FROM classes WHERE id = ? AND user_id = ?',
+      sql: "SELECT * FROM classes WHERE id = ? AND user_id = ?",
       args: [id, userId],
     });
     res.json(updated.rows[0]);
   } catch (err) {
-    console.error('Error updating class:', err);
-    res.status(500).json({ message: 'Failed to update class' });
+    console.error("Error updating class:", err);
+    res.status(500).json({ message: "Failed to update class" });
   }
 });
 
-
 // Delete class
-app.delete('/api/classes/:id', requireAuth(), async (req, res) => {
+app.delete("/api/classes/:id", requireAuth(), async (req, res) => {
   const userId = req.auth().userId;
   const { id } = req.params;
   try {
     await db.execute({
-      sql: 'DELETE FROM classes WHERE id = ? AND user_id = ?',
+      sql: "DELETE FROM classes WHERE id = ? AND user_id = ?",
       args: [id, userId],
     });
     res.json({ success: true });
   } catch (err) {
-    console.error('Error deleting class:', err);
-    res.status(500).json({ message: 'Failed to delete class' });
+    console.error("Error deleting class:", err);
+    res.status(500).json({ message: "Failed to delete class" });
   }
 });
 
 // ============= EVENTS API =============
 
 // Get all events
-app.get('/api/events', requireAuth(), async (req, res) => {
+app.get("/api/events", requireAuth(), async (req, res) => {
   const userId = req.auth().userId;
   try {
     const result = await db.execute({
@@ -246,13 +245,13 @@ app.get('/api/events', requireAuth(), async (req, res) => {
     });
     res.json(result.rows);
   } catch (err) {
-    console.error('Error fetching events:', err);
-    res.status(500).json({ message: 'Failed to fetch events' });
+    console.error("Error fetching events:", err);
+    res.status(500).json({ message: "Failed to fetch events" });
   }
 });
 
 // Create event
-app.post('/api/events', requireAuth(), async (req, res) => {
+app.post("/api/events", requireAuth(), async (req, res) => {
   const userId = req.auth().userId;
   const {
     title,
@@ -277,7 +276,7 @@ app.post('/api/events', requireAuth(), async (req, res) => {
         due_date,
         class_id || null,
         event_type,
-        status || 'incomplete',
+        status || "incomplete",
         notes ?? null,
         url ?? null,
         canvas_id ?? null,
@@ -293,13 +292,13 @@ app.post('/api/events', requireAuth(), async (req, res) => {
     });
     res.status(201).json(newEvent.rows[0]);
   } catch (err) {
-    console.error('Error creating event:', err);
-    res.status(500).json({ message: 'Failed to create event' });
+    console.error("Error creating event:", err);
+    res.status(500).json({ message: "Failed to create event" });
   }
 });
 
 // Update event
-app.patch('/api/events/:id', requireAuth(), async (req, res) => {
+app.patch("/api/events/:id", requireAuth(), async (req, res) => {
   const userId = req.auth().userId;
   const { id } = req.params;
   const {
@@ -320,47 +319,47 @@ app.patch('/api/events/:id', requireAuth(), async (req, res) => {
     const args = [];
 
     if (title !== undefined) {
-      updates.push('title = ?');
+      updates.push("title = ?");
       args.push(title);
     }
     if (description !== undefined) {
-      updates.push('description = ?');
+      updates.push("description = ?");
       args.push(description);
     }
     if (due_date !== undefined) {
-      updates.push('due_date = ?');
+      updates.push("due_date = ?");
       args.push(due_date);
     }
     if (class_id !== undefined) {
-      updates.push('class_id = ?');
+      updates.push("class_id = ?");
       args.push(class_id);
     }
     if (event_type !== undefined) {
-      updates.push('event_type = ?');
+      updates.push("event_type = ?");
       args.push(event_type);
     }
     if (status !== undefined) {
-      updates.push('status = ?');
+      updates.push("status = ?");
       args.push(status);
     }
     if (notes !== undefined) {
-      updates.push('notes = ?');
+      updates.push("notes = ?");
       args.push(notes);
     }
     if (url !== undefined) {
-      updates.push('url = ?');
+      updates.push("url = ?");
       args.push(url);
     }
     if (points_possible !== undefined) {
-      updates.push('points_possible = ?');
+      updates.push("points_possible = ?");
       args.push(points_possible);
     }
 
-    updates.push('updated_at = CURRENT_TIMESTAMP');
+    updates.push("updated_at = CURRENT_TIMESTAMP");
     args.push(id, userId);
 
     await db.execute({
-      sql: `UPDATE events SET ${updates.join(', ')} WHERE id = ? AND user_id = ?`,
+      sql: `UPDATE events SET ${updates.join(", ")} WHERE id = ? AND user_id = ?`,
       args,
     });
 
@@ -373,66 +372,66 @@ app.patch('/api/events/:id', requireAuth(), async (req, res) => {
     });
     res.json(updated.rows[0]);
   } catch (err) {
-    console.error('Error updating event:', err);
-    res.status(500).json({ message: 'Failed to update event' });
+    console.error("Error updating event:", err);
+    res.status(500).json({ message: "Failed to update event" });
   }
 });
 
 // Delete event
-app.delete('/api/events/:id', requireAuth(), async (req, res) => {
+app.delete("/api/events/:id", requireAuth(), async (req, res) => {
   const userId = req.auth().userId;
   const { id } = req.params;
   try {
     await db.execute({
-      sql: 'DELETE FROM events WHERE id = ? AND user_id = ?',
+      sql: "DELETE FROM events WHERE id = ? AND user_id = ?",
       args: [id, userId],
     });
     res.json({ success: true });
   } catch (err) {
-    console.error('Error deleting event:', err);
-    res.status(500).json({ message: 'Failed to delete event' });
+    console.error("Error deleting event:", err);
+    res.status(500).json({ message: "Failed to delete event" });
   }
 });
 
 // ============= SETTINGS API =============
 
 // Get settings (creates default if not exists)
-app.get('/api/settings', requireAuth(), async (req, res) => {
+app.get("/api/settings", requireAuth(), async (req, res) => {
   const userId = req.auth().userId;
   try {
     // Try to get existing settings
     let result = await db.execute({
-      sql: 'SELECT * FROM settings WHERE user_id = ?',
+      sql: "SELECT * FROM settings WHERE user_id = ?",
       args: [userId],
     });
 
     // If no settings exist, create default
     if (result.rows.length === 0) {
       await db.execute({
-        sql: 'INSERT INTO settings (user_id) VALUES (?)',
+        sql: "INSERT INTO settings (user_id) VALUES (?)",
         args: [userId],
       });
       result = await db.execute({
-        sql: 'SELECT * FROM settings WHERE user_id = ?',
+        sql: "SELECT * FROM settings WHERE user_id = ?",
         args: [userId],
       });
     }
 
     res.json(result.rows[0]);
   } catch (err) {
-    console.error('Error fetching settings:', err);
-    res.status(500).json({ message: 'Failed to fetch settings' });
+    console.error("Error fetching settings:", err);
+    res.status(500).json({ message: "Failed to fetch settings" });
   }
 });
 
 // Update settings
-app.patch('/api/settings', requireAuth(), async (req, res) => {
+app.patch("/api/settings", requireAuth(), async (req, res) => {
   const userId = req.auth().userId;
   const { unassigned_color } = req.body;
   try {
     // Ensure settings exist first
     await db.execute({
-      sql: 'INSERT OR IGNORE INTO settings (user_id) VALUES (?)',
+      sql: "INSERT OR IGNORE INTO settings (user_id) VALUES (?)",
       args: [userId],
     });
 
@@ -441,66 +440,97 @@ app.patch('/api/settings', requireAuth(), async (req, res) => {
     const args = [];
 
     if (unassigned_color !== undefined) {
-      updates.push('unassigned_color = ?');
+      updates.push("unassigned_color = ?");
       args.push(unassigned_color);
     }
 
     if (updates.length === 0) {
-      return res.status(400).json({ message: 'No fields to update' });
+      return res.status(400).json({ message: "No fields to update" });
     }
 
-    updates.push('updated_at = CURRENT_TIMESTAMP');
+    updates.push("updated_at = CURRENT_TIMESTAMP");
     args.push(userId);
 
     await db.execute({
-      sql: `UPDATE settings SET ${updates.join(', ')} WHERE user_id = ?`,
+      sql: `UPDATE settings SET ${updates.join(", ")} WHERE user_id = ?`,
       args,
     });
 
     const updated = await db.execute({
-      sql: 'SELECT * FROM settings WHERE user_id = ?',
+      sql: "SELECT * FROM settings WHERE user_id = ?",
       args: [userId],
     });
     res.json(updated.rows[0]);
   } catch (err) {
-    console.error('Error updating settings:', err);
-    res.status(500).json({ message: 'Failed to update settings' });
+    console.error("Error updating settings:", err);
+    res.status(500).json({ message: "Failed to update settings" });
   }
 });
 
 // ============= REJECTED ITEMS API =============
 
 // Add rejected item
-app.post('/api/rejected', requireAuth(), async (req, res) => {
+app.post("/api/rejected", requireAuth(), async (req, res) => {
   const userId = req.auth().userId;
   const { canvas_id } = req.body;
   try {
     await db.execute({
-      sql: 'INSERT OR IGNORE INTO rejected_items (user_id, canvas_id) VALUES (?, ?)',
+      sql: "INSERT OR IGNORE INTO rejected_items (user_id, canvas_id) VALUES (?, ?)",
       args: [userId, canvas_id],
     });
     res.status(201).json({ success: true });
   } catch (err) {
-    console.error('Error rejecting item:', err);
-    res.status(500).json({ message: 'Failed to reject item' });
+    console.error("Error rejecting item:", err);
+    res.status(500).json({ message: "Failed to reject item" });
+  }
+});
+
+// ============= RESET DATA API =============
+
+// Reset all user data (keep Canvas credentials and Canvas-linked classes)
+app.post("/api/reset-data", requireAuth(), async (req, res) => {
+  const userId = req.auth().userId;
+  try {
+    // Delete all events
+    await db.execute({
+      sql: "DELETE FROM events WHERE user_id = ?",
+      args: [userId],
+    });
+
+    // Delete all custom classes (keep Canvas-linked ones)
+    await db.execute({
+      sql: "DELETE FROM classes WHERE user_id = ? AND canvas_course_id IS NULL",
+      args: [userId],
+    });
+
+    // Delete all rejected items
+    await db.execute({
+      sql: "DELETE FROM rejected_items WHERE user_id = ?",
+      args: [userId],
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Error resetting data:", err);
+    res.status(500).json({ message: "Failed to reset data" });
   }
 });
 
 // ============= CANVAS API PROXY =============
 
 // Fetch assignments from Canvas
-app.get('/api/canvas/assignments', requireAuth(), async (req, res) => {
+app.get("/api/canvas/assignments", requireAuth(), async (req, res) => {
   const userId = req.auth().userId;
-  const canvasUrl = req.headers['x-canvas-url'];
-  const canvasToken = req.headers['x-canvas-token'];
+  const canvasUrl = req.headers["x-canvas-url"];
+  const canvasToken = req.headers["x-canvas-token"];
 
   if (!canvasUrl || !canvasToken) {
-    return res.status(400).json({ message: 'Canvas URL and token required' });
+    return res.status(400).json({ message: "Canvas URL and token required" });
   }
 
   try {
     // Normalize URL (remove trailing slash)
-    const baseUrl = canvasUrl.replace(/\/$/, '');
+    const baseUrl = canvasUrl.replace(/\/$/, "");
 
     const headers = { Authorization: `Bearer ${canvasToken}` };
     const courses = await fetchAllPages(
@@ -551,11 +581,11 @@ app.get('/api/canvas/assignments', requireAuth(), async (req, res) => {
 
     // Filter out already approved or rejected items for this user
     const existingEvents = await db.execute({
-      sql: 'SELECT canvas_id FROM events WHERE user_id = ? AND canvas_id IS NOT NULL',
+      sql: "SELECT canvas_id FROM events WHERE user_id = ? AND canvas_id IS NOT NULL",
       args: [userId],
     });
     const rejectedItems = await db.execute({
-      sql: 'SELECT canvas_id FROM rejected_items WHERE user_id = ?',
+      sql: "SELECT canvas_id FROM rejected_items WHERE user_id = ?",
       args: [userId],
     });
 
@@ -564,7 +594,9 @@ app.get('/api/canvas/assignments', requireAuth(), async (req, res) => {
       ...rejectedItems.rows.map((r) => r.canvas_id),
     ]);
 
-    const pendingAssignments = allAssignments.filter((a) => !existingIds.has(a.canvas_id));
+    const pendingAssignments = allAssignments.filter(
+      (a) => !existingIds.has(a.canvas_id),
+    );
 
     // Return both assignments and all courses (for class creation)
     const canvasCourses = courses.map((c) => ({
@@ -574,34 +606,36 @@ app.get('/api/canvas/assignments', requireAuth(), async (req, res) => {
 
     res.json({ assignments: pendingAssignments, courses: canvasCourses });
   } catch (err) {
-    console.error('Error fetching Canvas assignments:', err);
-    res.status(500).json({ message: 'Failed to fetch Canvas assignments' });
+    console.error("Error fetching Canvas assignments:", err);
+    res.status(500).json({ message: "Failed to fetch Canvas assignments" });
   }
 });
 
 // Fetch assignment details from Canvas
-app.get('/api/canvas/assignment', requireAuth(), async (req, res) => {
-  const canvasUrl = req.headers['x-canvas-url'];
-  const canvasToken = req.headers['x-canvas-token'];
+app.get("/api/canvas/assignment", requireAuth(), async (req, res) => {
+  const canvasUrl = req.headers["x-canvas-url"];
+  const canvasToken = req.headers["x-canvas-token"];
   const { courseId, assignmentId } = req.query;
 
   if (!canvasUrl || !canvasToken) {
-    return res.status(400).json({ message: 'Canvas URL and token required' });
+    return res.status(400).json({ message: "Canvas URL and token required" });
   }
   if (!courseId || !assignmentId) {
-    return res.status(400).json({ message: 'courseId and assignmentId required' });
+    return res
+      .status(400)
+      .json({ message: "courseId and assignmentId required" });
   }
 
   try {
-    const baseUrl = canvasUrl.replace(/\/$/, '');
+    const baseUrl = canvasUrl.replace(/\/$/, "");
     const assignmentRes = await fetch(
       `${baseUrl}/api/v1/courses/${courseId}/assignments/${assignmentId}`,
       {
         headers: {
           Authorization: `Bearer ${canvasToken}`,
-          'Accept-Language': 'en-US',
+          "Accept-Language": "en-US",
         },
-      }
+      },
     );
 
     if (!assignmentRes.ok) {
@@ -612,6 +646,7 @@ app.get('/api/canvas/assignment', requireAuth(), async (req, res) => {
     res.json({
       id: assignment.id,
       name: assignment.name,
+      description: assignment.description || null,
       submission_types: assignment.submission_types || [],
       allowed_extensions: assignment.allowed_extensions || [],
       locked_for_user: !!assignment.locked_for_user,
@@ -620,29 +655,31 @@ app.get('/api/canvas/assignment', requireAuth(), async (req, res) => {
       due_at: assignment.due_at || null,
     });
   } catch (err) {
-    console.error('Error fetching Canvas assignment:', err);
-    res.status(500).json({ message: 'Failed to fetch Canvas assignment' });
+    console.error("Error fetching Canvas assignment:", err);
+    res.status(500).json({ message: "Failed to fetch Canvas assignment" });
   }
 });
 
 // Fetch current submission for assignment
-app.get('/api/canvas/submissions/self', requireAuth(), async (req, res) => {
-  const canvasUrl = req.headers['x-canvas-url'];
-  const canvasToken = req.headers['x-canvas-token'];
+app.get("/api/canvas/submissions/self", requireAuth(), async (req, res) => {
+  const canvasUrl = req.headers["x-canvas-url"];
+  const canvasToken = req.headers["x-canvas-token"];
   const { courseId, assignmentId } = req.query;
 
   if (!canvasUrl || !canvasToken) {
-    return res.status(400).json({ message: 'Canvas URL and token required' });
+    return res.status(400).json({ message: "Canvas URL and token required" });
   }
   if (!courseId || !assignmentId) {
-    return res.status(400).json({ message: 'courseId and assignmentId required' });
+    return res
+      .status(400)
+      .json({ message: "courseId and assignmentId required" });
   }
 
   try {
-    const baseUrl = canvasUrl.replace(/\/$/, '');
+    const baseUrl = canvasUrl.replace(/\/$/, "");
     const submissionRes = await fetch(
       `${baseUrl}/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions/self`,
-      { headers: { Authorization: `Bearer ${canvasToken}` } }
+      { headers: { Authorization: `Bearer ${canvasToken}` } },
     );
 
     if (!submissionRes.ok) {
@@ -652,50 +689,53 @@ app.get('/api/canvas/submissions/self', requireAuth(), async (req, res) => {
     const submission = await submissionRes.json();
     res.json(submission);
   } catch (err) {
-    console.error('Error fetching Canvas submission:', err);
-    res.status(500).json({ message: 'Failed to fetch Canvas submission' });
+    console.error("Error fetching Canvas submission:", err);
+    res.status(500).json({ message: "Failed to fetch Canvas submission" });
   }
 });
 
 // Submit non-file assignments (text entry, URL)
-app.post('/api/canvas/submissions/submit', requireAuth(), async (req, res) => {
-  const canvasUrl = req.headers['x-canvas-url'];
-  const canvasToken = req.headers['x-canvas-token'];
-  const { courseId, assignmentId, submissionType, body, url, comment } = req.body;
+app.post("/api/canvas/submissions/submit", requireAuth(), async (req, res) => {
+  const canvasUrl = req.headers["x-canvas-url"];
+  const canvasToken = req.headers["x-canvas-token"];
+  const { courseId, assignmentId, submissionType, body, url, comment } =
+    req.body;
 
   if (!canvasUrl || !canvasToken) {
-    return res.status(400).json({ message: 'Canvas URL and token required' });
+    return res.status(400).json({ message: "Canvas URL and token required" });
   }
   if (!courseId || !assignmentId || !submissionType) {
-    return res.status(400).json({ message: 'courseId, assignmentId, and submissionType required' });
+    return res
+      .status(400)
+      .json({ message: "courseId, assignmentId, and submissionType required" });
   }
 
   try {
-    const baseUrl = canvasUrl.replace(/\/$/, '');
+    const baseUrl = canvasUrl.replace(/\/$/, "");
     const submitParams = new URLSearchParams();
-    submitParams.append('submission[submission_type]', submissionType);
+    submitParams.append("submission[submission_type]", submissionType);
 
-    if (submissionType === 'online_text_entry') {
-      submitParams.append('submission[body]', body || '');
-    } else if (submissionType === 'online_url') {
-      submitParams.append('submission[url]', url || '');
+    if (submissionType === "online_text_entry") {
+      submitParams.append("submission[body]", body || "");
+    } else if (submissionType === "online_url") {
+      submitParams.append("submission[url]", url || "");
     }
 
     if (comment) {
-      submitParams.append('submission[comment][text_comment]', comment);
-      submitParams.append('submission[comment]', comment);
+      submitParams.append("submission[comment][text_comment]", comment);
+      submitParams.append("submission[comment]", comment);
     }
 
     const submitRes = await fetch(
       `${baseUrl}/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions`,
       {
-        method: 'POST',
+        method: "POST",
         headers: {
           Authorization: `Bearer ${canvasToken}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
+          "Content-Type": "application/x-www-form-urlencoded",
         },
         body: submitParams.toString(),
-      }
+      },
     );
 
     if (!submitRes.ok) {
@@ -708,71 +748,75 @@ app.post('/api/canvas/submissions/submit', requireAuth(), async (req, res) => {
     try {
       const verifyRes = await fetch(
         `${baseUrl}/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions/self`,
-        { headers: { Authorization: `Bearer ${canvasToken}` } }
+        { headers: { Authorization: `Bearer ${canvasToken}` } },
       );
       if (verifyRes.ok) {
         verifiedSubmission = await verifyRes.json();
       }
     } catch (err) {
-      console.warn('Canvas submission verification failed:', err);
+      console.warn("Canvas submission verification failed:", err);
     }
 
     res.json({ submission: verifiedSubmission });
   } catch (err) {
-    console.error('Error submitting Canvas assignment:', err);
-    res.status(500).json({ message: 'Failed to submit Canvas assignment' });
+    console.error("Error submitting Canvas assignment:", err);
+    res.status(500).json({ message: "Failed to submit Canvas assignment" });
   }
 });
 
 // Upload file(s) and submit assignment
 app.post(
-  '/api/canvas/submissions/upload',
+  "/api/canvas/submissions/upload",
   requireAuth(),
-  upload.array('files'),
+  upload.array("files"),
   async (req, res) => {
-    const canvasUrl = req.headers['x-canvas-url'];
-    const canvasToken = req.headers['x-canvas-token'];
+    const canvasUrl = req.headers["x-canvas-url"];
+    const canvasToken = req.headers["x-canvas-token"];
     const { courseId, assignmentId, comment } = req.body;
     const files = req.files || [];
 
     if (!canvasUrl || !canvasToken) {
-      return res.status(400).json({ message: 'Canvas URL and token required' });
+      return res.status(400).json({ message: "Canvas URL and token required" });
     }
     if (!courseId || !assignmentId) {
-      return res.status(400).json({ message: 'courseId and assignmentId required' });
+      return res
+        .status(400)
+        .json({ message: "courseId and assignmentId required" });
     }
     if (!files.length) {
-      return res.status(400).json({ message: 'At least one file is required' });
+      return res.status(400).json({ message: "At least one file is required" });
     }
 
     try {
-      const baseUrl = canvasUrl.replace(/\/$/, '');
+      const baseUrl = canvasUrl.replace(/\/$/, "");
       const fileIds = [];
 
       for (const file of files) {
         const preflightRes = await fetch(
           `${baseUrl}/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions/self/files`,
           {
-            method: 'POST',
+            method: "POST",
             headers: {
               Authorization: `Bearer ${canvasToken}`,
-              'Content-Type': 'application/json',
+              "Content-Type": "application/json",
             },
             body: JSON.stringify({
               name: file.originalname,
               size: file.size,
-              content_type: file.mimetype || 'application/octet-stream',
+              content_type: file.mimetype || "application/octet-stream",
             }),
-          }
+          },
         );
 
         if (!preflightRes.ok) {
-          throw new Error(`Canvas upload preflight failed: ${preflightRes.status}`);
+          throw new Error(
+            `Canvas upload preflight failed: ${preflightRes.status}`,
+          );
         }
 
         const preflight = await preflightRes.json();
         if (!preflight.upload_url || !preflight.upload_params) {
-          throw new Error('Canvas upload preflight missing upload_url');
+          throw new Error("Canvas upload preflight missing upload_url");
         }
 
         const form = new FormData();
@@ -780,12 +824,12 @@ app.post(
           form.append(key, value);
         }
         const blob = new Blob([file.buffer], {
-          type: file.mimetype || 'application/octet-stream',
+          type: file.mimetype || "application/octet-stream",
         });
-        form.append('file', blob, file.originalname);
+        form.append("file", blob, file.originalname);
 
         const uploadRes = await fetch(preflight.upload_url, {
-          method: 'POST',
+          method: "POST",
           body: form,
         });
         const uploadText = await uploadRes.text();
@@ -803,31 +847,31 @@ app.post(
 
         const fileId = uploadJson?.id || uploadJson?.attachment?.id;
         if (!fileId) {
-          throw new Error('Canvas upload response missing file id');
+          throw new Error("Canvas upload response missing file id");
         }
         fileIds.push(fileId);
       }
 
       const submitParams = new URLSearchParams();
-      submitParams.append('submission[submission_type]', 'online_upload');
+      submitParams.append("submission[submission_type]", "online_upload");
       for (const fileId of fileIds) {
-        submitParams.append('submission[file_ids][]', String(fileId));
+        submitParams.append("submission[file_ids][]", String(fileId));
       }
       if (comment) {
-        submitParams.append('submission[comment][text_comment]', comment);
-        submitParams.append('submission[comment]', comment);
+        submitParams.append("submission[comment][text_comment]", comment);
+        submitParams.append("submission[comment]", comment);
       }
 
       const submitRes = await fetch(
         `${baseUrl}/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions`,
         {
-          method: 'POST',
+          method: "POST",
           headers: {
             Authorization: `Bearer ${canvasToken}`,
-            'Content-Type': 'application/x-www-form-urlencoded',
+            "Content-Type": "application/x-www-form-urlencoded",
           },
           body: submitParams.toString(),
-        }
+        },
       );
 
       if (!submitRes.ok) {
@@ -840,27 +884,27 @@ app.post(
       try {
         const verifyRes = await fetch(
           `${baseUrl}/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions/self`,
-          { headers: { Authorization: `Bearer ${canvasToken}` } }
+          { headers: { Authorization: `Bearer ${canvasToken}` } },
         );
         if (verifyRes.ok) {
           verifiedSubmission = await verifyRes.json();
         }
       } catch (err) {
-        console.warn('Canvas submission verification failed:', err);
+        console.warn("Canvas submission verification failed:", err);
       }
 
       res.json({ submission: verifiedSubmission, file_ids: fileIds });
     } catch (err) {
-      console.error('Error submitting Canvas assignment:', err);
-      res.status(500).json({ message: 'Failed to submit Canvas assignment' });
+      console.error("Error submitting Canvas assignment:", err);
+      res.status(500).json({ message: "Failed to submit Canvas assignment" });
     }
-  }
+  },
 );
 
 // SPA fallback for production
-if (process.env.NODE_ENV === 'production') {
-  app.get('*', (req, res) => {
-    res.sendFile(join(__dirname, '../client/dist/index.html'));
+if (process.env.NODE_ENV === "production") {
+  app.get("*", (req, res) => {
+    res.sendFile(join(__dirname, "../client/dist/index.html"));
   });
 }
 
