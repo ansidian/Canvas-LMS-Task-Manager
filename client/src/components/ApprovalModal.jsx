@@ -531,6 +531,28 @@ export default function ApprovalModal({
     }
   }, [item, classes]);
 
+  // Handle Enter key to approve/submit
+  useEffect(() => {
+    if (!opened) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key !== "Enter") return;
+
+      // Don't submit if typing in an input, textarea, or if DateTimePicker is open
+      const target = e.target;
+      const isInInput =
+        target.tagName === "INPUT" || target.tagName === "TEXTAREA";
+
+      if (isInInput) return;
+
+      e.preventDefault();
+      handleApproveClick();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [opened, formData, item]);
+
   const isDirty = useMemo(() => {
     const initial = initialFormDataRef.current;
     if (!initial) return false;

@@ -470,6 +470,28 @@ export default function EventModal({
     }
   }, [event]);
 
+  // Handle Enter key to submit
+  useEffect(() => {
+    if (!opened) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key !== "Enter") return;
+
+      // Don't submit if typing in an input, textarea, or if DateTimePicker is open
+      const target = e.target;
+      const isInInput =
+        target.tagName === "INPUT" || target.tagName === "TEXTAREA";
+
+      if (isInInput) return;
+
+      e.preventDefault();
+      handleSubmit();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [opened, formData]);
+
   useEffect(() => {
     if (!submissionInfo?.submitted_at) return;
     if (!event?.id) return;
@@ -582,12 +604,6 @@ export default function EventModal({
       notes: formData.notes,
       url: formData.url,
     };
-    console.log("[EventModal] Submitting update:", {
-      eventId: event.id,
-      originalStatus: event.status,
-      newStatus: formData.status,
-      updates,
-    });
 
     // Celebrate when marking task as complete
     if (formData.status === "complete" && event.status !== "complete") {

@@ -49,7 +49,7 @@ import {
 	CalendarSkeleton,
 	PendingSidebarSkeleton,
 } from "./components/SkeletonLoaders";
-import { hasTimeComponent, extractTime } from "./utils/datetime";
+import { hasTimeComponent, extractTime, toUTCString } from "./utils/datetime";
 
 const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
 const modKey = isMac ? "⌘" : "Ctrl";
@@ -645,7 +645,6 @@ function AppContent() {
 	};
 
 	const handleEventUpdate = async (eventId, updates, options = {}) => {
-		console.log("[App] handleEventUpdate called:", { eventId, updates });
 		const requestId = (eventUpdateRequestRef.current.get(eventId) || 0) + 1;
 		eventUpdateRequestRef.current.set(eventId, requestId);
 		try {
@@ -653,7 +652,6 @@ function AppContent() {
 				method: "PATCH",
 				body: JSON.stringify(updates),
 			});
-			console.log("[App] Server response:", updated);
 			if (eventUpdateRequestRef.current.get(eventId) !== requestId)
 				return;
 			setEvents((prev) =>
@@ -692,8 +690,9 @@ function AppContent() {
 			// If the original event has a time component, preserve it
 			if (originalEvent && hasTimeComponent(originalEvent.due_date)) {
 				const timeString = extractTime(originalEvent.due_date);
-				// Combine new date (YYYY-MM-DD) with existing time (HH:mm)
-				updatedDueDate = `${newDate}T${timeString}:00`;
+				// Combine new date with existing time and convert to UTC
+				const localDateTime = new Date(`${newDate}T${timeString}:00`);
+				updatedDueDate = toUTCString(localDateTime);
 			}
 
 			const updated = await api(`/events/${eventId}`, {

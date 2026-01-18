@@ -70,6 +70,31 @@ export default function CreateEventModal({
     }
   }, [opened]);
 
+  // Handle Enter key to submit
+  useEffect(() => {
+    if (!opened) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key !== "Enter") return;
+
+      // Don't submit if typing in an input, textarea, or if DateTimePicker is open
+      const target = e.target;
+      const isInInput =
+        target.tagName === "INPUT" || target.tagName === "TEXTAREA";
+
+      if (isInInput) return;
+
+      // Only submit if title is filled
+      if (!formData.title.trim()) return;
+
+      e.preventDefault();
+      handleSubmit();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [opened, formData]);
+
   const handleSubmit = () => {
     if (!formData.title.trim()) return;
 
@@ -140,160 +165,160 @@ export default function CreateEventModal({
     >
       <motion.div animate={shakeControls}>
         <Stack>
-        <TextInput
-          ref={titleRef}
-          label="Title"
-          placeholder="Event title"
-          value={formData.title}
-          onChange={(e) => {
-            setFormData((f) => ({ ...f, title: e.target.value }));
-            markUserEdited();
-          }}
-          required
-          data-autofocus
-        />
+          <TextInput
+            ref={titleRef}
+            label="Title"
+            placeholder="Event title"
+            value={formData.title}
+            onChange={(e) => {
+              setFormData((f) => ({ ...f, title: e.target.value }));
+              markUserEdited();
+            }}
+            required
+            data-autofocus
+          />
 
-        <DateTimePicker
-          label="Due Date & Time"
-          placeholder="Pick date and optionally time"
-          value={formData.dueDate}
-          onChange={(v) => {
-            setFormData((f) => ({ ...f, dueDate: v }));
-            markUserEdited();
-          }}
-          clearable={false}
-          firstDayOfWeek={0}
-          valueFormat="MMM DD, YYYY hh:mm A"
-          timePickerProps={{
-            popoverProps: { withinPortal: false },
-            format: "12h",
-          }}
-          presets={[
-            {
-              value: dayjs().subtract(1, "day").format("YYYY-MM-DD"),
-              label: "Yesterday",
-            },
-            { value: dayjs().format("YYYY-MM-DD"), label: "Today" },
-            {
-              value: dayjs().add(1, "day").format("YYYY-MM-DD"),
-              label: "Tomorrow",
-            },
-            {
-              value: dayjs().add(1, "month").format("YYYY-MM-DD"),
-              label: "Next month",
-            },
-            {
-              value: dayjs().add(1, "year").format("YYYY-MM-DD"),
-              label: "Next year",
-            },
-            {
-              value: dayjs().subtract(1, "month").format("YYYY-MM-DD"),
-              label: "Last month",
-            },
-          ].map((preset) => ({
-            ...preset,
-            value: (() => {
-              // Preserve current time when using presets
-              const currentTime = formData.dueDate
-                ? dayjs(formData.dueDate)
-                : dayjs().hour(23).minute(59);
-              const newDate = dayjs(preset.value)
-                .hour(currentTime.hour())
-                .minute(currentTime.minute())
-                .second(currentTime.second());
-              return newDate.toDate();
-            })(),
-          }))}
-        />
+          <DateTimePicker
+            label="Due Date & Time"
+            placeholder="Pick date and optionally time"
+            value={formData.dueDate}
+            onChange={(v) => {
+              setFormData((f) => ({ ...f, dueDate: v }));
+              markUserEdited();
+            }}
+            clearable={false}
+            firstDayOfWeek={0}
+            valueFormat="MMM DD, YYYY hh:mm A"
+            timePickerProps={{
+              popoverProps: { withinPortal: false },
+              format: "12h",
+            }}
+            presets={[
+              {
+                value: dayjs().subtract(1, "day").format("YYYY-MM-DD"),
+                label: "Yesterday",
+              },
+              { value: dayjs().format("YYYY-MM-DD"), label: "Today" },
+              {
+                value: dayjs().add(1, "day").format("YYYY-MM-DD"),
+                label: "Tomorrow",
+              },
+              {
+                value: dayjs().add(1, "month").format("YYYY-MM-DD"),
+                label: "Next month",
+              },
+              {
+                value: dayjs().add(1, "year").format("YYYY-MM-DD"),
+                label: "Next year",
+              },
+              {
+                value: dayjs().subtract(1, "month").format("YYYY-MM-DD"),
+                label: "Last month",
+              },
+            ].map((preset) => ({
+              ...preset,
+              value: (() => {
+                // Preserve current time when using presets
+                const currentTime = formData.dueDate
+                  ? dayjs(formData.dueDate)
+                  : dayjs().hour(23).minute(59);
+                const newDate = dayjs(preset.value)
+                  .hour(currentTime.hour())
+                  .minute(currentTime.minute())
+                  .second(currentTime.second());
+                return newDate.toDate();
+              })(),
+            }))}
+          />
 
-        <Select
-          label="Class"
-          placeholder="Select a class (optional)"
-          data={classes
-            .filter((c) => !c.canvas_course_id || c.is_synced)
-            .map((c) => ({ value: String(c.id), label: c.name }))}
-          value={formData.classId}
-          onChange={(v) => {
-            setFormData((f) => ({ ...f, classId: v }));
-            markUserEdited();
-          }}
-          clearable
-          renderOption={({ option }) => {
-            const cls = classes.find((c) => String(c.id) === option.value);
-            return (
-              <Group gap="xs" wrap="nowrap">
+          <Select
+            label="Class"
+            placeholder="Select a class (optional)"
+            data={classes
+              .filter((c) => !c.canvas_course_id || c.is_synced)
+              .map((c) => ({ value: String(c.id), label: c.name }))}
+            value={formData.classId}
+            onChange={(v) => {
+              setFormData((f) => ({ ...f, classId: v }));
+              markUserEdited();
+            }}
+            clearable
+            renderOption={({ option }) => {
+              const cls = classes.find((c) => String(c.id) === option.value);
+              return (
+                <Group gap="xs" wrap="nowrap">
+                  <Box
+                    style={{
+                      width: 12,
+                      height: 12,
+                      backgroundColor: cls?.color || "#a78b71",
+                      borderRadius: 2,
+                      flexShrink: 0,
+                    }}
+                  />
+                  <Text size="sm">{option.label}</Text>
+                </Group>
+              );
+            }}
+            leftSection={
+              formData.classId ? (
                 <Box
                   style={{
                     width: 12,
                     height: 12,
-                    backgroundColor: cls?.color || "#a78b71",
+                    backgroundColor:
+                      classes.find((c) => String(c.id) === formData.classId)
+                        ?.color || "#a78b71",
                     borderRadius: 2,
                     flexShrink: 0,
                   }}
                 />
-                <Text size="sm">{option.label}</Text>
-              </Group>
-            );
-          }}
-          leftSection={
-            formData.classId ? (
-              <Box
-                style={{
-                  width: 12,
-                  height: 12,
-                  backgroundColor:
-                    classes.find((c) => String(c.id) === formData.classId)
-                      ?.color || "#a78b71",
-                  borderRadius: 2,
-                  flexShrink: 0,
-                }}
-              />
-            ) : null
-          }
-        />
+              ) : null
+            }
+          />
 
-        <Select
-          label="Event Type"
-          data={EVENT_TYPES}
-          value={formData.eventType}
-          onChange={(v) => {
-            setFormData((f) => ({ ...f, eventType: v }));
-            markUserEdited();
-          }}
-        />
+          <Select
+            label="Event Type"
+            data={EVENT_TYPES}
+            value={formData.eventType}
+            onChange={(v) => {
+              setFormData((f) => ({ ...f, eventType: v }));
+              markUserEdited();
+            }}
+          />
 
-        <TextInput
-          label="URL"
-          placeholder="Link (optional)"
-          value={formData.url}
-          onChange={(e) => {
-            setFormData((f) => ({ ...f, url: e.target.value }));
-            markUserEdited();
-          }}
-        />
+          <TextInput
+            label="URL"
+            placeholder="Link (optional)"
+            value={formData.url}
+            onChange={(e) => {
+              setFormData((f) => ({ ...f, url: e.target.value }));
+              markUserEdited();
+            }}
+          />
 
-        <NotesTextarea
-          label="Notes"
-          placeholder="Add any notes..."
-          value={formData.notes}
-          onChange={(nextValue) => {
-            setFormData((f) => ({ ...f, notes: nextValue }));
-          }}
-          onUserEdit={markUserEdited}
-          events={events}
-          classes={classes}
-          unassignedColor={unassignedColor}
-          onOpenEvent={handleOpenMentionEvent}
-        />
+          <NotesTextarea
+            label="Notes"
+            placeholder="Add any notes..."
+            value={formData.notes}
+            onChange={(nextValue) => {
+              setFormData((f) => ({ ...f, notes: nextValue }));
+            }}
+            onUserEdit={markUserEdited}
+            events={events}
+            classes={classes}
+            unassignedColor={unassignedColor}
+            onOpenEvent={handleOpenMentionEvent}
+          />
 
-        <Group justify="flex-end">
-          <Button variant="subtle" onClick={handleDiscard}>
-            Cancel
-          </Button>
-          <Button onClick={handleSubmit} disabled={!formData.title.trim()}>
-            Create Event
-          </Button>
-        </Group>
+          <Group justify="flex-end">
+            <Button variant="subtle" onClick={handleDiscard}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmit} disabled={!formData.title.trim()}>
+              Create Event
+            </Button>
+          </Group>
         </Stack>
       </motion.div>
     </Modal>

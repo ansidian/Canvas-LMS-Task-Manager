@@ -1,7 +1,7 @@
-import { Paper, Text, Group, Stack } from '@mantine/core';
-import { useDraggable } from '@dnd-kit/core';
-import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
-import { useRef } from 'react';
+import { Paper, Text, Group, Stack } from "@mantine/core";
+import { useDraggable } from "@dnd-kit/core";
+import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
+import { useRef } from "react";
 import {
   IconFileText,
   IconClipboardCheck,
@@ -9,8 +9,8 @@ import {
   IconFlask,
   IconSchool,
   IconClock,
-} from '@tabler/icons-react';
-import { hasTimeComponent, extractTime } from '../utils/datetime';
+} from "@tabler/icons-react";
+import { hasTimeComponent, extractTime } from "../utils/datetime";
 
 const EVENT_ICONS = {
   assignment: IconFileText,
@@ -21,21 +21,26 @@ const EVENT_ICONS = {
 };
 
 const STATUS_COLORS = {
-  incomplete: '#94a3b8',
-  in_progress: '#7950f2',
-  complete: '#40c057',
+  incomplete: "#94a3b8",
+  in_progress: "#7950f2",
+  complete: "#40c057",
 };
 
 // Helper to format time from 24h to 12h format
 function formatTime(time24) {
-  const [hours, minutes] = time24.split(':').map(Number);
-  const period = hours >= 12 ? 'PM' : 'AM';
+  const [hours, minutes] = time24.split(":").map(Number);
+  const period = hours >= 12 ? "PM" : "AM";
   const hours12 = hours % 12 || 12;
-  return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`;
+  return `${hours12}:${minutes.toString().padStart(2, "0")} ${period}`;
 }
 
 export default function EventCard({ event, color, onClick, isDragging }) {
-  const { attributes, listeners, setNodeRef, isDragging: isBeingDragged } = useDraggable({
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    isDragging: isBeingDragged,
+  } = useDraggable({
     id: event.id,
   });
 
@@ -80,7 +85,6 @@ export default function EventCard({ event, color, onClick, isDragging }) {
 
   const Icon = EVENT_ICONS[event.event_type] || IconFileText;
   const statusColor = STATUS_COLORS[event.status] || STATUS_COLORS.incomplete;
-  const gradientBackground = `linear-gradient(90deg, ${statusColor} 10%, ${color} 10%)`;
 
   // Check if event has time information
   const showTime = hasTimeComponent(event.due_date);
@@ -95,7 +99,8 @@ export default function EventCard({ event, color, onClick, isDragging }) {
       <Paper
         p={4}
         style={{
-          background: gradientBackground,
+          background: color,
+          borderLeft: `10px solid ${statusColor}`,
           opacity: 0.3,
         }}
       >
@@ -127,7 +132,7 @@ export default function EventCard({ event, color, onClick, isDragging }) {
         rotateY,
         x: translateX,
         y: translateY,
-        transformStyle: 'preserve-3d',
+        transformStyle: "preserve-3d",
         perspective: 1000,
       }}
       onMouseMove={handleMouseMove}
@@ -139,13 +144,14 @@ export default function EventCard({ event, color, onClick, isDragging }) {
         {...attributes}
         p={4}
         style={{
-          background: gradientBackground,
-          cursor: isDragging ? 'grabbing' : 'grab',
+          background: color,
+          borderLeft: `10px solid ${statusColor}`,
+          cursor: isDragging ? "grabbing" : "grab",
           opacity: isDragging ? 1 : 1,
-          boxShadow: isDragging ? '0 4px 12px rgba(0,0,0,0.25)' : undefined,
-          transform: isDragging ? 'scale(1.02)' : undefined,
-          touchAction: 'none',
-          transition: 'box-shadow 0.15s ease',
+          boxShadow: isDragging ? "0 4px 12px rgba(0,0,0,0.25)" : undefined,
+          transform: isDragging ? "scale(1.02)" : undefined,
+          touchAction: "none",
+          transition: "box-shadow 0.15s ease",
         }}
         onClick={(e) => {
           e.stopPropagation();
