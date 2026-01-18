@@ -1,3 +1,5 @@
+<p><img src="https://github.com/user-attachments/assets/d135f5bd-0e90-4b01-abca-0eb8dbabdecb" height="256" width="256" /></p>
+
 # Canvas Task Manager (CTM)
 
 A purpose-built calendar and deadline manager that integrates directly with Canvas LMS. I originally built this for myself, but figured it might be useful to other students.
