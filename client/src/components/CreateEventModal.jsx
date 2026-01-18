@@ -1,10 +1,9 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import {
   Modal,
   Stack,
   TextInput,
   Select,
-  Textarea,
   Button,
   Group,
   Box,
@@ -13,6 +12,8 @@ import {
 import { DateTimePicker } from "@mantine/dates";
 import dayjs from "dayjs";
 import { toUTCString } from "../utils/datetime";
+import NotesTextarea from "./NotesTextarea";
+import { motion, useAnimation } from "framer-motion";
 
 const EVENT_TYPES = [
   { value: "assignment", label: "Assignment" },
@@ -27,9 +28,15 @@ export default function CreateEventModal({
   onClose,
   date,
   classes,
+  events,
+  unassignedColor,
   onCreate,
+  onOpenEvent,
 }) {
   const titleRef = useRef(null);
+  const shakeControls = useAnimation();
+  const initialFormDataRef = useRef(null);
+  const [hasUserEdited, setHasUserEdited] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     dueDate: null,
@@ -40,17 +47,19 @@ export default function CreateEventModal({
   });
 
   useEffect(() => {
-    if (date) {
-      setFormData({
-        title: "",
-        dueDate: new Date(date + "T00:00:00"),
-        classId: null,
-        eventType: "assignment",
-        notes: "",
-        url: "",
-      });
-    }
-  }, [date]);
+    if (!opened) return;
+    const nextFormData = {
+      title: "",
+      dueDate: date ? new Date(date + "T00:00:00") : null,
+      classId: null,
+      eventType: "assignment",
+      notes: "",
+      url: "",
+    };
+    setFormData(nextFormData);
+    initialFormDataRef.current = nextFormData;
+    setHasUserEdited(false);
+  }, [date, opened]);
 
   // Focus title input when modal opens
   useEffect(() => {
@@ -74,17 +83,65 @@ export default function CreateEventModal({
     });
   };
 
+  const isDirty = useMemo(() => {
+    const initial = initialFormDataRef.current;
+    if (!initial) return false;
+    const sameDueDate =
+      initial.dueDate === formData.dueDate ||
+      (initial.dueDate &&
+        formData.dueDate &&
+        initial.dueDate.getTime() === formData.dueDate.getTime());
+    return (
+      formData.title !== initial.title ||
+      !sameDueDate ||
+      formData.classId !== initial.classId ||
+      formData.eventType !== initial.eventType ||
+      formData.notes !== initial.notes ||
+      formData.url !== initial.url
+    );
+  }, [formData]);
+  const shouldBlockClose = hasUserEdited && isDirty;
+
+  const triggerDirtyShake = () => {
+    shakeControls.start({
+      x: [0, -8, 8, -6, 6, 0],
+      transition: { duration: 0.35 },
+    });
+  };
+
+  const handleAttemptClose = () => {
+    if (shouldBlockClose) {
+      triggerDirtyShake();
+      return;
+    }
+    onClose();
+  };
+
+  const handleDiscard = () => {
+    onClose();
+  };
+  const markUserEdited = () => {
+    setHasUserEdited(true);
+  };
+
   return (
-    <Modal opened={opened} onClose={onClose} title="Create Event" size="md">
-      <Stack>
+    <Modal
+      opened={opened}
+      onClose={handleAttemptClose}
+      title="Create Event"
+      size="md"
+    >
+      <motion.div animate={shakeControls}>
+        <Stack>
         <TextInput
           ref={titleRef}
           label="Title"
           placeholder="Event title"
           value={formData.title}
-          onChange={(e) =>
-            setFormData((f) => ({ ...f, title: e.target.value }))
-          }
+          onChange={(e) => {
+            setFormData((f) => ({ ...f, title: e.target.value }));
+            markUserEdited();
+          }}
           required
           data-autofocus
         />
@@ -93,7 +150,10 @@ export default function CreateEventModal({
           label="Due Date & Time"
           placeholder="Pick date and optionally time"
           value={formData.dueDate}
-          onChange={(v) => setFormData((f) => ({ ...f, dueDate: v }))}
+          onChange={(v) => {
+            setFormData((f) => ({ ...f, dueDate: v }));
+            markUserEdited();
+          }}
           clearable={false}
           firstDayOfWeek={0}
           valueFormat="MMM DD, YYYY hh:mm A"
@@ -133,7 +193,10 @@ export default function CreateEventModal({
             .filter((c) => !c.canvas_course_id || c.is_synced)
             .map((c) => ({ value: String(c.id), label: c.name }))}
           value={formData.classId}
-          onChange={(v) => setFormData((f) => ({ ...f, classId: v }))}
+          onChange={(v) => {
+            setFormData((f) => ({ ...f, classId: v }));
+            markUserEdited();
+          }}
           clearable
           renderOption={({ option }) => {
             const cls = classes.find((c) => String(c.id) === option.value);
@@ -173,35 +236,46 @@ export default function CreateEventModal({
           label="Event Type"
           data={EVENT_TYPES}
           value={formData.eventType}
-          onChange={(v) => setFormData((f) => ({ ...f, eventType: v }))}
+          onChange={(v) => {
+            setFormData((f) => ({ ...f, eventType: v }));
+            markUserEdited();
+          }}
         />
 
         <TextInput
           label="URL"
           placeholder="Link (optional)"
           value={formData.url}
-          onChange={(e) => setFormData((f) => ({ ...f, url: e.target.value }))}
+          onChange={(e) => {
+            setFormData((f) => ({ ...f, url: e.target.value }));
+            markUserEdited();
+          }}
         />
 
-        <Textarea
+        <NotesTextarea
           label="Notes"
           placeholder="Add any notes..."
-          minRows={3}
           value={formData.notes}
-          onChange={(e) =>
-            setFormData((f) => ({ ...f, notes: e.target.value }))
-          }
+          onChange={(nextValue) => {
+            setFormData((f) => ({ ...f, notes: nextValue }));
+          }}
+          onUserEdit={markUserEdited}
+          events={events}
+          classes={classes}
+          unassignedColor={unassignedColor}
+          onOpenEvent={onOpenEvent}
         />
 
         <Group justify="flex-end">
-          <Button variant="subtle" onClick={onClose}>
+          <Button variant="subtle" onClick={handleDiscard}>
             Cancel
           </Button>
           <Button onClick={handleSubmit} disabled={!formData.title.trim()}>
             Create Event
           </Button>
         </Group>
-      </Stack>
+        </Stack>
+      </motion.div>
     </Modal>
   );
 }

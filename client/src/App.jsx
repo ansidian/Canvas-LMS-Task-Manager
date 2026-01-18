@@ -668,6 +668,11 @@ function AppContent() {
     setCreateEventDate(date);
   };
 
+  const handleOpenEvent = (eventItem) => {
+    if (!eventItem) return;
+    setSelectedEvent(eventItem);
+  };
+
   const openApprovalModal = (item) => {
     const index = pendingItems.findIndex((p) => p.canvas_id === item.canvas_id);
     setApprovalIndex(index);
@@ -893,11 +898,14 @@ function AppContent() {
           onClose={() => setApprovalIndex(-1)}
           item={approvalItem}
           classes={classes}
+          events={events}
+          unassignedColor={unassignedColor}
           onApprove={handleApprove}
           onReject={handleReject}
           pendingCount={filteredPendingItems.length}
           currentIndex={approvalIndex}
           onNavigate={navigateApproval}
+          onOpenEvent={handleOpenEvent}
         />
 
         <EventModal
@@ -905,8 +913,11 @@ function AppContent() {
           onClose={() => setSelectedEvent(null)}
           event={selectedEvent}
           classes={classes}
+          events={events}
+          unassignedColor={unassignedColor}
           onUpdate={handleEventUpdate}
           onDelete={handleEventDelete}
+          onOpenEvent={handleOpenEvent}
         />
 
         <CreateEventModal
@@ -914,7 +925,10 @@ function AppContent() {
           onClose={() => setCreateEventDate(null)}
           date={createEventDate}
           classes={classes}
+          events={events}
+          unassignedColor={unassignedColor}
           onCreate={handleCreateEvent}
+          onOpenEvent={handleOpenEvent}
         />
       </AppShell>
     </OnboardingTour>

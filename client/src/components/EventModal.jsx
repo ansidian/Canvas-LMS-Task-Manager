@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useMemo } from "react";
 import {
 	Modal,
 	Stack,
@@ -21,9 +21,10 @@ import {
 import { DateTimePicker } from "@mantine/dates";
 import dayjs from "dayjs";
 import confetti from "canvas-confetti";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useAnimation } from "framer-motion";
 import { useAuth } from "@clerk/clerk-react";
 import { parseDueDate, toUTCString } from "../utils/datetime";
+import NotesTextarea from "./NotesTextarea";
 
 const EVENT_TYPES = [
 	{ value: "assignment", label: "Assignment" },
@@ -52,13 +53,67 @@ const parseCanvasIds = (canvasId) => {
 	return { courseId, assignmentId };
 };
 
+const CANVAS_CACHE_TTL_MS = 10 * 60 * 1000;
+const canvasAssignmentCache = new Map();
+const canvasSubmissionCache = new Map();
+const CANVAS_CACHE_KEY_PREFIX = "ctm_canvas_cache";
+
+const buildLocalCacheKey = (type, key) =>
+	`${CANVAS_CACHE_KEY_PREFIX}:${type}:${key}`;
+
+const readLocalCache = (type, key) => {
+	try {
+		const raw = localStorage.getItem(buildLocalCacheKey(type, key));
+		if (!raw) return null;
+		const parsed = JSON.parse(raw);
+		if (!parsed?.timestamp) return null;
+		if (Date.now() - parsed.timestamp > CANVAS_CACHE_TTL_MS) {
+			localStorage.removeItem(buildLocalCacheKey(type, key));
+			return null;
+		}
+		return parsed.data || null;
+	} catch (err) {
+		console.warn("Failed to read Canvas cache:", err);
+		return null;
+	}
+};
+
+const writeLocalCache = (type, key, data) => {
+	try {
+		localStorage.setItem(
+			buildLocalCacheKey(type, key),
+			JSON.stringify({ data, timestamp: Date.now() }),
+		);
+	} catch (err) {
+		console.warn("Failed to write Canvas cache:", err);
+	}
+};
+
+const getCachedCanvasData = (cache, type, key) => {
+	const entry = cache.get(key);
+	if (!entry) return null;
+	if (Date.now() - entry.timestamp > CANVAS_CACHE_TTL_MS) {
+		cache.delete(key);
+		return null;
+	}
+	return entry.data;
+};
+
+const setCachedCanvasData = (cache, type, key, data) => {
+	cache.set(key, { data, timestamp: Date.now() });
+	writeLocalCache(type, key, data);
+};
+
 export default function EventModal({
 	opened,
 	onClose,
 	event,
 	classes,
+	events,
+	unassignedColor,
 	onUpdate,
 	onDelete,
+	onOpenEvent,
 }) {
 	const { colorScheme } = useMantineColorScheme();
 	const { getToken } = useAuth();
@@ -92,6 +147,10 @@ export default function EventModal({
 	const [submissionUrl, setSubmissionUrl] = useState("");
 	const [submissionError, setSubmissionError] = useState("");
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [submissionDirty, setSubmissionDirty] = useState(false);
+	const [hasUserEdited, setHasUserEdited] = useState(false);
+	const shakeControls = useAnimation();
+	const initialFormDataRef = useRef(null);
 
 	const getCanvasCredentials = () => {
 		const canvasUrl = localStorage.getItem("canvasUrl");
@@ -258,54 +317,120 @@ export default function EventModal({
 		setSubmissionUrl("");
 		setSubmissionError("");
 		setIsSubmitting(false);
+		setSubmissionDirty(false);
 
 		if (!event) return;
 
 		const canvasIds = parseCanvasIds(event.canvas_id);
 		if (!canvasIds) return;
 
+		const cacheKey = `${canvasIds.courseId}-${canvasIds.assignmentId}`;
+		let cachedAssignment = getCachedCanvasData(
+			canvasAssignmentCache,
+			"assignment",
+			cacheKey,
+		);
+		let cachedSubmission = getCachedCanvasData(
+			canvasSubmissionCache,
+			"submission",
+			cacheKey,
+		);
+		if (!cachedAssignment) {
+			cachedAssignment = readLocalCache("assignment", cacheKey);
+			if (cachedAssignment) {
+				canvasAssignmentCache.set(cacheKey, {
+					data: cachedAssignment,
+					timestamp: Date.now(),
+				});
+			}
+		}
+		if (!cachedSubmission) {
+			cachedSubmission = readLocalCache("submission", cacheKey);
+			if (cachedSubmission) {
+				canvasSubmissionCache.set(cacheKey, {
+					data: cachedSubmission,
+					timestamp: Date.now(),
+				});
+			}
+		}
+		if (cachedAssignment) {
+			setAssignmentInfo(cachedAssignment);
+		}
+		if (cachedSubmission) {
+			setSubmissionInfo(cachedSubmission);
+		}
+
 		const controller = new AbortController();
-		setAssignmentLoading(true);
-		setSubmissionLoading(true);
+		if (!cachedAssignment) setAssignmentLoading(true);
+		if (!cachedSubmission) setSubmissionLoading(true);
 
-		fetchAssignmentInfo(canvasIds, controller.signal)
-			.then((data) => {
-				setAssignmentInfo(data);
-				const types = data?.submission_types || [];
-				if (types.includes("online_upload")) {
-					setSubmissionType("online_upload");
-				} else if (types.includes("online_text_entry")) {
-					setSubmissionType("online_text_entry");
-				} else if (types.includes("online_url")) {
-					setSubmissionType("online_url");
-				}
-			})
-			.catch((err) => {
-				setAssignmentError(
-					err.message || "Failed to load Canvas assignment",
-				);
-			})
-			.finally(() => {
-				setAssignmentLoading(false);
-			});
-
-		fetchSubmissionInfo(canvasIds, controller.signal)
-			.then((data) => {
-				setSubmissionInfo(data);
-				if (data?.submitted_at && event.status !== "complete") {
-					onUpdate(
-						event.id,
-						{ status: "complete" },
-						{ keepOpen: true },
+		if (cachedAssignment) {
+			const types = cachedAssignment?.submission_types || [];
+			if (types.includes("online_upload")) {
+				setSubmissionType("online_upload");
+			} else if (types.includes("online_text_entry")) {
+				setSubmissionType("online_text_entry");
+			} else if (types.includes("online_url")) {
+				setSubmissionType("online_url");
+			}
+		} else {
+			fetchAssignmentInfo(canvasIds, controller.signal)
+				.then((data) => {
+					setAssignmentInfo(data);
+					setCachedCanvasData(
+						canvasAssignmentCache,
+						"assignment",
+						cacheKey,
+						data,
 					);
-				}
-			})
-			.catch((err) => {
-				console.warn("Failed to load Canvas submission:", err);
-			})
-			.finally(() => {
-				setSubmissionLoading(false);
-			});
+					const types = data?.submission_types || [];
+					if (types.includes("online_upload")) {
+						setSubmissionType("online_upload");
+					} else if (types.includes("online_text_entry")) {
+						setSubmissionType("online_text_entry");
+					} else if (types.includes("online_url")) {
+						setSubmissionType("online_url");
+					}
+				})
+				.catch((err) => {
+					setAssignmentError(
+						err.message || "Failed to load Canvas assignment",
+					);
+				})
+				.finally(() => {
+					setAssignmentLoading(false);
+				});
+		}
+
+		if (cachedSubmission) {
+			if (cachedSubmission?.submitted_at && event.status !== "complete") {
+				onUpdate(event.id, { status: "complete" }, { keepOpen: true });
+			}
+		} else {
+			fetchSubmissionInfo(canvasIds, controller.signal)
+				.then((data) => {
+					setSubmissionInfo(data);
+					setCachedCanvasData(
+						canvasSubmissionCache,
+						"submission",
+						cacheKey,
+						data,
+					);
+					if (data?.submitted_at && event.status !== "complete") {
+						onUpdate(
+							event.id,
+							{ status: "complete" },
+							{ keepOpen: true },
+						);
+					}
+				})
+				.catch((err) => {
+					console.warn("Failed to load Canvas submission:", err);
+				})
+				.finally(() => {
+					setSubmissionLoading(false);
+				});
+		}
 
 		return () => controller.abort();
 	}, [event]);
@@ -315,7 +440,7 @@ export default function EventModal({
 			// Parse the due_date (handles both date-only and datetime)
 			const { date } = parseDueDate(event.due_date);
 
-			setFormData({
+			const nextFormData = {
 				title: event.title,
 				due_date: date,
 				class_id: event.class_id ? String(event.class_id) : null,
@@ -323,7 +448,10 @@ export default function EventModal({
 				status: event.status || "incomplete",
 				notes: event.notes || "",
 				url: event.url || "",
-			});
+			};
+			setFormData(nextFormData);
+			initialFormDataRef.current = nextFormData;
+			setHasUserEdited(false);
 			setConfirmDelete(false);
 			setSaveSuccess(false);
 			setShowDescriptionFullscreen(false);
@@ -461,6 +589,49 @@ export default function EventModal({
 		}
 	};
 
+	const hasChanges = useMemo(() => {
+		const initial = initialFormDataRef.current;
+		if (!initial) return false;
+		const sameDueDate =
+			initial.due_date === formData.due_date ||
+			(initial.due_date &&
+				formData.due_date &&
+				initial.due_date.getTime() === formData.due_date.getTime());
+		return (
+			formData.title !== initial.title ||
+			!sameDueDate ||
+			formData.class_id !== initial.class_id ||
+			formData.event_type !== initial.event_type ||
+			formData.status !== initial.status ||
+			formData.notes !== initial.notes ||
+			formData.url !== initial.url ||
+			submissionDirty
+		);
+	}, [formData, submissionDirty]);
+	const shouldBlockClose = hasUserEdited && hasChanges;
+
+	const triggerDirtyShake = () => {
+		shakeControls.start({
+			x: [0, -8, 8, -6, 6, 0],
+			transition: { duration: 0.35 },
+		});
+	};
+
+	const handleAttemptClose = () => {
+		if (shouldBlockClose) {
+			triggerDirtyShake();
+			return;
+		}
+		onClose();
+	};
+
+	const handleDiscard = () => {
+		onClose();
+	};
+	const markUserEdited = () => {
+		setHasUserEdited(true);
+	};
+
 	if (!event) return null;
 
 	const canvasIds = parseCanvasIds(event.canvas_id);
@@ -568,20 +739,25 @@ export default function EventModal({
 			</Portal>
 			<Modal
 				opened={opened}
-				onClose={onClose}
+				onClose={handleAttemptClose}
 				title="Edit Event"
 				size="md"
 			>
-				<Stack>
-					<TextInput
+				<motion.div animate={shakeControls}>
+					<Stack>
+					<Textarea
 						label="Title"
 						value={formData.title}
-						onChange={(e) =>
+						onChange={(e) => {
 							setFormData((f) => ({
 								...f,
 								title: e.target.value,
-							}))
-						}
+							}));
+							markUserEdited();
+						}}
+						autosize
+						minRows={1}
+						maxRows={3}
 					/>
 
 					<div>
@@ -592,9 +768,10 @@ export default function EventModal({
 							<SegmentedControl
 								fullWidth
 								value={formData.status}
-								onChange={(v) =>
-									setFormData((f) => ({ ...f, status: v }))
-								}
+								onChange={(v) => {
+									setFormData((f) => ({ ...f, status: v }));
+									markUserEdited();
+								}}
 								data={STATUS_OPTIONS}
 								styles={{
 									root: {
@@ -625,9 +802,10 @@ export default function EventModal({
 						label="Due Date & Time"
 						placeholder="Pick date and optionally time"
 						value={formData.due_date}
-						onChange={(v) =>
-							setFormData((f) => ({ ...f, due_date: v }))
-						}
+						onChange={(v) => {
+							setFormData((f) => ({ ...f, due_date: v }));
+							markUserEdited();
+						}}
 						firstDayOfWeek={0}
 						valueFormat="MMM DD, YYYY hh:mm A"
 						presets={[
@@ -687,9 +865,10 @@ export default function EventModal({
 								label: c.name,
 							}))}
 						value={formData.class_id}
-						onChange={(v) =>
-							setFormData((f) => ({ ...f, class_id: v }))
-						}
+						onChange={(v) => {
+							setFormData((f) => ({ ...f, class_id: v }));
+							markUserEdited();
+						}}
 						clearable
 						renderOption={({ option }) => {
 							const cls = classes.find(
@@ -735,18 +914,23 @@ export default function EventModal({
 						label="Event Type"
 						data={EVENT_TYPES}
 						value={formData.event_type}
-						onChange={(v) =>
-							setFormData((f) => ({ ...f, event_type: v }))
-						}
+						onChange={(v) => {
+							setFormData((f) => ({ ...f, event_type: v }));
+							markUserEdited();
+						}}
 					/>
 
 					<TextInput
 						label="URL"
 						placeholder="Canvas URL"
 						value={formData.url}
-						onChange={(e) =>
-							setFormData((f) => ({ ...f, url: e.target.value }))
-						}
+						onChange={(e) => {
+							setFormData((f) => ({
+								...f,
+								url: e.target.value,
+							}));
+							markUserEdited();
+						}}
 					/>
 
 					{formData.url && (
@@ -772,11 +956,18 @@ export default function EventModal({
 							<Text size="sm" fw={500} mb={4}>
 								Canvas Submission
 							</Text>
-							{assignmentLoading && (
-								<Skeleton height={48} radius="sm" />
-							)}
-							{submissionLoading && (
-								<Skeleton height={32} radius="sm" />
+							{(assignmentLoading || submissionLoading) && (
+								<Box style={{ width: "100%", maxWidth: 408 }}>
+									<Stack gap="xs">
+										<Skeleton height={20} radius="sm" />
+										<Skeleton height={61} radius="sm" />
+										<Skeleton height={17} radius="sm" />
+										<Skeleton height={81} radius="sm" />
+										<Skeleton height={34} radius="sm" />
+										<Skeleton height={17} radius="sm" />
+										<Skeleton height={17} radius="sm" />
+									</Stack>
+								</Box>
 							)}
 							{!assignmentLoading && assignmentError && (
 								<Text size="sm" c="red">
@@ -808,9 +999,11 @@ export default function EventModal({
 										<Select
 											label="Submission type"
 											value={submissionType}
-											onChange={(value) =>
-												setSubmissionType(value || "")
-											}
+											onChange={(value) => {
+												setSubmissionType(value || "");
+												setSubmissionDirty(true);
+												markUserEdited();
+											}}
 											data={submissionOptions}
 											disabled={isCanvasLocked}
 										/>
@@ -835,6 +1028,8 @@ export default function EventModal({
 															: [];
 													setSelectedFiles(next);
 													setSubmissionError("");
+													setSubmissionDirty(true);
+													markUserEdited();
 												}}
 											/>
 											{assignmentInfo?.allowed_extensions
@@ -854,11 +1049,11 @@ export default function EventModal({
 											minRows={4}
 											disabled={isCanvasLocked}
 											value={submissionBody}
-											onChange={(e) =>
-												setSubmissionBody(
-													e.target.value,
-												)
-											}
+											onChange={(e) => {
+												setSubmissionBody(e.target.value);
+												setSubmissionDirty(true);
+												markUserEdited();
+											}}
 										/>
 									)}
 									{submissionType === "online_url" && (
@@ -867,22 +1062,28 @@ export default function EventModal({
 											placeholder="https://"
 											disabled={isCanvasLocked}
 											value={submissionUrl}
-											onChange={(e) =>
-												setSubmissionUrl(e.target.value)
-											}
+											onChange={(e) => {
+												setSubmissionUrl(e.target.value);
+												setSubmissionDirty(true);
+												markUserEdited();
+											}}
 										/>
 									)}
 									{submissionOptions.length > 0 && (
 										<Textarea
 											label="Comments..."
 											minRows={2}
+											maxRows={6}
+											autosize
 											disabled={isCanvasLocked}
 											value={submissionComment}
-											onChange={(e) =>
+											onChange={(e) => {
 												setSubmissionComment(
 													e.target.value,
-												)
-											}
+												);
+												setSubmissionDirty(true);
+												markUserEdited();
+											}}
 										/>
 									)}
 									{submissionOptions.length > 0 ? (
@@ -1036,17 +1237,22 @@ export default function EventModal({
 						</Box>
 					)}
 
-					<Textarea
+					<NotesTextarea
 						label="Notes"
 						placeholder="Add any notes..."
-						minRows={3}
 						value={formData.notes}
-						onChange={(e) =>
+						onChange={(nextValue) => {
 							setFormData((f) => ({
 								...f,
-								notes: e.target.value,
-							}))
-						}
+								notes: nextValue,
+							}));
+						}}
+						onUserEdit={markUserEdited}
+						events={events}
+						classes={classes}
+						unassignedColor={unassignedColor}
+						currentEventId={event?.id}
+						onOpenEvent={onOpenEvent}
 					/>
 
 					<Group justify="space-between">
@@ -1058,7 +1264,7 @@ export default function EventModal({
 							{confirmDelete ? "Confirm Delete" : "Delete"}
 						</Button>
 						<Group>
-							<Button variant="subtle" onClick={onClose}>
+							<Button variant="subtle" onClick={handleDiscard}>
 								Cancel
 							</Button>
 							<Button
@@ -1070,7 +1276,8 @@ export default function EventModal({
 							</Button>
 						</Group>
 					</Group>
-				</Stack>
+					</Stack>
+				</motion.div>
 			</Modal>
 		</>
 	);

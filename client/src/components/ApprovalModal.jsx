@@ -1,9 +1,8 @@
-import { useState, useEffect, useLayoutEffect, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useMemo } from "react";
 import {
 	Stack,
 	TextInput,
 	Select,
-	Textarea,
 	Button,
 	Group,
 	Text,
@@ -16,9 +15,10 @@ import {
 } from "@mantine/core";
 import { DateTimePicker } from "@mantine/dates";
 import { IconChevronLeft, IconChevronRight, IconX } from "@tabler/icons-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useAnimation } from "framer-motion";
 import dayjs from "dayjs";
 import { parseDueDate, toUTCString } from "../utils/datetime";
+import NotesTextarea from "./NotesTextarea";
 
 const EVENT_TYPES = [
 	{ value: "assignment", label: "Assignment" },
@@ -57,21 +57,28 @@ const detectEventTypeFromTitle = (title) => {
 function Card({
 	item,
 	classes,
+	events,
+	unassignedColor,
 	formData,
 	setFormData,
+	onUserEdit,
 	onApprove,
 	onReject,
-	onClose,
+	onAttemptClose,
+	onDiscard,
+	onOpenEvent,
 	exitDirection,
 	showDescriptionFullscreen,
 	setShowDescriptionFullscreen,
 	eventTypePulse,
+	shakeSignal,
 }) {
 	const [showDescriptionPreview, setShowDescriptionPreview] = useState(false);
 	const [previewScale, setPreviewScale] = useState(0.25);
 	const previewContentRef = useRef(null);
 	const descriptionLayoutId = `description-${item.canvas_id}`;
 	const previewSize = { width: 280, height: 140, contentWidth: 640 };
+	const shakeControls = useAnimation();
 
 	useLayoutEffect(() => {
 		if (!showDescriptionPreview || !previewContentRef.current) return;
@@ -85,6 +92,14 @@ function Card({
 		);
 		setPreviewScale(scale);
 	}, [showDescriptionPreview, item.description]);
+
+	useEffect(() => {
+		if (!shakeSignal) return;
+		shakeControls.start({
+			x: [0, -8, 8, -6, 6, 0],
+			transition: { duration: 0.35 },
+		});
+	}, [shakeSignal, shakeControls]);
 
 	const handleSubmit = () => {
 		const dueDate = formData.dueDate
@@ -132,20 +147,21 @@ function Card({
 			}}
 			transition={{ type: "spring", stiffness: 300, damping: 30 }}
 		>
-			<Paper
-				shadow="xl"
-				p="xl"
-				radius="md"
-				style={{
-					backgroundColor: "var(--mantine-color-body)",
-					border: "1px solid var(--mantine-color-default-border)",
-					position: "relative",
-				}}
-			>
+			<motion.div animate={shakeControls}>
+				<Paper
+					shadow="xl"
+					p="xl"
+					radius="md"
+					style={{
+						backgroundColor: "var(--mantine-color-body)",
+						border: "1px solid var(--mantine-color-default-border)",
+						position: "relative",
+					}}
+				>
 				<ActionIcon
 					variant="subtle"
 					size="lg"
-					onClick={onClose}
+					onClick={onAttemptClose}
 					style={{
 						position: "absolute",
 						top: "12px",
@@ -168,9 +184,10 @@ function Card({
 						label="Due Date & Time"
 						placeholder="Pick date and optionally time"
 						value={formData.dueDate}
-						onChange={(v) =>
-							setFormData((f) => ({ ...f, dueDate: v }))
-						}
+						onChange={(v) => {
+							setFormData((f) => ({ ...f, dueDate: v }));
+							onUserEdit();
+						}}
 						clearable={false}
 						firstDayOfWeek={0}
 						valueFormat="MMM DD, YYYY hh:mm A"
@@ -226,9 +243,10 @@ function Card({
 								label: c.name,
 							}))}
 						value={formData.classId}
-						onChange={(v) =>
-							setFormData((f) => ({ ...f, classId: v }))
-						}
+						onChange={(v) => {
+							setFormData((f) => ({ ...f, classId: v }));
+							onUserEdit();
+						}}
 						clearable
 						renderOption={({ option }) => {
 							const cls = classes.find(
@@ -274,9 +292,10 @@ function Card({
 						label="Event Type"
 						data={EVENT_TYPES}
 						value={formData.eventType}
-						onChange={(v) =>
-							setFormData((f) => ({ ...f, eventType: v }))
-						}
+						onChange={(v) => {
+							setFormData((f) => ({ ...f, eventType: v }));
+							onUserEdit();
+						}}
 						classNames={{
 							input: eventTypePulse
 								? "event-type-pulse"
@@ -288,9 +307,13 @@ function Card({
 						label="URL"
 						placeholder="Canvas URL"
 						value={formData.url}
-						onChange={(e) =>
-							setFormData((f) => ({ ...f, url: e.target.value }))
-						}
+						onChange={(e) => {
+							setFormData((f) => ({
+								...f,
+								url: e.target.value,
+							}));
+							onUserEdit();
+						}}
 					/>
 
 					{formData.url && (
@@ -399,17 +422,21 @@ function Card({
 						</Box>
 					)}
 
-					<Textarea
+					<NotesTextarea
 						label="Notes"
 						placeholder="Add any notes..."
-						minRows={3}
 						value={formData.notes}
-						onChange={(e) =>
+						onChange={(nextValue) => {
 							setFormData((f) => ({
 								...f,
-								notes: e.target.value,
-							}))
-						}
+								notes: nextValue,
+							}));
+						}}
+						onUserEdit={onUserEdit}
+						events={events}
+						classes={classes}
+						unassignedColor={unassignedColor}
+						onOpenEvent={onOpenEvent}
 					/>
 
 					<Group justify="space-between" mt="md">
@@ -424,7 +451,7 @@ function Card({
 						<Group>
 							<Button
 								variant="subtle"
-								onClick={onClose}
+								onClick={onDiscard}
 								size="md"
 							>
 								Cancel
@@ -435,7 +462,8 @@ function Card({
 						</Group>
 					</Group>
 				</Stack>
-			</Paper>
+				</Paper>
+			</motion.div>
 		</motion.div>
 	);
 }
@@ -445,11 +473,14 @@ export default function ApprovalModal({
 	onClose,
 	item,
 	classes,
+	events,
+	unassignedColor,
 	onApprove,
 	onReject,
 	pendingCount,
 	currentIndex,
 	onNavigate,
+	onOpenEvent,
 }) {
 	const [formData, setFormData] = useState({
 		dueDate: null,
@@ -463,6 +494,9 @@ export default function ApprovalModal({
 		useState(false);
 	const [eventTypePulse, setEventTypePulse] = useState(false);
 	const eventTypePulseTimeoutRef = useRef(null);
+	const initialFormDataRef = useRef(null);
+	const [shakeCount, setShakeCount] = useState(0);
+	const [hasUserEdited, setHasUserEdited] = useState(false);
 
 	useEffect(() => {
 		if (eventTypePulseTimeoutRef.current) {
@@ -489,13 +523,16 @@ export default function ApprovalModal({
 					: null,
 			});
 
-			setFormData({
+			const nextFormData = {
 				dueDate: date,
 				classId: matchingClass ? String(matchingClass.id) : null,
 				eventType: detectedType || "assignment",
 				notes: "",
 				url: item.url || "",
-			});
+			};
+			setFormData(nextFormData);
+			initialFormDataRef.current = nextFormData;
+			setHasUserEdited(false);
 			setExitDirection(null);
 			setShowDescriptionFullscreen(false);
 
@@ -516,6 +553,43 @@ export default function ApprovalModal({
 			}
 		}
 	}, [item, classes]);
+
+	const isDirty = useMemo(() => {
+		const initial = initialFormDataRef.current;
+		if (!initial) return false;
+		const sameDueDate =
+			initial.dueDate === formData.dueDate ||
+			(initial.dueDate &&
+				formData.dueDate &&
+				initial.dueDate.getTime() === formData.dueDate.getTime());
+		return (
+			formData.classId !== initial.classId ||
+			formData.eventType !== initial.eventType ||
+			formData.notes !== initial.notes ||
+			formData.url !== initial.url ||
+			!sameDueDate
+		);
+	}, [formData]);
+	const shouldBlockClose = hasUserEdited && isDirty;
+
+	const triggerDirtyShake = () => {
+		setShakeCount((prev) => prev + 1);
+	};
+
+	const handleAttemptClose = () => {
+		if (shouldBlockClose) {
+			triggerDirtyShake();
+			return;
+		}
+		onClose();
+	};
+
+	const handleDiscard = () => {
+		onClose();
+	};
+	const markUserEdited = () => {
+		setHasUserEdited(true);
+	};
 
 	const handleApproveClick = () => {
 		setExitDirection("right");
@@ -539,6 +613,10 @@ export default function ApprovalModal({
 	};
 
 	const handleNavigate = (direction) => {
+		if (shouldBlockClose) {
+			triggerDirtyShake();
+			return;
+		}
 		setExitDirection(direction > 0 ? "right" : "left");
 		setTimeout(() => {
 			onNavigate(direction);
@@ -564,7 +642,7 @@ export default function ApprovalModal({
 				overflowY: "auto",
 			}}
 			onClick={(e) => {
-				if (e.target === e.currentTarget) onClose();
+				if (e.target === e.currentTarget) handleAttemptClose();
 			}}
 		>
 			<style>{`
@@ -730,11 +808,16 @@ export default function ApprovalModal({
 							key={item.canvas_id}
 							item={item}
 							classes={classes}
+							events={events}
+							unassignedColor={unassignedColor}
 							formData={formData}
 							setFormData={setFormData}
+							onUserEdit={markUserEdited}
 							onApprove={handleApproveClick}
 							onReject={handleRejectClick}
-							onClose={onClose}
+							onAttemptClose={handleAttemptClose}
+							onDiscard={handleDiscard}
+							onOpenEvent={onOpenEvent}
 							exitDirection={exitDirection}
 							eventTypePulse={eventTypePulse}
 							showDescriptionFullscreen={
@@ -743,6 +826,7 @@ export default function ApprovalModal({
 							setShowDescriptionFullscreen={
 								setShowDescriptionFullscreen
 							}
+							shakeSignal={shakeCount}
 						/>
 					)}
 				</AnimatePresence>
