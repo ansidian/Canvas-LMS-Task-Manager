@@ -162,10 +162,20 @@ export default function CalendarDay({
             {visibleEvents.map((event) => (
               <motion.div
                 key={event.id}
+                layoutId={`event-${event.id}`}
+                layout
                 initial={{ opacity: 0, scale: 0.8, y: -10 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.8, x: -20 }}
-                transition={{ duration: 0.2, ease: "easeOut" }}
+                transition={{
+                  layout: {
+                    type: "spring",
+                    stiffness: 350,
+                    damping: 30,
+                  },
+                  opacity: { duration: 0.2 },
+                  scale: { duration: 0.2 },
+                }}
               >
                 <EventCard
                   event={event}
@@ -204,10 +214,18 @@ export default function CalendarDay({
                     {hiddenEvents.map((event) => (
                       <motion.div
                         key={event.id}
+                        layout
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 10 }}
-                        transition={{ duration: 0.15 }}
+                        transition={{
+                          layout: {
+                            type: "spring",
+                            stiffness: 350,
+                            damping: 30,
+                          },
+                          opacity: { duration: 0.15 },
+                        }}
                       >
                         <EventCard
                           event={event}

@@ -88,8 +88,8 @@ export default function CreateEventModal({
     if (!initial) return false;
     const sameDueDate =
       initial.dueDate === formData.dueDate ||
-      (initial.dueDate &&
-        formData.dueDate &&
+      (initial.dueDate instanceof Date &&
+        formData.dueDate instanceof Date &&
         initial.dueDate.getTime() === formData.dueDate.getTime());
     return (
       formData.title !== initial.title ||
@@ -190,7 +190,20 @@ export default function CreateEventModal({
               value: dayjs().subtract(1, "month").format("YYYY-MM-DD"),
               label: "Last month",
             },
-          ]}
+          ].map((preset) => ({
+            ...preset,
+            value: (() => {
+              // Preserve current time when using presets
+              const currentTime = formData.dueDate
+                ? dayjs(formData.dueDate)
+                : dayjs().hour(23).minute(59);
+              const newDate = dayjs(preset.value)
+                .hour(currentTime.hour())
+                .minute(currentTime.minute())
+                .second(currentTime.second());
+              return newDate.toDate();
+            })(),
+          }))}
         />
 
         <Select

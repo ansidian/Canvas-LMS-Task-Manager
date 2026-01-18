@@ -15,6 +15,7 @@ import {
   Switch,
   Tooltip,
   Divider,
+  Alert,
 } from "@mantine/core";
 import {
   DndContext,
@@ -37,6 +38,7 @@ import {
   IconCheck,
   IconX,
   IconRefresh,
+  IconAlertTriangle,
 } from "@tabler/icons-react";
 import { useAuth } from "@clerk/clerk-react";
 import { reorderSubset } from "../utils/reorder";
@@ -108,12 +110,40 @@ export default function SettingsModal({
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [editingUnassigned, setEditingUnassigned] = useState(false);
   const [editUnassignedColor, setEditUnassignedColor] = useState("");
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   const resetOnboarding = () => {
     localStorage.removeItem("hasCompletedOnboarding");
     onClose();
     // Reload to trigger tour
     window.location.reload();
+  };
+
+  const handleResetData = async () => {
+    setResetting(true);
+    try {
+      await api("/reset-data", { method: "POST" });
+
+      // Clear localStorage (except Canvas credentials and onboarding status)
+      const canvasUrl = localStorage.getItem("canvasUrl");
+      const canvasToken = localStorage.getItem("canvasToken");
+      const hasCompletedOnboarding = localStorage.getItem("hasCompletedOnboarding");
+
+      localStorage.clear();
+
+      // Restore preserved items
+      if (canvasUrl) localStorage.setItem("canvasUrl", canvasUrl);
+      if (canvasToken) localStorage.setItem("canvasToken", canvasToken);
+      if (hasCompletedOnboarding) localStorage.setItem("hasCompletedOnboarding", hasCompletedOnboarding);
+
+      // Reload to refresh state
+      window.location.reload();
+    } catch (err) {
+      console.error("Failed to reset data:", err);
+      setResetting(false);
+      setShowResetConfirm(false);
+    }
   };
 
   useEffect(() => {
@@ -621,6 +651,69 @@ export default function SettingsModal({
             <Button onClick={resetOnboarding} variant="light">
               Show Tour Again
             </Button>
+
+            <Divider my="md" />
+
+            <Text size="sm" c="dimmed">
+              Reset all your data while keeping your Canvas API credentials and settings.
+            </Text>
+            {!showResetConfirm ? (
+              <Button
+                onClick={() => setShowResetConfirm(true)}
+                color="red"
+                variant="light"
+                leftSection={<IconAlertTriangle size={16} />}
+              >
+                Reset All Data
+              </Button>
+            ) : (
+              <Alert
+                color="red"
+                title="Are you sure?"
+                icon={<IconAlertTriangle />}
+              >
+                <Stack gap="sm">
+                  <Text size="sm">
+                    This will permanently delete:
+                  </Text>
+                  <Text size="sm" component="ul" style={{ margin: 0, paddingLeft: 20 }}>
+                    <li>All calendar events (including Canvas assignments)</li>
+                    <li>All custom classes</li>
+                    <li>All rejected items</li>
+                    <li>All filters and preferences</li>
+                  </Text>
+                  <Text size="sm" fw={500}>
+                    This will keep:
+                  </Text>
+                  <Text size="sm" component="ul" style={{ margin: 0, paddingLeft: 20 }}>
+                    <li>Canvas API credentials</li>
+                    <li>Canvas-linked classes</li>
+                    <li>Settings (colors, etc.)</li>
+                    <li>Onboarding completion status</li>
+                  </Text>
+                  <Text size="sm" fw={700} c="red">
+                    This action cannot be undone.
+                  </Text>
+                  <Group justify="flex-end" mt="sm">
+                    <Button
+                      variant="subtle"
+                      color="gray"
+                      onClick={() => setShowResetConfirm(false)}
+                      disabled={resetting}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      color="red"
+                      onClick={handleResetData}
+                      loading={resetting}
+                    >
+                      Yes, Reset Everything
+                    </Button>
+                  </Group>
+                </Stack>
+              </Alert>
+            )}
           </Stack>
         </Tabs.Panel>
       </Tabs>

@@ -8,6 +8,7 @@ import {
   PointerSensor,
   closestCenter,
 } from "@dnd-kit/core";
+import { LayoutGroup } from "framer-motion";
 import dayjs from "dayjs";
 import CalendarDay from "./CalendarDay";
 import EventCard from "./EventCard";
@@ -123,58 +124,60 @@ export default function Calendar({
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
-      <Box
-        style={{
-          height: "100%",
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-        }}
-      >
-        <Stack gap="xs" style={{ flex: 1, minHeight: 0 }}>
-          <SimpleGrid cols={7} spacing={0}>
-            {WEEKDAYS.map((day) => (
-              <Box key={day} p="xs" ta="center">
-                <Text size="sm" fw={600} c="dimmed">
-                  {day}
-                </Text>
-              </Box>
-            ))}
-          </SimpleGrid>
-          <Box
-            style={{
-              flex: 1,
-              minHeight: 0,
-              display: "grid",
-              gridTemplateColumns: "repeat(7, 1fr)",
-              gridTemplateRows: "repeat(6, 1fr)",
-              gap: "3px",
-            }}
-            className={slideDirection}
-          >
-            {calendarDays.map(({ date, isCurrentMonth }) => {
-              const dateKey = date.format("YYYY-MM-DD");
-              const dayEvents = eventsByDate[dateKey] || [];
-              const isToday = date.isSame(dayjs(), "day");
+      <LayoutGroup>
+        <Box
+          style={{
+            height: "100%",
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+          }}
+        >
+          <Stack gap="xs" style={{ flex: 1, minHeight: 0 }}>
+            <SimpleGrid cols={7} spacing={0}>
+              {WEEKDAYS.map((day) => (
+                <Box key={day} p="xs" ta="center">
+                  <Text size="sm" fw={600} c="dimmed">
+                    {day}
+                  </Text>
+                </Box>
+              ))}
+            </SimpleGrid>
+            <Box
+              style={{
+                flex: 1,
+                minHeight: 0,
+                display: "grid",
+                gridTemplateColumns: "repeat(7, 1fr)",
+                gridTemplateRows: "repeat(6, 1fr)",
+                gap: "3px",
+              }}
+              className={slideDirection}
+            >
+              {calendarDays.map(({ date, isCurrentMonth }) => {
+                const dateKey = date.format("YYYY-MM-DD");
+                const dayEvents = eventsByDate[dateKey] || [];
+                const isToday = date.isSame(dayjs(), "day");
 
-              return (
-                <CalendarDay
-                  key={dateKey}
-                  date={date}
-                  dateKey={dateKey}
-                  isCurrentMonth={isCurrentMonth}
-                  isToday={isToday}
-                  events={dayEvents}
-                  classes={classes}
-                  onEventClick={onEventClick}
-                  onDoubleClick={() => onDayDoubleClick(dateKey)}
-                  unassignedColor={unassignedColor}
-                />
-              );
-            })}
-          </Box>
-        </Stack>
-      </Box>
+                return (
+                  <CalendarDay
+                    key={dateKey}
+                    date={date}
+                    dateKey={dateKey}
+                    isCurrentMonth={isCurrentMonth}
+                    isToday={isToday}
+                    events={dayEvents}
+                    classes={classes}
+                    onEventClick={onEventClick}
+                    onDoubleClick={() => onDayDoubleClick(dateKey)}
+                    unassignedColor={unassignedColor}
+                  />
+                );
+              })}
+            </Box>
+          </Stack>
+        </Box>
+      </LayoutGroup>
 
       <DragOverlay dropAnimation={null}>
         {activeEvent && (

@@ -1,5 +1,7 @@
 import { Paper, Text, Group, Stack } from '@mantine/core';
 import { useDraggable } from '@dnd-kit/core';
+import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
+import { useRef } from 'react';
 import {
   IconFileText,
   IconClipboardCheck,
@@ -36,6 +38,45 @@ export default function EventCard({ event, color, onClick, isDragging }) {
   const { attributes, listeners, setNodeRef, isDragging: isBeingDragged } = useDraggable({
     id: event.id,
   });
+
+  const cardRef = useRef(null);
+
+  // Magnetic cursor effect with 3D tilt
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+
+  const rotateX = useSpring(useTransform(mouseY, [-50, 50], [5, -5]), {
+    stiffness: 400,
+    damping: 25,
+  });
+  const rotateY = useSpring(useTransform(mouseX, [-50, 50], [-5, 5]), {
+    stiffness: 400,
+    damping: 25,
+  });
+  const translateX = useSpring(useTransform(mouseX, [-50, 50], [-8, 8]), {
+    stiffness: 400,
+    damping: 25,
+  });
+  const translateY = useSpring(useTransform(mouseY, [-50, 50], [-8, 8]), {
+    stiffness: 400,
+    damping: 25,
+  });
+
+  const handleMouseMove = (e) => {
+    if (!cardRef.current || isDragging || isBeingDragged) return;
+    const rect = cardRef.current.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    mouseX.set(e.clientX - centerX);
+    mouseY.set(e.clientY - centerY);
+  };
+
+  const handleMouseLeave = () => {
+    if (!isDragging && !isBeingDragged) {
+      mouseX.set(0);
+      mouseY.set(0);
+    }
+  };
 
   const Icon = EVENT_ICONS[event.event_type] || IconFileText;
   const statusColor = STATUS_COLORS[event.status] || STATUS_COLORS.incomplete;
@@ -79,53 +120,55 @@ export default function EventCard({ event, color, onClick, isDragging }) {
   }
 
   return (
-    <Paper
-      ref={setNodeRef}
-      {...listeners}
-      {...attributes}
-      p={4}
+    <motion.div
+      ref={cardRef}
       style={{
-        background: gradientBackground,
-        cursor: isDragging ? 'grabbing' : 'grab',
-        opacity: isDragging ? 1 : 1,
-        boxShadow: isDragging ? '0 4px 12px rgba(0,0,0,0.25)' : undefined,
-        transform: isDragging ? 'scale(1.02)' : undefined,
-        touchAction: 'none',
-        transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+        rotateX,
+        rotateY,
+        x: translateX,
+        y: translateY,
+        transformStyle: 'preserve-3d',
+        perspective: 1000,
       }}
-      onMouseEnter={(e) => {
-        if (!isDragging) {
-          e.currentTarget.style.transform = 'scale(1.01)';
-          e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
-        }
-      }}
-      onMouseLeave={(e) => {
-        if (!isDragging) {
-          e.currentTarget.style.transform = 'scale(1)';
-          e.currentTarget.style.boxShadow = 'none';
-        }
-      }}
-      onClick={(e) => {
-        e.stopPropagation();
-        if (onClick) onClick();
-      }}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
     >
-      <Stack gap={2}>
-        <Group gap={4} wrap="nowrap">
-          <Icon size={12} color="white" />
-          <Text size="xs" c="white" truncate fw={500}>
-            {event.title}
-          </Text>
-        </Group>
-        {showTime && (
-          <Group gap={4} wrap="nowrap" ml={16}>
-            <IconClock size={10} color="white" opacity={0.8} />
-            <Text size="10px" c="white" opacity={0.8}>
-              {formattedTime}
+      <Paper
+        ref={setNodeRef}
+        {...listeners}
+        {...attributes}
+        p={4}
+        style={{
+          background: gradientBackground,
+          cursor: isDragging ? 'grabbing' : 'grab',
+          opacity: isDragging ? 1 : 1,
+          boxShadow: isDragging ? '0 4px 12px rgba(0,0,0,0.25)' : undefined,
+          transform: isDragging ? 'scale(1.02)' : undefined,
+          touchAction: 'none',
+          transition: 'box-shadow 0.15s ease',
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (onClick) onClick();
+        }}
+      >
+        <Stack gap={2}>
+          <Group gap={4} wrap="nowrap">
+            <Icon size={12} color="white" />
+            <Text size="xs" c="white" truncate fw={500}>
+              {event.title}
             </Text>
           </Group>
-        )}
-      </Stack>
-    </Paper>
+          {showTime && (
+            <Group gap={4} wrap="nowrap" ml={16}>
+              <IconClock size={10} color="white" opacity={0.8} />
+              <Text size="10px" c="white" opacity={0.8}>
+                {formattedTime}
+              </Text>
+            </Group>
+          )}
+        </Stack>
+      </Paper>
+    </motion.div>
   );
 }

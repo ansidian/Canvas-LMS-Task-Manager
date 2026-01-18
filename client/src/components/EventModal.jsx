@@ -53,6 +53,8 @@ const parseCanvasIds = (canvasId) => {
   return { courseId, assignmentId };
 };
 
+const autoStatusAppliedEvents = new Set();
+const visualStatusAppliedEvents = new Set();
 const CANVAS_CACHE_TTL_MS = 10 * 60 * 1000;
 const canvasAssignmentCache = new Map();
 const canvasSubmissionCache = new Map();
@@ -151,7 +153,6 @@ export default function EventModal({
   const [hasUserEdited, setHasUserEdited] = useState(false);
   const shakeControls = useAnimation();
   const initialFormDataRef = useRef(null);
-  const autoStatusAppliedRef = useRef(new Set());
 
   const getCanvasCredentials = () => {
     const canvasUrl = localStorage.getItem("canvasUrl");
@@ -397,7 +398,11 @@ export default function EventModal({
     }
 
     if (cachedSubmission) {
-      if (cachedSubmission?.submitted_at && event.status !== "complete") {
+      if (
+        cachedSubmission?.submitted_at &&
+        !autoStatusAppliedEvents.has(event.id)
+      ) {
+        autoStatusAppliedEvents.add(event.id);
         onUpdate(event.id, { status: "complete" }, { keepOpen: true });
       }
     } else {
@@ -410,7 +415,8 @@ export default function EventModal({
             cacheKey,
             data,
           );
-          if (data?.submitted_at && event.status !== "complete") {
+          if (data?.submitted_at && !autoStatusAppliedEvents.has(event.id)) {
+            autoStatusAppliedEvents.add(event.id);
             onUpdate(event.id, { status: "complete" }, { keepOpen: true });
           }
         })
@@ -451,10 +457,10 @@ export default function EventModal({
   useEffect(() => {
     if (!submissionInfo?.submitted_at) return;
     if (!event?.id) return;
-    if (autoStatusAppliedRef.current.has(event.id)) return;
+    if (visualStatusAppliedEvents.has(event.id)) return;
     if (formData.status === "complete") return;
     if (hasUserEdited) return;
-    autoStatusAppliedRef.current.add(event.id);
+    visualStatusAppliedEvents.add(event.id);
     setFormData((prev) => ({ ...prev, status: "complete" }));
     if (initialFormDataRef.current) {
       initialFormDataRef.current = {
@@ -598,8 +604,8 @@ export default function EventModal({
     if (!initial) return false;
     const sameDueDate =
       initial.due_date === formData.due_date ||
-      (initial.due_date &&
-        formData.due_date &&
+      (initial.due_date instanceof Date &&
+        formData.due_date instanceof Date &&
         initial.due_date.getTime() === formData.due_date.getTime());
     return (
       formData.title !== initial.title ||
@@ -834,7 +840,20 @@ export default function EventModal({
                   value: dayjs().subtract(1, "month").format("YYYY-MM-DD"),
                   label: "Last month",
                 },
-              ]}
+              ].map((preset) => ({
+                ...preset,
+                value: (() => {
+                  // Preserve current time when using presets
+                  const currentTime = formData.due_date
+                    ? dayjs(formData.due_date)
+                    : dayjs().hour(23).minute(59);
+                  const newDate = dayjs(preset.value)
+                    .hour(currentTime.hour())
+                    .minute(currentTime.minute())
+                    .second(currentTime.second());
+                  return newDate.toDate();
+                })(),
+              }))}
               timePickerProps={{
                 popoverProps: { withinPortal: false },
                 format: "12h",
