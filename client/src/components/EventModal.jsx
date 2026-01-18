@@ -352,11 +352,11 @@ export default function EventModal({
 			return;
 		}
 		if (assignmentInfo?.quiz_id) {
-			setSubmissionError("Canvas quizzes must be submitted in Canvas.");
+			setSubmissionError("Quizzes must be done on Canvas.");
 			return;
 		}
 		if (assignmentInfo?.locked_for_user) {
-			setSubmissionError("Canvas has locked this assignment.");
+			setSubmissionError("Assignment is locked.");
 			return;
 		}
 		if (!submissionType) {

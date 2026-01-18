@@ -67,8 +67,7 @@ function Card({
 	setShowDescriptionFullscreen,
 	eventTypePulse,
 }) {
-	const [showDescriptionPreview, setShowDescriptionPreview] =
-		useState(false);
+	const [showDescriptionPreview, setShowDescriptionPreview] = useState(false);
 	const [previewScale, setPreviewScale] = useState(0.25);
 	const previewContentRef = useRef(null);
 	const descriptionLayoutId = `description-${item.canvas_id}`;
@@ -140,8 +139,21 @@ function Card({
 				style={{
 					backgroundColor: "var(--mantine-color-body)",
 					border: "1px solid var(--mantine-color-default-border)",
+					position: "relative",
 				}}
 			>
+				<ActionIcon
+					variant="subtle"
+					size="lg"
+					onClick={onClose}
+					style={{
+						position: "absolute",
+						top: "12px",
+						right: "12px",
+					}}
+				>
+					<IconX size={20} />
+				</ActionIcon>
 				<Stack gap="md">
 					<Box>
 						<Text fw={600} size="lg">
@@ -266,7 +278,9 @@ function Card({
 							setFormData((f) => ({ ...f, eventType: v }))
 						}
 						classNames={{
-							input: eventTypePulse ? "event-type-pulse" : undefined,
+							input: eventTypePulse
+								? "event-type-pulse"
+								: undefined,
 						}}
 					/>
 
@@ -305,8 +319,12 @@ function Card({
 								</Text>
 								<Box
 									style={{ position: "relative" }}
-									onMouseEnter={() => setShowDescriptionPreview(true)}
-									onMouseLeave={() => setShowDescriptionPreview(false)}
+									onMouseEnter={() =>
+										setShowDescriptionPreview(true)
+									}
+									onMouseLeave={() =>
+										setShowDescriptionPreview(false)
+									}
 								>
 									<Button
 										size="xs"
@@ -322,11 +340,21 @@ function Card({
 										{showDescriptionPreview &&
 											!showDescriptionFullscreen && (
 												<motion.div
-													layoutId={descriptionLayoutId}
-													initial={{ opacity: 0, y: -6 }}
-													animate={{ opacity: 1, y: 0 }}
+													layoutId={
+														descriptionLayoutId
+													}
+													initial={{
+														opacity: 0,
+														y: -6,
+													}}
+													animate={{
+														opacity: 1,
+														y: 0,
+													}}
 													exit={{ opacity: 0, y: -6 }}
-													transition={{ duration: 0.15 }}
+													transition={{
+														duration: 0.15,
+													}}
 													style={{
 														position: "absolute",
 														right: 0,
@@ -335,8 +363,7 @@ function Card({
 														height: 140,
 														padding: 10,
 														borderRadius: 10,
-														border:
-															"1px solid var(--mantine-color-default-border)",
+														border: "1px solid var(--mantine-color-default-border)",
 														backgroundColor:
 															"var(--mantine-color-body)",
 														boxShadow:
@@ -350,11 +377,15 @@ function Card({
 															style={{
 																width: previewSize.contentWidth,
 																transform: `scale(${previewScale})`,
-																transformOrigin: "top left",
-																fontSize: "0.95rem",
+																transformOrigin:
+																	"top left",
+																fontSize:
+																	"0.95rem",
 																lineHeight: 1.4,
 															}}
-															ref={previewContentRef}
+															ref={
+																previewContentRef
+															}
 															dangerouslySetInnerHTML={{
 																__html: item.description,
 															}}
@@ -529,8 +560,7 @@ export default function ApprovalModal({
 				alignItems: "flex-start",
 				justifyContent: "center",
 				zIndex: 200,
-				padding: "20px",
-				paddingTop: "60px",
+				padding: "8dvh 8vw",
 				overflowY: "auto",
 			}}
 			onClick={(e) => {
@@ -555,21 +585,6 @@ export default function ApprovalModal({
 					animation: eventTypePulse 1.1s ease-out 1;
 				}
 			`}</style>
-			{/* Close button */}
-			<ActionIcon
-				variant="subtle"
-				size="lg"
-				onClick={onClose}
-				style={{
-					position: "absolute",
-					top: "20px",
-					right: "20px",
-					color: "white",
-				}}
-			>
-				<IconX size={24} />
-			</ActionIcon>
-
 			{/* Position badge */}
 			<Badge
 				variant="filled"
@@ -605,7 +620,11 @@ export default function ApprovalModal({
 					>
 						<motion.div
 							layoutId={`description-${item.canvas_id}`}
-							transition={{ type: "spring", stiffness: 260, damping: 22 }}
+							transition={{
+								type: "spring",
+								stiffness: 260,
+								damping: 22,
+							}}
 							style={{
 								width: "70vw",
 								height: "70vh",
@@ -627,9 +646,9 @@ export default function ApprovalModal({
 										"1px solid var(--mantine-color-default-border)",
 								}}
 							>
-									<Group justify="space-between">
-										<Text fw={600}>{item.title}</Text>
-										<Button
+								<Group justify="space-between">
+									<Text fw={600}>{item.title}</Text>
+									<Button
 										size="xs"
 										variant="subtle"
 										onClick={() =>
