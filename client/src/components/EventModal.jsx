@@ -624,6 +624,13 @@ export default function EventModal({
 		}
 		onClose();
 	};
+	const handleOpenMentionEvent = (eventItem) => {
+		if (shouldBlockClose) {
+			triggerDirtyShake();
+			return;
+		}
+		onOpenEvent?.(eventItem);
+	};
 
 	const handleDiscard = () => {
 		onClose();
@@ -1247,7 +1254,7 @@ export default function EventModal({
 						classes={classes}
 						unassignedColor={unassignedColor}
 						currentEventId={event?.id}
-						onOpenEvent={onOpenEvent}
+						onOpenEvent={handleOpenMentionEvent}
 					/>
 
 					<Group justify="space-between">

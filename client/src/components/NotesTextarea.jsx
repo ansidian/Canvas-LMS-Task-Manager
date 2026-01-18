@@ -223,6 +223,8 @@ export default function NotesTextarea({
 						"color:var(--mantine-color-grape-8, #9c36b5)",
 						"font-weight:600",
 						"text-decoration:none",
+						"cursor:pointer",
+						"transition:transform 150ms ease, background-color 150ms ease, color 150ms ease, box-shadow 150ms ease",
 					].join(";");
 					return [
 						"span",
@@ -311,7 +313,8 @@ export default function NotesTextarea({
 					pointer-events: none;
 					height: 0;
 				}
-				.notes-editor .ctm-mention {
+				.notes-editor .ctm-mention,
+				.notes-editor [data-mention-id] {
 					display: inline-block;
 					padding: 2px 6px;
 					border-radius: 999px;
@@ -319,6 +322,22 @@ export default function NotesTextarea({
 					color: var(--mantine-color-grape-8, #9c36b5);
 					font-weight: 600;
 					text-decoration: none;
+					cursor: pointer !important;
+					transition:
+						transform 150ms ease,
+						background-color 150ms ease,
+						color 150ms ease,
+						box-shadow 150ms ease;
+				}
+				.notes-editor .ctm-mention:hover,
+				.notes-editor .ctm-mention:focus-visible,
+				.notes-editor [data-mention-id]:hover,
+				.notes-editor [data-mention-id]:focus-visible {
+					background: var(--mantine-color-grape-light, rgba(190, 75, 219, 0.25)) !important;
+					color: var(--mantine-color-grape-9, #862e9c) !important;
+					text-decoration: underline;
+					box-shadow: 0 1px 4px rgba(134, 46, 156, 0.25) !important;
+					transform: translateY(-1px);
 				}
 				.notes-mention-list {
 					background: var(--mantine-color-body);

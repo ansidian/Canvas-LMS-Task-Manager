@@ -143,9 +143,9 @@ function Card({
 						: exitDirection === "left"
 							? -25
 							: 0,
-				transition: { duration: 0.3 },
+				transition: { duration: 0.2 },
 			}}
-			transition={{ type: "spring", stiffness: 300, damping: 30 }}
+			transition={{ type: "spring", stiffness: 250, damping: 30 }}
 		>
 			<motion.div animate={shakeControls}>
 				<Paper
@@ -158,310 +158,324 @@ function Card({
 						position: "relative",
 					}}
 				>
-				<ActionIcon
-					variant="subtle"
-					size="lg"
-					onClick={onAttemptClose}
-					style={{
-						position: "absolute",
-						top: "12px",
-						right: "12px",
-					}}
-				>
-					<IconX size={20} />
-				</ActionIcon>
-				<Stack gap="md">
-					<Box>
-						<Text fw={600} size="lg">
-							{item.title}
-						</Text>
-						<Text size="sm" c="dimmed">
-							Course: {item.course_name}
-						</Text>
-					</Box>
+					<ActionIcon
+						variant="subtle"
+						size="lg"
+						onClick={onAttemptClose}
+						style={{
+							position: "absolute",
+							top: "12px",
+							right: "12px",
+						}}
+					>
+						<IconX size={20} />
+					</ActionIcon>
+					<Stack gap="md">
+						<Box>
+							<Text fw={600} size="lg">
+								{item.title}
+							</Text>
+							<Text size="sm" c="dimmed">
+								Course: {item.course_name}
+							</Text>
+						</Box>
 
-					<DateTimePicker
-						label="Due Date & Time"
-						placeholder="Pick date and optionally time"
-						value={formData.dueDate}
-						onChange={(v) => {
-							setFormData((f) => ({ ...f, dueDate: v }));
-							onUserEdit();
-						}}
-						clearable={false}
-						firstDayOfWeek={0}
-						valueFormat="MMM DD, YYYY hh:mm A"
-						presets={[
-							{
-								value: dayjs()
-									.subtract(1, "day")
-									.format("YYYY-MM-DD"),
-								label: "Yesterday",
-							},
-							{
-								value: dayjs().format("YYYY-MM-DD"),
-								label: "Today",
-							},
-							{
-								value: dayjs()
-									.add(1, "day")
-									.format("YYYY-MM-DD"),
-								label: "Tomorrow",
-							},
-							{
-								value: dayjs()
-									.add(1, "month")
-									.format("YYYY-MM-DD"),
-								label: "Next month",
-							},
-							{
-								value: dayjs()
-									.add(1, "year")
-									.format("YYYY-MM-DD"),
-								label: "Next year",
-							},
-							{
-								value: dayjs()
-									.subtract(1, "month")
-									.format("YYYY-MM-DD"),
-								label: "Last month",
-							},
-						]}
-						timePickerProps={{
-							popoverProps: { withinPortal: false },
-							format: "12h",
-						}}
-					/>
+						<DateTimePicker
+							label="Due Date & Time"
+							placeholder="Pick date and optionally time"
+							value={formData.dueDate}
+							onChange={(v) => {
+								setFormData((f) => ({ ...f, dueDate: v }));
+								onUserEdit();
+							}}
+							clearable={false}
+							firstDayOfWeek={0}
+							valueFormat="MMM DD, YYYY hh:mm A"
+							presets={[
+								{
+									value: dayjs()
+										.subtract(1, "day")
+										.format("YYYY-MM-DD"),
+									label: "Yesterday",
+								},
+								{
+									value: dayjs().format("YYYY-MM-DD"),
+									label: "Today",
+								},
+								{
+									value: dayjs()
+										.add(1, "day")
+										.format("YYYY-MM-DD"),
+									label: "Tomorrow",
+								},
+								{
+									value: dayjs()
+										.add(1, "month")
+										.format("YYYY-MM-DD"),
+									label: "Next month",
+								},
+								{
+									value: dayjs()
+										.add(1, "year")
+										.format("YYYY-MM-DD"),
+									label: "Next year",
+								},
+								{
+									value: dayjs()
+										.subtract(1, "month")
+										.format("YYYY-MM-DD"),
+									label: "Last month",
+								},
+							]}
+							timePickerProps={{
+								popoverProps: { withinPortal: false },
+								format: "12h",
+							}}
+						/>
 
-					<Select
-						label="Class"
-						placeholder="Select a class"
-						data={classes
-							.filter((c) => !c.canvas_course_id || c.is_synced)
-							.map((c) => ({
-								value: String(c.id),
-								label: c.name,
-							}))}
-						value={formData.classId}
-						onChange={(v) => {
-							setFormData((f) => ({ ...f, classId: v }));
-							onUserEdit();
-						}}
-						clearable
-						renderOption={({ option }) => {
-							const cls = classes.find(
-								(c) => String(c.id) === option.value,
-							);
-							return (
-								<Group gap="xs" wrap="nowrap">
+						<Select
+							label="Class"
+							placeholder="Select a class"
+							data={classes
+								.filter(
+									(c) => !c.canvas_course_id || c.is_synced,
+								)
+								.map((c) => ({
+									value: String(c.id),
+									label: c.name,
+								}))}
+							value={formData.classId}
+							onChange={(v) => {
+								setFormData((f) => ({ ...f, classId: v }));
+								onUserEdit();
+							}}
+							clearable
+							renderOption={({ option }) => {
+								const cls = classes.find(
+									(c) => String(c.id) === option.value,
+								);
+								return (
+									<Group gap="xs" wrap="nowrap">
+										<Box
+											style={{
+												width: 12,
+												height: 12,
+												backgroundColor:
+													cls?.color || "#a78b71",
+												borderRadius: 2,
+												flexShrink: 0,
+											}}
+										/>
+										<Text size="sm">{option.label}</Text>
+									</Group>
+								);
+							}}
+							leftSection={
+								formData.classId ? (
 									<Box
 										style={{
 											width: 12,
 											height: 12,
 											backgroundColor:
-												cls?.color || "#a78b71",
+												classes.find(
+													(c) =>
+														String(c.id) ===
+														formData.classId,
+												)?.color || "#a78b71",
 											borderRadius: 2,
 											flexShrink: 0,
 										}}
 									/>
-									<Text size="sm">{option.label}</Text>
-								</Group>
-							);
-						}}
-						leftSection={
-							formData.classId ? (
-								<Box
-									style={{
-										width: 12,
-										height: 12,
-										backgroundColor:
-											classes.find(
-												(c) =>
-													String(c.id) ===
-													formData.classId,
-											)?.color || "#a78b71",
-										borderRadius: 2,
-										flexShrink: 0,
-									}}
-								/>
-							) : null
-						}
-					/>
+								) : null
+							}
+						/>
 
-					<Select
-						label="Event Type"
-						data={EVENT_TYPES}
-						value={formData.eventType}
-						onChange={(v) => {
-							setFormData((f) => ({ ...f, eventType: v }));
-							onUserEdit();
-						}}
-						classNames={{
-							input: eventTypePulse
-								? "event-type-pulse"
-								: undefined,
-						}}
-					/>
+						<Select
+							label="Event Type"
+							data={EVENT_TYPES}
+							value={formData.eventType}
+							onChange={(v) => {
+								setFormData((f) => ({ ...f, eventType: v }));
+								onUserEdit();
+							}}
+							classNames={{
+								input: eventTypePulse
+									? "event-type-pulse"
+									: undefined,
+							}}
+						/>
 
-					<TextInput
-						label="URL"
-						placeholder="Canvas URL"
-						value={formData.url}
-						onChange={(e) => {
-							setFormData((f) => ({
-								...f,
-								url: e.target.value,
-							}));
-							onUserEdit();
-						}}
-					/>
+						<TextInput
+							label="URL"
+							placeholder="Canvas URL"
+							value={formData.url}
+							onChange={(e) => {
+								setFormData((f) => ({
+									...f,
+									url: e.target.value,
+								}));
+								onUserEdit();
+							}}
+						/>
 
-					{formData.url && (
-						<Anchor href={formData.url} target="_blank" size="sm">
-							Open in Canvas
-						</Anchor>
-					)}
-
-					{item.points_possible !== null &&
-						item.points_possible !== undefined && (
-							<Group gap="xs">
-								<Text size="sm" fw={500}>
-									Points
-								</Text>
-								<Badge variant="light">
-									{item.points_possible}
-								</Badge>
-							</Group>
+						{formData.url && (
+							<Anchor
+								href={formData.url}
+								target="_blank"
+								size="sm"
+							>
+								Open in Canvas
+							</Anchor>
 						)}
 
-					{item.description && (
-						<Box>
-							<Group justify="space-between">
-								<Text size="sm" fw={500}>
-									Description
-								</Text>
-								<Box
-									style={{ position: "relative" }}
-									onMouseEnter={() =>
-										setShowDescriptionPreview(true)
-									}
-									onMouseLeave={() =>
-										setShowDescriptionPreview(false)
-									}
-								>
-									<Button
-										size="xs"
-										variant="light"
-										onClick={() => {
-											setShowDescriptionPreview(false);
-											setShowDescriptionFullscreen(true);
-										}}
+						{item.points_possible !== null &&
+							item.points_possible !== undefined && (
+								<Group gap="xs">
+									<Text size="sm" fw={500}>
+										Points
+									</Text>
+									<Badge variant="light">
+										{item.points_possible}
+									</Badge>
+								</Group>
+							)}
+
+						{item.description && (
+							<Box>
+								<Group justify="space-between">
+									<Text size="sm" fw={500}>
+										Description
+									</Text>
+									<Box
+										style={{ position: "relative" }}
+										onMouseEnter={() =>
+											setShowDescriptionPreview(true)
+										}
+										onMouseLeave={() =>
+											setShowDescriptionPreview(false)
+										}
 									>
-										View
-									</Button>
-									<AnimatePresence>
-										{showDescriptionPreview &&
-											!showDescriptionFullscreen && (
-												<motion.div
-													layoutId={
-														descriptionLayoutId
-													}
-													initial={{
-														opacity: 0,
-														y: -6,
-													}}
-													animate={{
-														opacity: 1,
-														y: 0,
-													}}
-													exit={{ opacity: 0, y: -6 }}
-													transition={{
-														duration: 0.15,
-													}}
-													style={{
-														position: "absolute",
-														right: 0,
-														top: "110%",
-														width: 280,
-														height: 140,
-														padding: 10,
-														borderRadius: 10,
-														border: "1px solid var(--mantine-color-default-border)",
-														backgroundColor:
-															"var(--mantine-color-body)",
-														boxShadow:
-															"0 12px 28px rgba(0, 0, 0, 0.18)",
-														overflow: "hidden",
-														zIndex: 5,
-													}}
-												>
-													<TypographyStylesProvider>
-														<div
-															style={{
-																width: previewSize.contentWidth,
-																transform: `scale(${previewScale})`,
-																transformOrigin:
-																	"top left",
-																fontSize:
-																	"0.95rem",
-																lineHeight: 1.4,
-															}}
-															ref={
-																previewContentRef
-															}
-															dangerouslySetInnerHTML={{
-																__html: item.description,
-															}}
-														/>
-													</TypographyStylesProvider>
-												</motion.div>
-											)}
-									</AnimatePresence>
-								</Box>
-							</Group>
-						</Box>
-					)}
+										<Button
+											size="xs"
+											variant="light"
+											onClick={() => {
+												setShowDescriptionPreview(
+													false,
+												);
+												setShowDescriptionFullscreen(
+													true,
+												);
+											}}
+										>
+											View
+										</Button>
+										<AnimatePresence>
+											{showDescriptionPreview &&
+												!showDescriptionFullscreen && (
+													<motion.div
+														layoutId={
+															descriptionLayoutId
+														}
+														initial={{
+															opacity: 0,
+															y: -6,
+														}}
+														animate={{
+															opacity: 1,
+															y: 0,
+														}}
+														exit={{
+															opacity: 0,
+															y: -6,
+														}}
+														transition={{
+															duration: 0.15,
+														}}
+														style={{
+															position:
+																"absolute",
+															right: 0,
+															top: "110%",
+															width: 280,
+															height: 140,
+															padding: 10,
+															borderRadius: 10,
+															border: "1px solid var(--mantine-color-default-border)",
+															backgroundColor:
+																"var(--mantine-color-body)",
+															boxShadow:
+																"0 12px 28px rgba(0, 0, 0, 0.18)",
+															overflow: "hidden",
+															zIndex: 5,
+														}}
+													>
+														<TypographyStylesProvider>
+															<div
+																style={{
+																	width: previewSize.contentWidth,
+																	transform: `scale(${previewScale})`,
+																	transformOrigin:
+																		"top left",
+																	fontSize:
+																		"0.95rem",
+																	lineHeight: 1.4,
+																}}
+																ref={
+																	previewContentRef
+																}
+																dangerouslySetInnerHTML={{
+																	__html: item.description,
+																}}
+															/>
+														</TypographyStylesProvider>
+													</motion.div>
+												)}
+										</AnimatePresence>
+									</Box>
+								</Group>
+							</Box>
+						)}
 
-					<NotesTextarea
-						label="Notes"
-						placeholder="Add any notes..."
-						value={formData.notes}
-						onChange={(nextValue) => {
-							setFormData((f) => ({
-								...f,
-								notes: nextValue,
-							}));
-						}}
-						onUserEdit={onUserEdit}
-						events={events}
-						classes={classes}
-						unassignedColor={unassignedColor}
-						onOpenEvent={onOpenEvent}
-					/>
+						<NotesTextarea
+							label="Notes"
+							placeholder="Add any notes..."
+							value={formData.notes}
+							onChange={(nextValue) => {
+								setFormData((f) => ({
+									...f,
+									notes: nextValue,
+								}));
+							}}
+							onUserEdit={onUserEdit}
+							events={events}
+							classes={classes}
+							unassignedColor={unassignedColor}
+							onOpenEvent={onOpenEvent}
+						/>
 
-					<Group justify="space-between" mt="md">
-						<Button
-							variant="light"
-							color="red"
-							onClick={() => onReject(item)}
-							size="md"
-						>
-							Reject
-						</Button>
-						<Group>
+						<Group justify="space-between" mt="md">
 							<Button
-								variant="subtle"
-								onClick={onDiscard}
+								variant="light"
+								color="red"
+								onClick={() => onReject(item)}
 								size="md"
 							>
-								Cancel
+								Reject
 							</Button>
-							<Button onClick={handleSubmit} size="md">
-								Add to Calendar
-							</Button>
+							<Group>
+								<Button
+									variant="subtle"
+									onClick={onDiscard}
+									size="md"
+								>
+									Cancel
+								</Button>
+								<Button onClick={handleSubmit} size="md">
+									Add to Calendar
+								</Button>
+							</Group>
 						</Group>
-					</Group>
-				</Stack>
+					</Stack>
 				</Paper>
 			</motion.div>
 		</motion.div>
@@ -621,6 +635,13 @@ export default function ApprovalModal({
 		setTimeout(() => {
 			onNavigate(direction);
 		}, 50);
+	};
+	const handleOpenMentionEvent = (eventItem) => {
+		if (shouldBlockClose) {
+			triggerDirtyShake();
+			return;
+		}
+		onOpenEvent?.(eventItem);
 	};
 
 	const canGoPrev = currentIndex > 0;
@@ -817,7 +838,7 @@ export default function ApprovalModal({
 							onReject={handleRejectClick}
 							onAttemptClose={handleAttemptClose}
 							onDiscard={handleDiscard}
-							onOpenEvent={onOpenEvent}
+							onOpenEvent={handleOpenMentionEvent}
 							exitDirection={exitDirection}
 							eventTypePulse={eventTypePulse}
 							showDescriptionFullscreen={

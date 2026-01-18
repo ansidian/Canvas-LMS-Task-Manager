@@ -116,6 +116,13 @@ export default function CreateEventModal({
     }
     onClose();
   };
+  const handleOpenMentionEvent = (eventItem) => {
+    if (shouldBlockClose) {
+      triggerDirtyShake();
+      return;
+    }
+    onOpenEvent?.(eventItem);
+  };
 
   const handleDiscard = () => {
     onClose();
@@ -263,7 +270,7 @@ export default function CreateEventModal({
           events={events}
           classes={classes}
           unassignedColor={unassignedColor}
-          onOpenEvent={onOpenEvent}
+          onOpenEvent={handleOpenMentionEvent}
         />
 
         <Group justify="flex-end">
