@@ -1,47 +1,47 @@
 /* Onboarding Styles */
 .mantine-Popover-dropdown {
-  max-width: 320px !important;
-  min-width: 280px !important;
+	max-width: 320px !important;
+	min-width: 280px !important;
 }
 
 /* Increase distance between popover arrow and target element */
 .mantine-FocusReveal-popover {
-  --popover-offset: 16px;
+	--popover-offset: 16px;
 }
 
 .mantine-FocusReveal-popover .mantine-Popover-dropdown {
-  margin: 12px !important;
+	margin: 12px !important;
 }
 
 /* When onboarding, lower the aside z-index so overlay can cover it */
 body.onboarding-active .mantine-AppShell-aside {
-  z-index: 1 !important;
+	z-index: 1 !important;
 }
 
 /* Ensure the overlay covers page */
 body.onboarding-active .mantine-FocusReveal-overlay {
-  z-index: 100 !important;
+	z-index: 100 !important;
 }
 
 /* Ensure tour popover appears above overlay */
 body.onboarding-active .mantine-Popover-dropdown {
-  z-index: 200 !important;
+	z-index: 600 !important;
 }
 
 /* Ensure the focused/highlighted element is above the overlay */
 body.onboarding-active .mantine-FocusReveal-focusedWrapper {
-  z-index: 150 !important;
-  position: relative !important;
+	z-index: 250 !important;
+	position: relative !important;
 }
 
 /* Disable pointer events on entire app during onboarding */
 body.onboarding-active .mantine-AppShell-root {
-  pointer-events: none;
+	pointer-events: none;
 }
 
 /* Re-enable pointer events for tour elements */
 body.onboarding-active .mantine-FocusReveal-overlay,
 body.onboarding-active .mantine-FocusReveal-focusedWrapper,
 body.onboarding-active .mantine-Popover-dropdown {
-  pointer-events: auto;
+	pointer-events: auto;
 }
