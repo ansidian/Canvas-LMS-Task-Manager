@@ -153,18 +153,23 @@ This is a personal project, but if you find bugs or have feature ideas, feel fre
 ## FAQs
 
 **Q: Will this work with my school's Canvas instance?**
+
 A: As long as your school uses Canvas LMS and allows API access, yes. CTM uses the standard Canvas API.
 
 **Q: Does this replace Canvas?**
+
 A: No. It's a task management layer on top of Canvas. You still use Canvas for course content, announcements, etc.
 
 **Q: What happens if I reject an assignment by mistake?**
-A: Rejected items are stored in the database. Currently there is no way to restore rejected items without invoking 'Reset All Data' in Settings -> Help.
+
+A: Rejected items are stored in the database. Currently there is no way to restore rejected items without invoking 'Reset All Data' in Settings → Help.
 
 **Q: Can I use this without Canvas?**
+
 A: You can manually create events without connecting to Canvas, but the main value is in the Canvas integration.
 
 **Q: Is my data private?**
+
 A: Your Canvas API token is stored locally in your browser and never sent to any server. Assignment data (titles, descriptions, due dates, notes) is stored in the database - either a local SQLite file for development or Turso (cloud) for production. All data is scoped to your Clerk user ID, so it's isolated per user.
 
 ---
