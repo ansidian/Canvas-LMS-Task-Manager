@@ -85,8 +85,8 @@ Once approved, assignments appear as events on your calendar:
 
 ```bash
 # Clone the repo
-git clone https://github.com/yourusername/canvas-task-manager.git
-cd canvas-task-manager
+git clone https://github.com/ansidian/Canvas-LMS-Task-Manager.git
+cd Canvas-LMS-Task-Manager
 
 # Install dependencies (both root and client)
 npm run setup
