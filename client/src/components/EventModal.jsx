@@ -280,8 +280,16 @@ export default function EventModal({
     return res.json();
   };
 
+  const descriptionHtml =
+    event?.description ?? assignmentInfo?.description ?? "";
+
   useLayoutEffect(() => {
-    if (!event || !showDescriptionPreview || !previewContentRef.current) {
+    if (
+      !event ||
+      !descriptionHtml ||
+      !showDescriptionPreview ||
+      !previewContentRef.current
+    ) {
       return;
     }
     const contentEl = previewContentRef.current;
@@ -296,6 +304,7 @@ export default function EventModal({
   }, [
     event,
     showDescriptionPreview,
+    descriptionHtml,
     previewSize.height,
     previewSize.width,
     previewSize.contentWidth,
@@ -357,8 +366,13 @@ export default function EventModal({
       setSubmissionInfo(cachedSubmission);
     }
 
+    const needsAssignmentRefresh =
+      cachedAssignment && typeof cachedAssignment.description === "undefined";
+
     const controller = new AbortController();
-    if (!cachedAssignment) setAssignmentLoading(true);
+    if (!cachedAssignment || needsAssignmentRefresh) {
+      setAssignmentLoading(true);
+    }
     if (!cachedSubmission) setSubmissionLoading(true);
 
     if (cachedAssignment) {
@@ -370,7 +384,9 @@ export default function EventModal({
       } else if (types.includes("online_url")) {
         setSubmissionType("online_url");
       }
-    } else {
+    }
+
+    if (!cachedAssignment || needsAssignmentRefresh) {
       fetchAssignmentInfo(canvasIds, controller.signal)
         .then((data) => {
           setAssignmentInfo(data);
@@ -668,6 +684,7 @@ export default function EventModal({
   const isCanvasLocked = Boolean(assignmentInfo?.locked_for_user);
   const acceptList = buildAcceptList(assignmentInfo?.allowed_extensions);
   const descriptionLayoutId = `description-${event.id}`;
+  const hasDescription = Boolean(descriptionHtml);
 
   return (
     <>
@@ -739,7 +756,7 @@ export default function EventModal({
                   <TypographyStylesProvider>
                     <div
                       dangerouslySetInnerHTML={{
-                        __html: event.description,
+                        __html: descriptionHtml,
                       }}
                     />
                   </TypographyStylesProvider>
@@ -753,503 +770,566 @@ export default function EventModal({
         opened={opened}
         onClose={handleAttemptClose}
         title="Edit Event"
-        size="md"
+        size="xl"
       >
         <motion.div animate={shakeControls}>
-          <Stack>
-            <Textarea
-              label="Title"
-              value={formData.title}
-              onChange={(e) => {
-                setFormData((f) => ({
-                  ...f,
-                  title: e.target.value,
-                }));
-                markUserEdited();
+          <Box
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              height: "75vh",
+              maxHeight: "650px",
+            }}
+          >
+            {/* Main content area with two columns */}
+            <Box
+              style={{
+                flex: 1,
+                overflow: "hidden",
+                display: "flex",
+                gap: 32,
+                marginBottom: 16,
               }}
-              autosize
-              minRows={1}
-              maxRows={3}
-            />
+            >
+              {/* Left Column - Core Fields */}
+              <Box
+                style={{
+                  flex: 1,
+                  display: "flex",
+                  flexDirection: "column",
+                }}
+              >
+                <Stack gap="md">
+                  <Textarea
+                    label="Title"
+                    value={formData.title}
+                    onChange={(e) => {
+                      setFormData((f) => ({
+                        ...f,
+                        title: e.target.value,
+                      }));
+                      markUserEdited();
+                    }}
+                    autosize
+                    minRows={1}
+                    maxRows={3}
+                  />
 
-            <div>
-              <Text size="sm" fw={500} mb={4}>
-                Status
-              </Text>
-              {showSegmented ? (
-                <SegmentedControl
-                  fullWidth
-                  value={formData.status}
-                  onChange={(v) => {
-                    setFormData((f) => ({ ...f, status: v }));
-                    markUserEdited();
-                  }}
-                  color={STATUS_COLORS[formData.status]}
-                  autoContrast
-                  data={STATUS_OPTIONS}
-                  styles={{
-                    root: {
-                      backgroundColor:
-                        colorScheme === "dark"
-                          ? "var(--mantine-color-dark-6)"
-                          : "var(--mantine-color-gray-1)",
-                      padding: 4,
-                    },
-                    indicator: {
-                      boxShadow: "none",
-                    },
-                  }}
-                />
-              ) : (
-                <Skeleton height={36} radius="sm" />
-              )}
-            </div>
+                  {hasDescription && (
+                    <Box>
+                      <Group justify="space-between">
+                        <Text size="sm" fw={500}>
+                          Description
+                        </Text>
+                        <Box
+                          style={{ position: "relative" }}
+                          onMouseEnter={() => setShowDescriptionPreview(true)}
+                          onMouseLeave={() => setShowDescriptionPreview(false)}
+                        >
+                          <Button
+                            size="xs"
+                            variant="light"
+                            onClick={() => {
+                              setShowDescriptionPreview(false);
+                              setShowDescriptionFullscreen(true);
+                            }}
+                          >
+                            View
+                          </Button>
+                          <AnimatePresence>
+                            {showDescriptionPreview &&
+                              !showDescriptionFullscreen && (
+                                <motion.div
+                                  layoutId={descriptionLayoutId}
+                                  initial={{
+                                    opacity: 0,
+                                    y: -6,
+                                  }}
+                                  animate={{
+                                    opacity: 1,
+                                    y: 0,
+                                  }}
+                                  exit={{ opacity: 0, y: -6 }}
+                                  transition={{
+                                    duration: 0.15,
+                                  }}
+                                  style={{
+                                    position: "absolute",
+                                    right: 0,
+                                    top: "110%",
+                                    width: 280,
+                                    height: 140,
+                                    padding: 10,
+                                    borderRadius: 10,
+                                    border:
+                                      "1px solid var(--mantine-color-default-border)",
+                                    backgroundColor:
+                                      "var(--mantine-color-body)",
+                                    boxShadow:
+                                      "0 12px 28px rgba(0, 0, 0, 0.18)",
+                                    overflow: "hidden",
+                                    zIndex: 5,
+                                  }}
+                                  onClick={() => {
+                                    setShowDescriptionPreview(false);
+                                    setShowDescriptionFullscreen(true);
+                                  }}
+                                >
+                                  <TypographyStylesProvider>
+                                    <div
+                                      style={{
+                                        width: previewSize.contentWidth,
+                                        transform: `scale(${previewScale})`,
+                                        transformOrigin: "top left",
+                                        fontSize: "0.95rem",
+                                        lineHeight: 1.4,
+                                      }}
+                                      ref={previewContentRef}
+                                      dangerouslySetInnerHTML={{
+                                        __html: descriptionHtml,
+                                      }}
+                                    />
+                                  </TypographyStylesProvider>
+                                </motion.div>
+                              )}
+                          </AnimatePresence>
+                        </Box>
+                      </Group>
+                    </Box>
+                  )}
 
-            <DateTimePicker
-              label="Due Date & Time"
-              placeholder="Pick date and optionally time"
-              value={formData.due_date}
-              onChange={(v) => {
-                setFormData((f) => ({ ...f, due_date: v }));
-                markUserEdited();
-              }}
-              firstDayOfWeek={0}
-              valueFormat="MMM DD, YYYY hh:mm A"
-              presets={[
-                {
-                  value: dayjs().subtract(1, "day").format("YYYY-MM-DD"),
-                  label: "Yesterday",
-                },
-                {
-                  value: dayjs().format("YYYY-MM-DD"),
-                  label: "Today",
-                },
-                {
-                  value: dayjs().add(1, "day").format("YYYY-MM-DD"),
-                  label: "Tomorrow",
-                },
-                {
-                  value: dayjs().add(1, "month").format("YYYY-MM-DD"),
-                  label: "Next month",
-                },
-                {
-                  value: dayjs().add(1, "year").format("YYYY-MM-DD"),
-                  label: "Next year",
-                },
-                {
-                  value: dayjs().subtract(1, "month").format("YYYY-MM-DD"),
-                  label: "Last month",
-                },
-              ].map((preset) => ({
-                ...preset,
-                value: (() => {
-                  // Preserve current time when using presets
-                  const currentTime = formData.due_date
-                    ? dayjs(formData.due_date)
-                    : dayjs().hour(23).minute(59);
-                  const newDate = dayjs(preset.value)
-                    .hour(currentTime.hour())
-                    .minute(currentTime.minute())
-                    .second(currentTime.second());
-                  return newDate.toDate();
-                })(),
-              }))}
-              timePickerProps={{
-                popoverProps: { withinPortal: false },
-                format: "12h",
-              }}
-            />
+                  <div>
+                    <Text size="sm" fw={500} mb={4}>
+                      Status
+                    </Text>
+                    {showSegmented ? (
+                      <SegmentedControl
+                        fullWidth
+                        value={formData.status}
+                        onChange={(v) => {
+                          setFormData((f) => ({ ...f, status: v }));
+                          markUserEdited();
+                        }}
+                        color={STATUS_COLORS[formData.status]}
+                        autoContrast
+                        data={STATUS_OPTIONS}
+                        styles={{
+                          root: {
+                            backgroundColor:
+                              colorScheme === "dark"
+                                ? "var(--mantine-color-dark-6)"
+                                : "var(--mantine-color-gray-1)",
+                            padding: 4,
+                          },
+                          indicator: {
+                            boxShadow: "none",
+                          },
+                        }}
+                      />
+                    ) : (
+                      <Skeleton height={36} radius="sm" />
+                    )}
+                  </div>
 
-            <Select
-              label="Class"
-              placeholder="Select a class"
-              data={classes
-                .filter(
-                  (c) =>
-                    !c.canvas_course_id ||
-                    c.is_synced ||
-                    (event && c.id === event.class_id),
-                )
-                .map((c) => ({
-                  value: String(c.id),
-                  label: c.name,
-                }))}
-              value={formData.class_id}
-              onChange={(v) => {
-                setFormData((f) => ({ ...f, class_id: v }));
-                markUserEdited();
-              }}
-              clearable
-              renderOption={({ option }) => {
-                const cls = classes.find((c) => String(c.id) === option.value);
-                return (
-                  <Group gap="xs" wrap="nowrap">
-                    <Box
-                      style={{
-                        width: 12,
-                        height: 12,
-                        backgroundColor: cls?.color || "#a78b71",
-                        borderRadius: 2,
-                        flexShrink: 0,
-                      }}
-                    />
-                    <Text size="sm">{option.label}</Text>
-                  </Group>
-                );
-              }}
-              leftSection={
-                formData.class_id ? (
-                  <Box
-                    style={{
-                      width: 12,
-                      height: 12,
-                      backgroundColor:
-                        classes.find((c) => String(c.id) === formData.class_id)
-                          ?.color || "#a78b71",
-                      borderRadius: 2,
-                      flexShrink: 0,
+                  <DateTimePicker
+                    label="Due Date & Time"
+                    placeholder="Pick date and optionally time"
+                    value={formData.due_date}
+                    onChange={(v) => {
+                      setFormData((f) => ({ ...f, due_date: v }));
+                      markUserEdited();
+                    }}
+                    firstDayOfWeek={0}
+                    valueFormat="MMM DD, YYYY hh:mm A"
+                    presets={[
+                      {
+                        value: dayjs().subtract(1, "day").format("YYYY-MM-DD"),
+                        label: "Yesterday",
+                      },
+                      {
+                        value: dayjs().format("YYYY-MM-DD"),
+                        label: "Today",
+                      },
+                      {
+                        value: dayjs().add(1, "day").format("YYYY-MM-DD"),
+                        label: "Tomorrow",
+                      },
+                      {
+                        value: dayjs().add(1, "month").format("YYYY-MM-DD"),
+                        label: "Next month",
+                      },
+                      {
+                        value: dayjs().add(1, "year").format("YYYY-MM-DD"),
+                        label: "Next year",
+                      },
+                      {
+                        value: dayjs()
+                          .subtract(1, "month")
+                          .format("YYYY-MM-DD"),
+                        label: "Last month",
+                      },
+                    ].map((preset) => ({
+                      ...preset,
+                      value: (() => {
+                        // Preserve current time when using presets
+                        const currentTime = formData.due_date
+                          ? dayjs(formData.due_date)
+                          : dayjs().hour(23).minute(59);
+                        const newDate = dayjs(preset.value)
+                          .hour(currentTime.hour())
+                          .minute(currentTime.minute())
+                          .second(currentTime.second());
+                        return newDate.toDate();
+                      })(),
+                    }))}
+                    timePickerProps={{
+                      popoverProps: { withinPortal: false },
+                      format: "12h",
                     }}
                   />
-                ) : null
-              }
-            />
 
-            <Select
-              label="Event Type"
-              data={EVENT_TYPES}
-              value={formData.event_type}
-              onChange={(v) => {
-                setFormData((f) => ({ ...f, event_type: v }));
-                markUserEdited();
-              }}
-            />
-
-            <TextInput
-              label="URL"
-              placeholder="Canvas URL"
-              value={formData.url}
-              onChange={(e) => {
-                setFormData((f) => ({
-                  ...f,
-                  url: e.target.value,
-                }));
-                markUserEdited();
-              }}
-            />
-
-            {formData.url && (
-              <Anchor href={formData.url} target="_blank" size="sm">
-                Open in Canvas
-              </Anchor>
-            )}
-
-            {event.points_possible !== null &&
-              event.points_possible !== undefined && (
-                <Group gap="xs">
-                  <Text size="sm" fw={500}>
-                    Points
-                  </Text>
-                  <Badge variant="light">{event.points_possible}</Badge>
-                </Group>
-              )}
-
-            {canvasIds && (
-              <Box>
-                <Text size="sm" fw={500} mb={4}>
-                  Canvas Submission
-                </Text>
-                {(assignmentLoading || submissionLoading) && (
-                  <Box style={{ width: "100%", maxWidth: 408 }}>
-                    <Stack gap="xs">
-                      <Skeleton height={20} radius="sm" />
-                      <Skeleton height={61} radius="sm" />
-                      <Skeleton height={17} radius="sm" />
-                      <Skeleton height={81} radius="sm" />
-                      <Skeleton height={34} radius="sm" />
-                      <Skeleton height={17} radius="sm" />
-                      <Skeleton height={17} radius="sm" />
-                    </Stack>
-                  </Box>
-                )}
-                {!assignmentLoading && assignmentError && (
-                  <Text size="sm" c="red">
-                    {assignmentError}
-                  </Text>
-                )}
-                {!assignmentLoading && !assignmentError && (
-                  <Stack gap="xs">
-                    {submissionExists && (
-                      <Text size="sm" c="green">
-                        Submitted{" "}
-                        {dayjs(submissionInfo.submitted_at).format(
-                          "MMM D, YYYY h:mm A",
-                        )}
-                      </Text>
-                    )}
-                    {assignmentInfo?.quiz_id && (
-                      <Text size="sm" c="dimmed">
-                        This looks like a quiz. Use Open in Canvas.
-                      </Text>
-                    )}
-                    {isCanvasLocked && (
-                      <Text size="sm" c="red">
-                        Canvas has locked this assignment.
-                      </Text>
-                    )}
-                    {submissionOptions.length > 1 && (
-                      <Select
-                        label="Submission type"
-                        value={submissionType}
-                        onChange={(value) => {
-                          setSubmissionType(value || "");
-                          setSubmissionDirty(true);
-                          markUserEdited();
-                        }}
-                        data={submissionOptions}
-                        disabled={isCanvasLocked}
-                      />
-                    )}
-                    {submissionType === "online_upload" && (
-                      <>
-                        <FileInput
-                          label="Upload file(s)"
-                          placeholder="Select file(s)"
-                          multiple
-                          clearable
-                          accept={acceptList}
-                          disabled={isCanvasLocked}
-                          value={selectedFiles}
-                          onChange={(value) => {
-                            const next = Array.isArray(value)
-                              ? value
-                              : value
-                                ? [value]
-                                : [];
-                            setSelectedFiles(next);
-                            setSubmissionError("");
-                            setSubmissionDirty(true);
-                            markUserEdited();
+                  <Select
+                    label="Class"
+                    placeholder="Select a class"
+                    data={classes
+                      .filter(
+                        (c) =>
+                          !c.canvas_course_id ||
+                          c.is_synced ||
+                          (event && c.id === event.class_id),
+                      )
+                      .map((c) => ({
+                        value: String(c.id),
+                        label: c.name,
+                      }))}
+                    value={formData.class_id}
+                    onChange={(v) => {
+                      setFormData((f) => ({ ...f, class_id: v }));
+                      markUserEdited();
+                    }}
+                    clearable
+                    renderOption={({ option }) => {
+                      const cls = classes.find(
+                        (c) => String(c.id) === option.value,
+                      );
+                      return (
+                        <Group gap="xs" wrap="nowrap">
+                          <Box
+                            style={{
+                              width: 12,
+                              height: 12,
+                              backgroundColor: cls?.color || "#a78b71",
+                              borderRadius: 2,
+                              flexShrink: 0,
+                            }}
+                          />
+                          <Text size="sm">{option.label}</Text>
+                        </Group>
+                      );
+                    }}
+                    leftSection={
+                      formData.class_id ? (
+                        <Box
+                          style={{
+                            width: 12,
+                            height: 12,
+                            backgroundColor:
+                              classes.find(
+                                (c) => String(c.id) === formData.class_id,
+                              )?.color || "#a78b71",
+                            borderRadius: 2,
+                            flexShrink: 0,
                           }}
                         />
-                        {assignmentInfo?.allowed_extensions?.length > 0 && (
-                          <Text size="xs" c="dimmed">
-                            Allowed:{" "}
-                            {assignmentInfo.allowed_extensions.join(", ")}
-                          </Text>
-                        )}
-                      </>
-                    )}
-                    {submissionType === "online_text_entry" && (
-                      <Textarea
-                        label="Submission text"
-                        minRows={4}
-                        disabled={isCanvasLocked}
-                        value={submissionBody}
-                        onChange={(e) => {
-                          setSubmissionBody(e.target.value);
-                          setSubmissionDirty(true);
-                          markUserEdited();
-                        }}
-                      />
-                    )}
-                    {submissionType === "online_url" && (
-                      <TextInput
-                        label="Submission URL"
-                        placeholder="https://"
-                        disabled={isCanvasLocked}
-                        value={submissionUrl}
-                        onChange={(e) => {
-                          setSubmissionUrl(e.target.value);
-                          setSubmissionDirty(true);
-                          markUserEdited();
-                        }}
-                      />
-                    )}
-                    {submissionOptions.length > 0 && (
-                      <Textarea
-                        label="Comments..."
-                        minRows={2}
-                        maxRows={6}
-                        autosize
-                        disabled={isCanvasLocked}
-                        value={submissionComment}
-                        onChange={(e) => {
-                          setSubmissionComment(e.target.value);
-                          setSubmissionDirty(true);
-                          markUserEdited();
-                        }}
-                      />
-                    )}
-                    {submissionOptions.length > 0 ? (
-                      <Button
-                        onClick={handleCanvasSubmission}
-                        loading={isSubmitting}
-                        disabled={
-                          isSubmitting ||
-                          isCanvasLocked ||
-                          (submissionType === "online_upload" &&
-                            selectedFiles.length === 0) ||
-                          (submissionType === "online_text_entry" &&
-                            !submissionBody.trim()) ||
-                          (submissionType === "online_url" &&
-                            !submissionUrl.trim())
-                        }
-                      >
-                        {submissionExists
-                          ? "Resubmit to Canvas"
-                          : "Submit to Canvas"}
-                      </Button>
-                    ) : !assignmentInfo?.quiz_id && !isCanvasLocked ? (
-                      <Text size="sm" c="dimmed">
-                        This assignment cannot be submitted in CTM. Use Open in
-                        Canvas.
-                      </Text>
-                    ) : null}
-                    {submissionInfo?.attachments?.length > 0 && (
-                      <Box>
-                        <Text size="xs" fw={500}>
-                          Submitted files
-                        </Text>
-                        <Stack gap={2}>
-                          {submissionInfo.attachments.map((file) => (
-                            <Anchor
-                              key={file.id}
-                              href={file.url}
-                              target="_blank"
-                              size="xs"
-                            >
-                              {file.display_name || file.filename || file.id}
-                            </Anchor>
-                          ))}
-                        </Stack>
-                      </Box>
-                    )}
-                    {submissionError && (
-                      <Text size="sm" c="red">
-                        {submissionError}
-                      </Text>
-                    )}
-                  </Stack>
-                )}
-              </Box>
-            )}
+                      ) : null
+                    }
+                  />
 
-            {event.description && (
-              <Box>
-                <Group justify="space-between">
-                  <Text size="sm" fw={500}>
-                    Description
-                  </Text>
-                  <Box
-                    style={{ position: "relative" }}
-                    onMouseEnter={() => setShowDescriptionPreview(true)}
-                    onMouseLeave={() => setShowDescriptionPreview(false)}
-                  >
-                    <Button
-                      size="xs"
-                      variant="light"
-                      onClick={() => {
-                        setShowDescriptionPreview(false);
-                        setShowDescriptionFullscreen(true);
-                      }}
-                    >
-                      View
-                    </Button>
-                    <AnimatePresence>
-                      {showDescriptionPreview && !showDescriptionFullscreen && (
-                        <motion.div
-                          layoutId={descriptionLayoutId}
-                          initial={{
-                            opacity: 0,
-                            y: -6,
-                          }}
-                          animate={{
-                            opacity: 1,
-                            y: 0,
-                          }}
-                          exit={{ opacity: 0, y: -6 }}
-                          transition={{
-                            duration: 0.15,
-                          }}
-                          style={{
-                            position: "absolute",
-                            right: 0,
-                            top: "110%",
-                            width: 280,
-                            height: 140,
-                            padding: 10,
-                            borderRadius: 10,
-                            border:
-                              "1px solid var(--mantine-color-default-border)",
-                            backgroundColor: "var(--mantine-color-body)",
-                            boxShadow: "0 12px 28px rgba(0, 0, 0, 0.18)",
-                            overflow: "hidden",
-                            zIndex: 5,
-                          }}
-                        >
-                          <TypographyStylesProvider>
-                            <div
-                              style={{
-                                width: previewSize.contentWidth,
-                                transform: `scale(${previewScale})`,
-                                transformOrigin: "top left",
-                                fontSize: "0.95rem",
-                                lineHeight: 1.4,
+                  <Select
+                    label="Event Type"
+                    data={EVENT_TYPES}
+                    value={formData.event_type}
+                    onChange={(v) => {
+                      setFormData((f) => ({ ...f, event_type: v }));
+                      markUserEdited();
+                    }}
+                  />
+
+                  <TextInput
+                    label="URL"
+                    placeholder="Canvas URL"
+                    value={formData.url}
+                    onChange={(e) => {
+                      setFormData((f) => ({
+                        ...f,
+                        url: e.target.value,
+                      }));
+                      markUserEdited();
+                    }}
+                  />
+
+                  {formData.url && (
+                    <Anchor href={formData.url} target="_blank" size="sm">
+                      Open in Canvas
+                    </Anchor>
+                  )}
+
+                  {event.points_possible !== null &&
+                    event.points_possible !== undefined && (
+                      <Group gap="xs">
+                        <Text size="sm" fw={500}>
+                          Points
+                        </Text>
+                        <Badge variant="light">{event.points_possible}</Badge>
+                      </Group>
+                    )}
+                </Stack>
+              </Box>
+
+              {/* Right Column - Canvas Submission, Description, Notes */}
+              <Box
+                style={{
+                  flex: 1,
+                  overflowY: "auto",
+                  paddingRight: 4,
+                }}
+              >
+                <Stack gap="md">
+                  {canvasIds && (
+                    <Box>
+                      <Text size="sm" fw={500} mb={4}>
+                        Canvas Submission
+                      </Text>
+                      {(assignmentLoading || submissionLoading) && (
+                        <Box style={{ width: "100%", maxWidth: 408 }}>
+                          <Stack gap="xs">
+                            <Skeleton height={20} radius="sm" />
+                            <Skeleton height={61} radius="sm" />
+                            <Skeleton height={17} radius="sm" />
+                            <Skeleton height={81} radius="sm" />
+                            <Skeleton height={34} radius="sm" />
+                            <Skeleton height={17} radius="sm" />
+                            <Skeleton height={17} radius="sm" />
+                          </Stack>
+                        </Box>
+                      )}
+                      {!assignmentLoading && assignmentError && (
+                        <Text size="sm" c="red">
+                          {assignmentError}
+                        </Text>
+                      )}
+                      {!assignmentLoading && !assignmentError && (
+                        <Stack gap="xs">
+                          {submissionExists && (
+                            <Text size="sm" c="green">
+                              Submitted{" "}
+                              {dayjs(submissionInfo.submitted_at).format(
+                                "MMM D, YYYY h:mm A",
+                              )}
+                            </Text>
+                          )}
+                          {assignmentInfo?.quiz_id && (
+                            <Text size="sm" c="dimmed">
+                              This looks like a quiz. Use Open in Canvas.
+                            </Text>
+                          )}
+                          {isCanvasLocked && (
+                            <Text size="sm" c="red">
+                              Canvas has locked this assignment.
+                            </Text>
+                          )}
+                          {submissionOptions.length > 1 && (
+                            <Select
+                              label="Submission type"
+                              value={submissionType}
+                              onChange={(value) => {
+                                setSubmissionType(value || "");
+                                setSubmissionDirty(true);
+                                markUserEdited();
                               }}
-                              ref={previewContentRef}
-                              dangerouslySetInnerHTML={{
-                                __html: event.description,
+                              data={submissionOptions}
+                              disabled={isCanvasLocked}
+                            />
+                          )}
+                          {submissionType === "online_upload" && (
+                            <>
+                              <FileInput
+                                label="Upload file(s)"
+                                placeholder="Select file(s)"
+                                multiple
+                                clearable
+                                accept={acceptList}
+                                disabled={isCanvasLocked}
+                                value={selectedFiles}
+                                onChange={(value) => {
+                                  const next = Array.isArray(value)
+                                    ? value
+                                    : value
+                                      ? [value]
+                                      : [];
+                                  setSelectedFiles(next);
+                                  setSubmissionError("");
+                                  setSubmissionDirty(true);
+                                  markUserEdited();
+                                }}
+                              />
+                              {assignmentInfo?.allowed_extensions?.length >
+                                0 && (
+                                <Text size="xs" c="dimmed">
+                                  Allowed:{" "}
+                                  {assignmentInfo.allowed_extensions.join(", ")}
+                                </Text>
+                              )}
+                            </>
+                          )}
+                          {submissionType === "online_text_entry" && (
+                            <Textarea
+                              label="Submission text"
+                              minRows={4}
+                              disabled={isCanvasLocked}
+                              value={submissionBody}
+                              onChange={(e) => {
+                                setSubmissionBody(e.target.value);
+                                setSubmissionDirty(true);
+                                markUserEdited();
                               }}
                             />
-                          </TypographyStylesProvider>
-                        </motion.div>
+                          )}
+                          {submissionType === "online_url" && (
+                            <TextInput
+                              label="Submission URL"
+                              placeholder="https://"
+                              disabled={isCanvasLocked}
+                              value={submissionUrl}
+                              onChange={(e) => {
+                                setSubmissionUrl(e.target.value);
+                                setSubmissionDirty(true);
+                                markUserEdited();
+                              }}
+                            />
+                          )}
+                          {submissionOptions.length > 0 && (
+                            <Textarea
+                              label="Comments..."
+                              minRows={2}
+                              maxRows={6}
+                              autosize
+                              disabled={isCanvasLocked}
+                              value={submissionComment}
+                              onChange={(e) => {
+                                setSubmissionComment(e.target.value);
+                                setSubmissionDirty(true);
+                                markUserEdited();
+                              }}
+                            />
+                          )}
+                          {submissionOptions.length > 0 ? (
+                            <Button
+                              onClick={handleCanvasSubmission}
+                              loading={isSubmitting}
+                              disabled={
+                                isSubmitting ||
+                                isCanvasLocked ||
+                                (submissionType === "online_upload" &&
+                                  selectedFiles.length === 0) ||
+                                (submissionType === "online_text_entry" &&
+                                  !submissionBody.trim()) ||
+                                (submissionType === "online_url" &&
+                                  !submissionUrl.trim())
+                              }
+                            >
+                              {submissionExists
+                                ? "Resubmit to Canvas"
+                                : "Submit to Canvas"}
+                            </Button>
+                          ) : !assignmentInfo?.quiz_id && !isCanvasLocked ? (
+                            <Text size="sm" c="dimmed">
+                              This assignment cannot be submitted in CTM. Use
+                              Open in Canvas.
+                            </Text>
+                          ) : null}
+                          {submissionInfo?.attachments?.length > 0 && (
+                            <Box>
+                              <Text size="xs" fw={500}>
+                                Submitted files
+                              </Text>
+                              <Stack gap={2}>
+                                {submissionInfo.attachments.map((file) => (
+                                  <Anchor
+                                    key={file.id}
+                                    href={file.url}
+                                    target="_blank"
+                                    size="xs"
+                                  >
+                                    {file.display_name ||
+                                      file.filename ||
+                                      file.id}
+                                  </Anchor>
+                                ))}
+                              </Stack>
+                            </Box>
+                          )}
+                          {submissionError && (
+                            <Text size="sm" c="red">
+                              {submissionError}
+                            </Text>
+                          )}
+                        </Stack>
                       )}
-                    </AnimatePresence>
-                  </Box>
-                </Group>
+                    </Box>
+                  )}
+
+                  <NotesTextarea
+                    label="Notes"
+                    placeholder="Add any notes..."
+                    value={formData.notes}
+                    onChange={(nextValue) => {
+                      setFormData((f) => ({
+                        ...f,
+                        notes: nextValue,
+                      }));
+                    }}
+                    onUserEdit={markUserEdited}
+                    events={events}
+                    classes={classes}
+                    unassignedColor={unassignedColor}
+                    currentEventId={event?.id}
+                    onOpenEvent={handleOpenMentionEvent}
+                  />
+                </Stack>
               </Box>
-            )}
+            </Box>
 
-            <NotesTextarea
-              label="Notes"
-              placeholder="Add any notes..."
-              value={formData.notes}
-              onChange={(nextValue) => {
-                setFormData((f) => ({
-                  ...f,
-                  notes: nextValue,
-                }));
+            {/* Sticky Footer - Action Buttons */}
+            <Box
+              style={{
+                borderTop: "1px solid var(--mantine-color-default-border)",
+                paddingTop: 16,
               }}
-              onUserEdit={markUserEdited}
-              events={events}
-              classes={classes}
-              unassignedColor={unassignedColor}
-              currentEventId={event?.id}
-              onOpenEvent={handleOpenMentionEvent}
-            />
-
-            <Group justify="space-between">
-              <Button
-                color={confirmDelete ? "red" : "gray"}
-                variant={confirmDelete ? "filled" : "subtle"}
-                onClick={handleDelete}
-              >
-                {confirmDelete ? "Confirm Delete" : "Delete"}
-              </Button>
-              <Group>
-                <Button variant="subtle" onClick={handleDiscard}>
-                  Cancel
-                </Button>
+            >
+              <Group justify="space-between">
                 <Button
-                  onClick={handleSubmit}
-                  color={saveSuccess ? "green" : "blue"}
-                  className={saveSuccess ? "success-flash" : ""}
+                  color={confirmDelete ? "red" : "gray"}
+                  variant={confirmDelete ? "filled" : "subtle"}
+                  onClick={handleDelete}
                 >
-                  {saveSuccess ? "✓ Saved" : "Save Changes"}
+                  {confirmDelete ? "Confirm Delete" : "Delete"}
                 </Button>
+                <Group>
+                  <Button variant="subtle" onClick={handleDiscard}>
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleSubmit}
+                    color={saveSuccess ? "green" : "blue"}
+                    className={saveSuccess ? "success-flash" : ""}
+                  >
+                    {saveSuccess ? "✓ Saved" : "Save Changes"}
+                  </Button>
+                </Group>
               </Group>
-            </Group>
-          </Stack>
+            </Box>
+          </Box>
         </motion.div>
       </Modal>
     </>
