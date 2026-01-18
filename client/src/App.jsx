@@ -1000,6 +1000,7 @@ function AppContent() {
 					onClose={() => setSettingsOpen(false)}
 					classes={classes}
 					onClassesChange={loadClasses}
+					onEventsChange={loadEvents}
 					onClassesReorder={handleClassesReorder}
 					onClassUpdate={(updatedClass) => {
 						setClasses((prev) =>

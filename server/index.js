@@ -216,6 +216,13 @@ app.delete("/api/classes/:id", requireAuth(), async (req, res) => {
   const userId = req.auth().userId;
   const { id } = req.params;
   try {
+    // Delete all events associated with this class first
+    await db.execute({
+      sql: "DELETE FROM events WHERE class_id = ? AND user_id = ?",
+      args: [id, userId],
+    });
+
+    // Then delete the class
     await db.execute({
       sql: "DELETE FROM classes WHERE id = ? AND user_id = ?",
       args: [id, userId],

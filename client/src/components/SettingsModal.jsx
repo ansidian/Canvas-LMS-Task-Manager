@@ -72,6 +72,7 @@ export default function SettingsModal({
   onClose,
   classes,
   onClassesChange,
+  onEventsChange,
   onClassesReorder,
   onClassUpdate,
   highlightCredentials = false,
@@ -112,6 +113,8 @@ export default function SettingsModal({
   const [editUnassignedColor, setEditUnassignedColor] = useState("");
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [deleteClassId, setDeleteClassId] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   const resetOnboarding = () => {
     localStorage.removeItem("hasCompletedOnboarding");
@@ -191,11 +194,15 @@ export default function SettingsModal({
   };
 
   const deleteClass = async (id) => {
+    setDeleting(true);
     try {
       await api(`/classes/${id}`, { method: "DELETE" });
+      setDeleteClassId(null);
       onClassesChange();
+      onEventsChange();
     } catch (err) {
       console.error("Failed to delete class:", err);
+      setDeleting(false);
     }
   };
 
@@ -481,6 +488,40 @@ export default function SettingsModal({
                                 <IconX size={14} />
                               </ActionIcon>
                             </Group>
+                          ) : deleteClassId === cls.id ? (
+                            <Alert
+                              color="red"
+                              title="Delete this class?"
+                              icon={<IconAlertTriangle />}
+                            >
+                              <Stack gap="sm">
+                                <Text size="sm">
+                                  This will permanently delete <strong>{cls.name}</strong> and all associated events.
+                                </Text>
+                                <Text size="sm" fw={700} c="red">
+                                  This action cannot be undone.
+                                </Text>
+                                <Group justify="flex-end" mt="sm">
+                                  <Button
+                                    variant="subtle"
+                                    color="gray"
+                                    onClick={() => setDeleteClassId(null)}
+                                    disabled={deleting}
+                                    size="xs"
+                                  >
+                                    Cancel
+                                  </Button>
+                                  <Button
+                                    color="red"
+                                    onClick={() => deleteClass(cls.id)}
+                                    loading={deleting}
+                                    size="xs"
+                                  >
+                                    Yes, Delete
+                                  </Button>
+                                </Group>
+                              </Stack>
+                            </Alert>
                           ) : (
                             <Group justify="space-between" wrap="nowrap">
                               <Group wrap="nowrap" style={{ minWidth: 0 }}>
@@ -528,7 +569,7 @@ export default function SettingsModal({
                                 <ActionIcon
                                   variant="subtle"
                                   color="red"
-                                  onClick={() => deleteClass(cls.id)}
+                                  onClick={() => setDeleteClassId(cls.id)}
                                 >
                                   <IconTrash size={16} />
                                 </ActionIcon>
@@ -594,6 +635,40 @@ export default function SettingsModal({
                                 <IconX size={14} />
                               </ActionIcon>
                             </Group>
+                          ) : deleteClassId === cls.id ? (
+                            <Alert
+                              color="red"
+                              title="Delete this class?"
+                              icon={<IconAlertTriangle />}
+                            >
+                              <Stack gap="sm">
+                                <Text size="sm">
+                                  This will permanently delete <strong>{cls.name}</strong> and all associated events.
+                                </Text>
+                                <Text size="sm" fw={700} c="red">
+                                  This action cannot be undone.
+                                </Text>
+                                <Group justify="flex-end" mt="sm">
+                                  <Button
+                                    variant="subtle"
+                                    color="gray"
+                                    onClick={() => setDeleteClassId(null)}
+                                    disabled={deleting}
+                                    size="xs"
+                                  >
+                                    Cancel
+                                  </Button>
+                                  <Button
+                                    color="red"
+                                    onClick={() => deleteClass(cls.id)}
+                                    loading={deleting}
+                                    size="xs"
+                                  >
+                                    Yes, Delete
+                                  </Button>
+                                </Group>
+                              </Stack>
+                            </Alert>
                           ) : (
                             <Group justify="space-between" wrap="nowrap">
                               <Group wrap="nowrap" style={{ minWidth: 0 }}>
@@ -620,7 +695,7 @@ export default function SettingsModal({
                                 <ActionIcon
                                   variant="subtle"
                                   color="red"
-                                  onClick={() => deleteClass(cls.id)}
+                                  onClick={() => setDeleteClassId(cls.id)}
                                 >
                                   <IconTrash size={16} />
                                 </ActionIcon>
