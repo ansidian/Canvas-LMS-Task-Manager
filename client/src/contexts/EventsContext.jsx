@@ -157,20 +157,20 @@ export function EventsProvider({ api, children }) {
 			});
 
 			notifyUndo({
-				title: "Event deleted",
-				message: "This event will be removed soon.",
-				onUndo: () => {
-					const pending = pendingDeleteRef.current.get(eventId);
-					if (!pending) return;
-					clearTimeout(pending.timeoutId);
-					pendingDeleteRef.current.delete(eventId);
-					dispatch({
-						type: "RESTORE_EVENT",
-						event: pending.event,
-						index: pending.index,
-					});
-				},
-			});
+        title: "Event deleted",
+        message: "Event has been deleted.",
+        onUndo: () => {
+          const pending = pendingDeleteRef.current.get(eventId);
+          if (!pending) return;
+          clearTimeout(pending.timeoutId);
+          pendingDeleteRef.current.delete(eventId);
+          dispatch({
+            type: "RESTORE_EVENT",
+            event: pending.event,
+            index: pending.index,
+          });
+        },
+      });
 
 			return true;
 		},
