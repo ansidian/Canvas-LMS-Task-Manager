@@ -1,5 +1,10 @@
 import { useCallback, useMemo, useReducer, useRef } from "react";
-import { notifyError, notifyUndo } from "../utils/notify.jsx";
+import {
+	CANVAS_DND_TOAST_ID,
+	notifyAction,
+	notifyError,
+	notifyUndo,
+} from "../utils/notify.jsx";
 import {
 	combineLocalDateAndTime,
 	extractTime,
@@ -173,35 +178,43 @@ export function EventsProvider({ api, children }) {
 	);
 
 	const moveEvent = useCallback(
-		async (eventId, newDate) => {
-			try {
-				const originalEvent = state.events.find(
-					(event) => event.id === eventId,
-				);
-				let updatedDueDate = newDate;
+    async (eventId, newDate) => {
+      try {
+        const originalEvent = state.events.find(
+          (event) => event.id === eventId,
+        );
+        let updatedDueDate = newDate;
 
-				if (originalEvent && hasTimeComponent(originalEvent.due_date)) {
-					const timeString = extractTime(originalEvent.due_date);
-					const localDateTime = combineLocalDateAndTime(
-						newDate,
-						timeString,
-					);
-					updatedDueDate = toUTCString(localDateTime);
-				}
+        if (originalEvent && hasTimeComponent(originalEvent.due_date)) {
+          const timeString = extractTime(originalEvent.due_date);
+          const localDateTime = combineLocalDateAndTime(newDate, timeString);
+          updatedDueDate = toUTCString(localDateTime);
+        }
 
-				const updated = await api(`/events/${eventId}`, {
-					method: "PATCH",
-					body: JSON.stringify({ due_date: updatedDueDate }),
-				});
-				dispatch({ type: "UPDATE_EVENT", event: updated });
-				return updated;
-			} catch (err) {
-				console.error("Failed to move event:", err);
-				return null;
-			}
-		},
-		[api, state.events],
-	);
+        const updated = await api(`/events/${eventId}`, {
+          method: "PATCH",
+          body: JSON.stringify({ due_date: updatedDueDate }),
+        });
+        dispatch({ type: "UPDATE_EVENT", event: updated });
+        if (updated?.canvas_id && !updated?.canvas_due_date_override) {
+          notifyAction({
+            id: CANVAS_DND_TOAST_ID,
+            title: "Date changed locally",
+            message: "Canvas will resync this due date on the next fetch.",
+            actionLabel: "Keep change",
+            onAction: () =>
+              updateEvent(eventId, { canvas_due_date_override: 1 }),
+            duration: 7000,
+          });
+        }
+        return updated;
+      } catch (err) {
+        console.error("Failed to move event:", err);
+        return null;
+      }
+    },
+    [api, state.events, updateEvent],
+  );
 
 	const value = useMemo(
 		() => ({

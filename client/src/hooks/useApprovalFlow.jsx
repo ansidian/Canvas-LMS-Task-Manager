@@ -74,6 +74,7 @@ export default function useApprovalFlow({
       description: item.description ?? null,
       points_possible: item.points_possible ?? null,
       canvas_id: item.canvas_id,
+      canvas_due_date_override: formData.canvas_due_date_override ?? 0,
     };
 
     addEvent(optimisticEvent);
@@ -111,6 +112,7 @@ export default function useApprovalFlow({
           url: formData.url || item.url,
           points_possible: item.points_possible ?? null,
           canvas_id: item.canvas_id,
+          canvas_due_date_override: formData.canvas_due_date_override ?? 0,
         }),
       });
       replaceEvent(tempId, newEvent);

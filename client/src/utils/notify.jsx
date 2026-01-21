@@ -1,71 +1,167 @@
-import { Box, Button, Text } from "@mantine/core";
-import { notifications } from "@mantine/notifications";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
-const BASE_NOTIFICATION_PROPS = {
-  closeButtonProps: { iconSize: 40 },
+export const CANVAS_DND_TOAST_ID = "canvas-dnd-override";
+export const dismissToast = (id) => toast.dismiss(id);
+
+const toastComponent = ({
+  toastId,
+  title,
+  description,
+  actionLabel,
+  onAction,
+  countdown,
+  type,
+}) => {
+  const CountdownLabel = () => {
+    const [remaining, setRemaining] = useState(countdown || 0);
+
+    useEffect(() => {
+      if (!countdown) return undefined;
+      const intervalId = setInterval(() => {
+        setRemaining((prev) => {
+          if (prev <= 1) {
+            clearInterval(intervalId);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(intervalId);
+    }, []);
+
+    const label =
+      remaining > 0 ? `${actionLabel} (${remaining})` : actionLabel;
+    const disabled = remaining <= 0;
+
+    return (
+      <button
+        type="button"
+        className="sonner-custom-toast__button"
+        onClick={(event) => {
+          event.stopPropagation();
+          if (disabled) return;
+          onAction?.(event);
+          toast.dismiss(toastId);
+        }}
+        disabled={disabled}
+      >
+        {label}
+      </button>
+    );
+  };
+
+  return (
+    <div
+      className="sonner-custom-toast"
+      data-type={type}
+      onClick={() => toast.dismiss(toastId)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          toast.dismiss(toastId);
+        }
+      }}
+    >
+      <div className="sonner-custom-toast__content">
+        <div className="sonner-custom-toast__title">{title}</div>
+        {description ? (
+          <div className="sonner-custom-toast__detail">{description}</div>
+        ) : null}
+      </div>
+      {actionLabel ? (
+        countdown ? (
+          <CountdownLabel />
+        ) : (
+          <button
+            type="button"
+            className="sonner-custom-toast__button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onAction?.(event);
+              toast.dismiss(toastId);
+            }}
+          >
+            {actionLabel}
+          </button>
+        )
+      ) : null}
+    </div>
+  );
 };
 
-const formatUndoMessage = (title, message, label, color, onUndo, disabled) => (
-	<Box
-		style={{
-			display: "flex",
-			alignItems: "center",
-			justifyContent: "space-between",
-			gap: 16,
-			width: "100%",
-		}}
-	>
-		<Box
-			style={{
-				display: "flex",
-				flexDirection: "column",
-				gap: 4,
-			}}
-		>
-			{title ? (
-				<Text size="sm" fw={600}>
-					{title}
-				</Text>
-			) : null}
-			{message ? <Text size="sm">{message}</Text> : null}
-		</Box>
-		<Button
-			variant="light"
-			color={color}
-			size="xs"
-			onClick={onUndo}
-			disabled={disabled}
-		>
-			{label}
-		</Button>
-	</Box>
-);
-
-const undoNotificationStyles = {
-	root: {
-		alignItems: "center",
-	},
-	body: {
-		width: "100%",
-		alignItems: "center",
-	},
+const showToast = ({
+  id,
+  title,
+  description,
+  actionLabel,
+  onAction,
+  duration,
+  countdown,
+  type,
+}) => {
+  const toastId =
+    id || `toast-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  toast.custom(
+    (t) =>
+      toastComponent({
+        toastId: t,
+        title,
+        description,
+        actionLabel,
+        onAction,
+        countdown,
+        type,
+      }),
+    {
+      id: toastId,
+      duration,
+    },
+  );
+  return toastId;
 };
 
 export const notifySuccess = (message, options = {}) => {
-  notifications.show({
-    message,
-    color: "green",
-    ...BASE_NOTIFICATION_PROPS,
-    ...options,
+  const description = options.description;
+  return showToast({
+    title: message,
+    description,
+    duration: options.duration,
+    type: "success",
   });
 };
 
 export const notifyError = (message, options = {}) => {
-  notifications.show({
-    message,
-    color: "red",
-    ...BASE_NOTIFICATION_PROPS,
-    ...options,
+  const description = options.description;
+  return showToast({
+    title: message,
+    description,
+    duration: options.duration,
+    type: "error",
+  });
+};
+
+export const notifyAction = ({
+  id,
+  title,
+  message,
+  description,
+  actionLabel,
+  onAction,
+  duration = 7000,
+}) => {
+  const content = title || message || "";
+  const detail = description || (title ? message : undefined);
+  return showToast({
+    id,
+    title: content,
+    description: detail,
+    actionLabel,
+    onAction,
+    duration,
+    type: "action",
   });
 };
 
@@ -75,80 +171,22 @@ export const notifyUndo = ({
   onUndo,
   duration = 7000,
   undoLabel = "Undo",
-  color = "red",
 }) => {
-  const id = `undo-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const content = title || message || "";
+  const detail = title ? message : undefined;
   const totalSeconds = Math.max(1, Math.ceil(duration / 1000));
-  let remainingSeconds = totalSeconds;
-  let intervalId = null;
-  let cleanupTimeoutId = null;
+  const id = `undo-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
-  const handleCleanup = () => {
-    if (intervalId) {
-      clearInterval(intervalId);
-      intervalId = null;
-    }
-    if (cleanupTimeoutId) {
-      clearTimeout(cleanupTimeoutId);
-      cleanupTimeoutId = null;
-    }
-  };
-
-  const handleUndo = () => {
-    handleCleanup();
-    onUndo?.();
-    notifications.hide(id);
-  };
-
-  notifications.show({
+  showToast({
     id,
-		title: null,
-		color,
-		autoClose: duration,
-		message: formatUndoMessage(
-			title,
-			message,
-			`${undoLabel} (${remainingSeconds})`,
-			color,
-			handleUndo,
-			false,
-		),
-		styles: undoNotificationStyles,
-		onClose: handleCleanup,
-		...BASE_NOTIFICATION_PROPS,
-	});
+    title: content,
+    description: detail,
+    actionLabel: undoLabel,
+    onAction: onUndo,
+    duration,
+    countdown: totalSeconds,
+    type: "undo",
+  });
 
-  cleanupTimeoutId = setTimeout(() => {
-    handleCleanup();
-  }, duration + 250);
-
-  intervalId = setInterval(() => {
-    const nextRemaining = remainingSeconds - 1;
-    if (nextRemaining < 0) {
-      handleCleanup();
-      return;
-    }
-    remainingSeconds = nextRemaining;
-    const isExpired = remainingSeconds === 0;
-		notifications.update({
-			id,
-			message: formatUndoMessage(
-				title,
-				message,
-				isExpired ? undoLabel : `${undoLabel} (${remainingSeconds})`,
-				color,
-				handleUndo,
-				isExpired,
-			),
-			styles: undoNotificationStyles,
-		});
-    if (isExpired) {
-      handleCleanup();
-    }
-  }, 1000);
-
-  return () => {
-    clearTimeout(cleanupTimeoutId);
-    handleCleanup();
-  };
+  return () => toast.dismiss(id);
 };

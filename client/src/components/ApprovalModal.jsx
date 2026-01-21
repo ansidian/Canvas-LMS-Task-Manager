@@ -59,6 +59,8 @@ function Card({
   eventTypePulse,
   shakeSignal,
 }) {
+  const isCanvasLinked = Boolean(item?.canvas_id);
+  const isSyncLocked = isCanvasLinked && !formData.canvas_due_date_override;
   const shakeControls = useAnimation();
   const prevShakeSignalRef = useRef(shakeSignal);
 
@@ -132,6 +134,8 @@ function Card({
               formData={formData}
               setFormData={setFormData}
               onUserEdit={handlers.onUserEdit}
+              isCanvasLinked={isCanvasLinked}
+              isSyncLocked={isSyncLocked}
             />
 
             <ApprovalClassSelect
@@ -245,6 +249,7 @@ export default function ApprovalModal({
         eventType: detectedType || "assignment",
         notes: "",
         url: item.url || "",
+        canvas_due_date_override: 0,
       };
       setFormData(nextFormData);
       initialFormDataRef.current = nextFormData;
@@ -305,6 +310,7 @@ export default function ApprovalModal({
       formData.eventType !== initial.eventType ||
       formData.notes !== initial.notes ||
       formData.url !== initial.url ||
+      formData.canvas_due_date_override !== initial.canvas_due_date_override ||
       !sameDueDate
     );
   }, [formData]);

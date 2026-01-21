@@ -1,5 +1,6 @@
 import { useCallback, useRef } from "react";
 import { LAST_FETCH_KEY } from "./canvasSyncConstants";
+import { CANVAS_DND_TOAST_ID, dismissToast } from "../utils/notify.jsx";
 import { setStorageItem } from "../utils/storage";
 
 export default function useCanvasFetch({
@@ -23,6 +24,7 @@ export default function useCanvasFetch({
 			fetchAbortRef.current?.abort();
 		}
 		fetchInFlightRef.current = true;
+		dismissToast(CANVAS_DND_TOAST_ID);
 		const requestId = fetchRequestIdRef.current + 1;
 		fetchRequestIdRef.current = requestId;
 		const controller = new AbortController();

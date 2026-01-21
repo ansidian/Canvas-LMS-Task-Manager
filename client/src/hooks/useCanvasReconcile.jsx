@@ -61,7 +61,10 @@ export default function useCanvasReconcile({ api, events, updateEvent }) {
 			const assignment = assignmentByCanvasId.get(event.canvas_id);
 			if (!assignment?.due_date) continue;
 
-			if (event.due_date !== assignment.due_date) {
+			if (
+				!event.canvas_due_date_override &&
+				event.due_date !== assignment.due_date
+			) {
 				dueDateUpdates.push({ event, due_date: assignment.due_date });
 			}
 

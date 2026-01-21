@@ -7,6 +7,7 @@ export default function useApprovalModalState() {
 		eventType: "assignment",
 		notes: "",
 		url: "",
+		canvas_due_date_override: 0,
 	});
 	const [exitDirection, setExitDirection] = useState(null);
 	const [showDescriptionFullscreen, setShowDescriptionFullscreen] =

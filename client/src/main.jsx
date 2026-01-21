@@ -5,12 +5,11 @@ import {
   createTheme,
   useMantineColorScheme,
 } from "@mantine/core";
-import { Notifications } from "@mantine/notifications";
 import { ClerkProvider } from "@clerk/clerk-react";
 import { dark } from "@clerk/themes";
+import { Toaster } from "sonner";
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
-import "@mantine/notifications/styles.css";
 import App from "./App";
 import "./index.css";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -87,11 +86,16 @@ function ThemedClerkProvider({ children }) {
   );
 }
 
+function ThemedToaster() {
+  const { colorScheme } = useMantineColorScheme();
+  return <Toaster position="top-center" theme={colorScheme} richColors />;
+}
+
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <MantineProvider theme={theme} defaultColorScheme={getInitialColorScheme()}>
       <ThemedClerkProvider>
-        <Notifications position="top-center" />
+        <ThemedToaster />
         <ErrorBoundary>
           <App />
         </ErrorBoundary>

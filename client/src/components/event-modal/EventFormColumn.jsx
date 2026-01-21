@@ -1,9 +1,11 @@
 import {
   Anchor,
+  ActionIcon,
   Badge,
   Box,
   Button,
   Group,
+  HoverCard,
   Select,
   Skeleton,
   Stack,
@@ -16,6 +18,7 @@ import {
 import { DateTimePicker } from "@mantine/dates";
 import dayjs from "dayjs";
 import { AnimatePresence, motion } from "framer-motion";
+import { IconLock, IconLockOpen } from "@tabler/icons-react";
 import { EVENT_TYPES, PREVIEW_SIZE, STATUS_COLORS, STATUS_OPTIONS } from "./constants";
 
 export default function EventFormColumn({
@@ -37,6 +40,17 @@ export default function EventFormColumn({
   descriptionLayoutId,
   markUserEdited,
 }) {
+  const isCanvasLinked = Boolean(event?.canvas_id);
+  const isSyncLocked = isCanvasLinked && !formData.canvas_due_date_override;
+  const toggleSyncLock = () => {
+    const nextValue = isSyncLocked ? 1 : 0;
+    setFormData((prev) => ({
+      ...prev,
+      canvas_due_date_override: nextValue,
+    }));
+    markUserEdited();
+  };
+
   return (
     <Box
       style={{
@@ -168,13 +182,66 @@ export default function EventFormColumn({
 
         <Box>
           <DateTimePicker
-            label="Due Date & Time"
+            label={
+              <Group gap={6} align="center">
+                <Text size="sm" fw={500}>
+                  Due Date & Time
+                </Text>
+                {isCanvasLinked ? (
+                  <HoverCard
+                    width={240}
+                    shadow="md"
+                    position="top"
+                    withArrow
+                  >
+                    <HoverCard.Target>
+                      <ActionIcon
+                        variant="subtle"
+                        size="sm"
+                        aria-label={
+                          isSyncLocked
+                            ? "Canvas sync enabled"
+                            : "Canvas sync disabled"
+                        }
+                        onClick={toggleSyncLock}
+                      >
+                        <motion.span
+                          key={isSyncLocked ? "locked" : "unlocked"}
+                          initial={{ rotate: 0, y: 0, scale: 1, opacity: 1 }}
+                          animate={{
+                            rotate: isSyncLocked ? [0, 20, 0] : [0, -25, 0],
+                            y: isSyncLocked ? [0, 1, 0] : [0, -3, -1],
+                            scale: [1, 1.08, 1],
+                          }}
+                          transition={{ duration: 0.35, ease: "easeOut" }}
+                          style={{ display: "inline-flex" }}
+                        >
+                          {isSyncLocked ? (
+                            <IconLock size={14} />
+                          ) : (
+                            <IconLockOpen size={14} />
+                          )}
+                        </motion.span>
+                      </ActionIcon>
+                    </HoverCard.Target>
+                    <HoverCard.Dropdown>
+                      <Text size="xs">
+                        {isSyncLocked
+                          ? "Date will update from Canvas on fetch."
+                          : "Sync disabled. This date will stay as you set it."}
+                      </Text>
+                    </HoverCard.Dropdown>
+                  </HoverCard>
+                ) : null}
+              </Group>
+            }
             placeholder="Pick date and optionally time"
             value={formData.due_date}
             onChange={(value) => {
               setFormData((prev) => ({ ...prev, due_date: value }));
               markUserEdited();
             }}
+            disabled={isSyncLocked}
             firstDayOfWeek={0}
             valueFormat="MMM DD, YYYY hh:mm A"
             presets={[

@@ -22,6 +22,7 @@ export default function useEventModalForm({
     status: "incomplete",
     notes: "",
     url: "",
+    canvas_due_date_override: 0,
   });
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -73,6 +74,7 @@ export default function useEventModalForm({
         status: event.status || "incomplete",
         notes: event.notes || "",
         url: event.url || "",
+        canvas_due_date_override: event.canvas_due_date_override ? 1 : 0,
       };
       setFormData(nextFormData);
       initialFormDataRef.current = nextFormData;
@@ -139,6 +141,7 @@ export default function useEventModalForm({
       status: formData.status,
       notes: formData.notes,
       url: formData.url,
+      canvas_due_date_override: formData.canvas_due_date_override,
     };
 
     if (formData.status === "complete" && event.status !== "complete") {
@@ -181,6 +184,7 @@ export default function useEventModalForm({
       formData.status !== initial.status ||
       formData.notes !== initial.notes ||
       formData.url !== initial.url ||
+      formData.canvas_due_date_override !== initial.canvas_due_date_override ||
       submissionDirty
     );
   }, [formData, submissionDirty]);
