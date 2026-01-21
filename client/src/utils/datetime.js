@@ -109,3 +109,35 @@ export function hasTimeComponent(dueDateString) {
   if (!dueDateString) return false;
   return dueDateString.includes('T') || dueDateString.includes(':');
 }
+
+/**
+ * Coerce a value into a local Date object.
+ *
+ * @param {Date|string|null} value
+ * @returns {Date|null}
+ */
+export function toLocalDate(value) {
+  if (!value) return null;
+  if (value instanceof Date) return value;
+  const parsed = dayjs(value);
+  if (!parsed.isValid()) return null;
+  return parsed.toDate();
+}
+
+/**
+ * Combine a date string and time string into a local Date.
+ *
+ * @param {string} dateString - "YYYY-MM-DD"
+ * @param {string} timeString - "HH:mm"
+ * @returns {Date|null}
+ */
+export function combineLocalDateAndTime(dateString, timeString) {
+  if (!dateString || !timeString) return null;
+  const [hours, minutes] = timeString.split(':').map(Number);
+  return dayjs(dateString)
+    .hour(hours || 0)
+    .minute(minutes || 0)
+    .second(0)
+    .millisecond(0)
+    .toDate();
+}

@@ -1,32 +1,25 @@
-import { useState, useEffect, useLayoutEffect, useRef, useMemo } from "react";
-import {
-  Stack,
-  TextInput,
-  Select,
-  Button,
-  Group,
-  Text,
-  Badge,
-  ActionIcon,
-  Box,
-  Paper,
-  Anchor,
-  TypographyStylesProvider,
-} from "@mantine/core";
-import { DateTimePicker } from "@mantine/dates";
-import { IconChevronLeft, IconChevronRight, IconX } from "@tabler/icons-react";
+import { useEffect, useRef, useMemo } from "react";
+import { Stack, Paper } from "@mantine/core";
 import { motion, AnimatePresence, useAnimation } from "framer-motion";
 import dayjs from "dayjs";
 import { parseDueDate, toUTCString } from "../utils/datetime";
-import NotesTextarea from "./NotesTextarea";
-
-const EVENT_TYPES = [
-  { value: "assignment", label: "Assignment" },
-  { value: "quiz", label: "Quiz" },
-  { value: "exam", label: "Exam" },
-  { value: "homework", label: "Homework" },
-  { value: "lab", label: "Lab" },
-];
+import useApprovalModalState from "../hooks/useApprovalModalState";
+import {
+  ApprovalActionButtons,
+  ApprovalCardHeader,
+  ApprovalClassSelect,
+  ApprovalDescriptionPreview,
+  ApprovalDueDateField,
+  ApprovalEventTypeSelect,
+  ApprovalNotesField,
+  ApprovalPointsBadge,
+  ApprovalUrlField,
+} from "./approval/ApprovalCardParts";
+import {
+  ApprovalDescriptionFullscreen,
+  ApprovalNavigationControls,
+  ApprovalPositionBadge,
+} from "./approval/ApprovalModalShell";
 
 const detectEventTypeFromTitle = (title) => {
   if (!title) return null;
@@ -56,43 +49,18 @@ const detectEventTypeFromTitle = (title) => {
 
 function Card({
   item,
-  classes,
-  events,
-  unassignedColor,
+  config,
+  handlers,
   formData,
   setFormData,
-  onUserEdit,
-  onApprove,
-  onReject,
-  onAttemptClose,
-  onDiscard,
-  onOpenEvent,
   exitDirection,
   showDescriptionFullscreen,
   setShowDescriptionFullscreen,
   eventTypePulse,
   shakeSignal,
 }) {
-  const [showDescriptionPreview, setShowDescriptionPreview] = useState(false);
-  const [previewScale, setPreviewScale] = useState(0.25);
-  const previewContentRef = useRef(null);
-  const descriptionLayoutId = `description-${item.canvas_id}`;
-  const previewSize = { width: 280, height: 140, contentWidth: 640 };
   const shakeControls = useAnimation();
   const prevShakeSignalRef = useRef(shakeSignal);
-
-  useLayoutEffect(() => {
-    if (!showDescriptionPreview || !previewContentRef.current) return;
-    const contentEl = previewContentRef.current;
-    const contentWidth = contentEl.scrollWidth || previewSize.contentWidth;
-    const contentHeight = contentEl.scrollHeight || previewSize.height;
-    const scale = Math.min(
-      previewSize.width / contentWidth,
-      previewSize.height / contentHeight,
-      1,
-    );
-    setPreviewScale(scale);
-  }, [showDescriptionPreview, item.description]);
 
   useEffect(() => {
     // shake when shakeSignal increases (not on initial mount)
@@ -118,7 +86,7 @@ function Card({
       convertedUTC: dueDate,
     });
 
-    onApprove(item, {
+    handlers.onApprove(item, {
       ...formData,
       dueDate,
     });
@@ -154,292 +122,62 @@ function Card({
             position: "relative",
           }}
         >
-          <ActionIcon
-            variant="subtle"
-            size="lg"
-            onClick={onAttemptClose}
-            style={{
-              position: "absolute",
-              top: "12px",
-              right: "12px",
-            }}
-          >
-            <IconX size={20} />
-          </ActionIcon>
           <Stack gap="md">
-            <Box>
-              <Text fw={600} size="lg">
-                {item.title}
-              </Text>
-              <Text size="sm" c="dimmed">
-                Course: {item.course_name}
-              </Text>
-            </Box>
-
-            <DateTimePicker
-              label="Due Date & Time"
-              placeholder="Pick date and optionally time"
-              value={formData.dueDate}
-              onChange={(v) => {
-                // Presets pass strings, ensure we always store a Date
-                const dateValue =
-                  v instanceof Date ? v : v ? new Date(v) : null;
-                setFormData((f) => ({ ...f, dueDate: dateValue }));
-                onUserEdit();
-              }}
-              clearable={false}
-              firstDayOfWeek={0}
-              valueFormat="MMM DD, YYYY hh:mm A"
-              presets={[
-                {
-                  value: dayjs().subtract(1, "day").format("YYYY-MM-DD"),
-                  label: "Yesterday",
-                },
-                {
-                  value: dayjs().format("YYYY-MM-DD"),
-                  label: "Today",
-                },
-                {
-                  value: dayjs().add(1, "day").format("YYYY-MM-DD"),
-                  label: "Tomorrow",
-                },
-                {
-                  value: dayjs().add(1, "month").format("YYYY-MM-DD"),
-                  label: "Next month",
-                },
-                {
-                  value: dayjs().add(1, "year").format("YYYY-MM-DD"),
-                  label: "Next year",
-                },
-                {
-                  value: dayjs().subtract(1, "month").format("YYYY-MM-DD"),
-                  label: "Last month",
-                },
-              ].map((preset) => ({
-                ...preset,
-                value: (() => {
-                  // Preserve current time when using presets
-                  const currentTime = formData.dueDate
-                    ? dayjs(formData.dueDate)
-                    : dayjs().hour(23).minute(59);
-                  const newDate = dayjs(preset.value)
-                    .hour(currentTime.hour())
-                    .minute(currentTime.minute())
-                    .second(currentTime.second());
-                  return newDate.toDate();
-                })(),
-              }))}
-              timePickerProps={{
-                popoverProps: { withinPortal: false },
-                format: "12h",
-              }}
+            <ApprovalCardHeader
+              item={item}
+              onAttemptClose={handlers.onAttemptClose}
             />
 
-            <Select
-              label="Class"
-              placeholder="Select a class"
-              data={classes
-                .filter((c) => !c.canvas_course_id || c.is_synced)
-                .map((c) => ({
-                  value: String(c.id),
-                  label: c.name,
-                }))}
-              value={formData.classId}
-              onChange={(v) => {
-                setFormData((f) => ({ ...f, classId: v }));
-                onUserEdit();
-              }}
-              clearable
-              renderOption={({ option }) => {
-                const cls = classes.find((c) => String(c.id) === option.value);
-                return (
-                  <Group gap="xs" wrap="nowrap">
-                    <Box
-                      style={{
-                        width: 12,
-                        height: 12,
-                        backgroundColor: cls?.color || "#a78b71",
-                        borderRadius: 2,
-                        flexShrink: 0,
-                      }}
-                    />
-                    <Text size="sm">{option.label}</Text>
-                  </Group>
-                );
-              }}
-              leftSection={
-                formData.classId ? (
-                  <Box
-                    style={{
-                      width: 12,
-                      height: 12,
-                      backgroundColor:
-                        classes.find((c) => String(c.id) === formData.classId)
-                          ?.color || "#a78b71",
-                      borderRadius: 2,
-                      flexShrink: 0,
-                    }}
-                  />
-                ) : null
-              }
+            <ApprovalDueDateField
+              formData={formData}
+              setFormData={setFormData}
+              onUserEdit={handlers.onUserEdit}
             />
 
-            <Select
-              label="Event Type"
-              data={EVENT_TYPES}
-              value={formData.eventType}
-              onChange={(v) => {
-                setFormData((f) => ({ ...f, eventType: v }));
-                onUserEdit();
-              }}
-              classNames={{
-                input: eventTypePulse ? "event-type-pulse" : undefined,
-              }}
+            <ApprovalClassSelect
+              classes={config.classes}
+              formData={formData}
+              setFormData={setFormData}
+              onUserEdit={handlers.onUserEdit}
             />
 
-            <TextInput
-              label="URL"
-              placeholder="Canvas URL"
-              value={formData.url}
-              onChange={(e) => {
-                setFormData((f) => ({
-                  ...f,
-                  url: e.target.value,
-                }));
-                onUserEdit();
-              }}
+            <ApprovalEventTypeSelect
+              formData={formData}
+              setFormData={setFormData}
+              onUserEdit={handlers.onUserEdit}
+              eventTypePulse={eventTypePulse}
             />
 
-            {formData.url && (
-              <Anchor href={formData.url} target="_blank" size="sm">
-                Open in Canvas
-              </Anchor>
-            )}
-
-            {item.points_possible !== null &&
-              item.points_possible !== undefined && (
-                <Group gap="xs">
-                  <Text size="sm" fw={500}>
-                    Points
-                  </Text>
-                  <Badge variant="light">{item.points_possible}</Badge>
-                </Group>
-              )}
-
-            {item.description && (
-              <Box>
-                <Group justify="space-between">
-                  <Text size="sm" fw={500}>
-                    Description
-                  </Text>
-                  <Box
-                    style={{ position: "relative" }}
-                    onMouseEnter={() => setShowDescriptionPreview(true)}
-                    onMouseLeave={() => setShowDescriptionPreview(false)}
-                  >
-                    <Button
-                      size="xs"
-                      variant="light"
-                      onClick={() => {
-                        setShowDescriptionPreview(false);
-                        setShowDescriptionFullscreen(true);
-                      }}
-                    >
-                      View
-                    </Button>
-                    <AnimatePresence>
-                      {showDescriptionPreview && !showDescriptionFullscreen && (
-                        <motion.div
-                          layoutId={descriptionLayoutId}
-                          initial={{
-                            opacity: 0,
-                            y: -6,
-                          }}
-                          animate={{
-                            opacity: 1,
-                            y: 0,
-                          }}
-                          exit={{
-                            opacity: 0,
-                            y: -6,
-                          }}
-                          transition={{
-                            duration: 0.15,
-                          }}
-                          style={{
-                            position: "absolute",
-                            right: 0,
-                            top: "110%",
-                            width: 280,
-                            height: 140,
-                            padding: 10,
-                            borderRadius: 10,
-                            border:
-                              "1px solid var(--mantine-color-default-border)",
-                            backgroundColor: "var(--mantine-color-body)",
-                            boxShadow: "0 12px 28px rgba(0, 0, 0, 0.18)",
-                            overflow: "hidden",
-                            zIndex: 5,
-                          }}
-                        >
-                          <TypographyStylesProvider>
-                            <div
-                              style={{
-                                width: previewSize.contentWidth,
-                                transform: `scale(${previewScale})`,
-                                transformOrigin: "top left",
-                                fontSize: "0.95rem",
-                                lineHeight: 1.4,
-                              }}
-                              ref={previewContentRef}
-                              dangerouslySetInnerHTML={{
-                                __html: item.description,
-                              }}
-                            />
-                          </TypographyStylesProvider>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </Box>
-                </Group>
-              </Box>
-            )}
-
-            <NotesTextarea
-              label="Notes"
-              placeholder="Add any notes..."
-              value={formData.notes}
-              onChange={(nextValue) => {
-                setFormData((f) => ({
-                  ...f,
-                  notes: nextValue,
-                }));
-              }}
-              onUserEdit={onUserEdit}
-              events={events}
-              classes={classes}
-              unassignedColor={unassignedColor}
-              onOpenEvent={onOpenEvent}
+            <ApprovalUrlField
+              formData={formData}
+              setFormData={setFormData}
+              onUserEdit={handlers.onUserEdit}
             />
 
-            <Group justify="space-between" mt="md">
-              <Button
-                variant="light"
-                color="red"
-                onClick={() => onReject(item)}
-                size="md"
-              >
-                Reject
-              </Button>
-              <Group>
-                <Button variant="subtle" onClick={onDiscard} size="md">
-                  Cancel
-                </Button>
-                <Button onClick={handleSubmit} size="md">
-                  Add to Calendar
-                </Button>
-              </Group>
-            </Group>
+            <ApprovalPointsBadge item={item} />
+
+            <ApprovalDescriptionPreview
+              item={item}
+              showDescriptionFullscreen={showDescriptionFullscreen}
+              setShowDescriptionFullscreen={setShowDescriptionFullscreen}
+            />
+
+            <ApprovalNotesField
+              formData={formData}
+              setFormData={setFormData}
+              onUserEdit={handlers.onUserEdit}
+              events={config.events}
+              classes={config.classes}
+              unassignedColor={config.unassignedColor}
+              onOpenEvent={handlers.onOpenEvent}
+            />
+
+            <ApprovalActionButtons
+              item={item}
+              onReject={handlers.onReject}
+              onDiscard={handlers.onDiscard}
+              onApprove={handleSubmit}
+            />
           </Stack>
         </Paper>
       </motion.div>
@@ -461,21 +199,22 @@ export default function ApprovalModal({
   onNavigate,
   onOpenEvent,
 }) {
-  const [formData, setFormData] = useState({
-    dueDate: null,
-    classId: null,
-    eventType: "assignment",
-    notes: "",
-    url: "",
-  });
-  const [exitDirection, setExitDirection] = useState(null);
-  const [showDescriptionFullscreen, setShowDescriptionFullscreen] =
-    useState(false);
-  const [eventTypePulse, setEventTypePulse] = useState(false);
+  const {
+    formData,
+    setFormData,
+    exitDirection,
+    setExitDirection,
+    showDescriptionFullscreen,
+    setShowDescriptionFullscreen,
+    eventTypePulse,
+    setEventTypePulse,
+    shakeCount,
+    setShakeCount,
+    hasUserEdited,
+    setHasUserEdited,
+  } = useApprovalModalState();
   const eventTypePulseTimeoutRef = useRef(null);
   const initialFormDataRef = useRef(null);
-  const [shakeCount, setShakeCount] = useState(0);
-  const [hasUserEdited, setHasUserEdited] = useState(false);
 
   useEffect(() => {
     if (eventTypePulseTimeoutRef.current) {
@@ -670,95 +409,14 @@ export default function ApprovalModal({
 				}
 			`}</style>
       {/* Position badge */}
-      <Badge
-        variant="filled"
-        color="blue"
-        size="lg"
-        style={{
-          position: "absolute",
-          top: "20px",
-          left: "50%",
-          transform: "translateX(-50%)",
-        }}
-      >
-        {currentIndex + 1} of {pendingCount}
-      </Badge>
+      <ApprovalPositionBadge config={{ currentIndex, pendingCount }} />
 
-      <AnimatePresence>
-        {item && showDescriptionFullscreen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            style={{
-              position: "fixed",
-              inset: 0,
-              backgroundColor: "rgba(0, 0, 0, 0.7)",
-              zIndex: 250,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: 24,
-            }}
-            onClick={() => setShowDescriptionFullscreen(false)}
-          >
-            <motion.div
-              layoutId={`description-${item.canvas_id}`}
-              transition={{
-                type: "spring",
-                stiffness: 260,
-                damping: 22,
-              }}
-              style={{
-                width: "70vw",
-                height: "70vh",
-                maxWidth: "1100px",
-                maxHeight: "80vh",
-                backgroundColor: "var(--mantine-color-body)",
-                borderRadius: 12,
-                border: "1px solid var(--mantine-color-default-border)",
-                overflow: "hidden",
-                boxShadow:
-                  "0 30px 80px rgba(0, 0, 0, 0.35), 0 8px 24px rgba(0, 0, 0, 0.25)",
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <Box
-                style={{
-                  padding: 16,
-                  borderBottom: "1px solid var(--mantine-color-default-border)",
-                }}
-              >
-                <Group justify="space-between">
-                  <Text fw={600}>{item.title}</Text>
-                  <Button
-                    size="xs"
-                    variant="subtle"
-                    onClick={() => setShowDescriptionFullscreen(false)}
-                  >
-                    Close
-                  </Button>
-                </Group>
-              </Box>
-              <Box
-                style={{
-                  padding: 16,
-                  maxHeight: "calc(90vh - 60px)",
-                  overflowY: "auto",
-                }}
-              >
-                <TypographyStylesProvider>
-                  <div
-                    dangerouslySetInnerHTML={{
-                      __html: item.description,
-                    }}
-                  />
-                </TypographyStylesProvider>
-              </Box>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <ApprovalDescriptionFullscreen
+        config={{ item, showDescriptionFullscreen }}
+        handlers={{
+          onClose: () => setShowDescriptionFullscreen(false),
+        }}
+      />
 
       {/* Card container */}
       <div
@@ -773,54 +431,27 @@ export default function ApprovalModal({
         }}
       >
         {/* Navigation buttons - positioned relative to card */}
-        <ActionIcon
-          variant="filled"
-          size="xl"
-          onClick={() => handleNavigate(-1)}
-          disabled={!canGoPrev}
-          style={{
-            position: "absolute",
-            left: "-25px",
-            top: "50%",
-            transform: "translateY(-50%)",
-            zIndex: 10,
-          }}
-        >
-          <IconChevronLeft size={24} />
-        </ActionIcon>
-
-        <ActionIcon
-          variant="filled"
-          size="xl"
-          onClick={() => handleNavigate(1)}
-          disabled={!canGoNext}
-          style={{
-            position: "absolute",
-            right: "-25px",
-            top: "50%",
-            transform: "translateY(-50%)",
-            zIndex: 10,
-          }}
-        >
-          <IconChevronRight size={24} />
-        </ActionIcon>
+        <ApprovalNavigationControls
+          config={{ canGoPrev, canGoNext }}
+          handlers={{ onNavigate: handleNavigate }}
+        />
 
         <AnimatePresence mode="wait">
           {item && (
             <Card
               key={item.canvas_id}
               item={item}
-              classes={classes}
-              events={events}
-              unassignedColor={unassignedColor}
+              config={{ classes, events, unassignedColor }}
+              handlers={{
+                onUserEdit: markUserEdited,
+                onApprove: handleApproveClick,
+                onReject: handleRejectClick,
+                onAttemptClose: handleAttemptClose,
+                onDiscard: handleDiscard,
+                onOpenEvent: handleOpenMentionEvent,
+              }}
               formData={formData}
               setFormData={setFormData}
-              onUserEdit={markUserEdited}
-              onApprove={handleApproveClick}
-              onReject={handleRejectClick}
-              onAttemptClose={handleAttemptClose}
-              onDiscard={handleDiscard}
-              onOpenEvent={handleOpenMentionEvent}
               exitDirection={exitDirection}
               eventTypePulse={eventTypePulse}
               showDescriptionFullscreen={showDescriptionFullscreen}

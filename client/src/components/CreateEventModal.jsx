@@ -11,7 +11,7 @@ import {
 } from "@mantine/core";
 import { DateTimePicker } from "@mantine/dates";
 import dayjs from "dayjs";
-import { toUTCString } from "../utils/datetime";
+import { toLocalDate, toUTCString } from "../utils/datetime";
 import NotesTextarea from "./NotesTextarea";
 import { motion, useAnimation } from "framer-motion";
 
@@ -50,7 +50,7 @@ export default function CreateEventModal({
     if (!opened) return;
     const nextFormData = {
       title: "",
-      dueDate: date ? new Date(date + "T00:00:00") : null,
+      dueDate: toLocalDate(date),
       classId: null,
       eventType: "assignment",
       notes: "",

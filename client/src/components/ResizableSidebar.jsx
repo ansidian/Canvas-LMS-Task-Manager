@@ -3,6 +3,7 @@ import { Stack, Divider } from '@mantine/core';
 import { OnboardingTour } from '@gfazioli/mantine-onboarding-tour';
 import PendingSidebar from './PendingSidebar';
 import FilterPanel from './FilterPanel';
+import { getStorageItem, setStorageItem } from '../utils/storage';
 
 const SPLIT_POSITION_KEY = 'sidebar_split_position';
 const DEFAULT_SPLIT = 60; // 60% for pending items
@@ -37,7 +38,7 @@ export default function ResizableSidebar({
   }, [pendingItems, classes]);
 
   const [splitPosition, setSplitPosition] = useState(() => {
-    const saved = localStorage.getItem(SPLIT_POSITION_KEY);
+    const saved = getStorageItem(SPLIT_POSITION_KEY);
     return saved ? parseFloat(saved) : DEFAULT_SPLIT;
   });
   const [isDragging, setIsDragging] = useState(false);
@@ -45,7 +46,7 @@ export default function ResizableSidebar({
 
   // Persist split position
   useEffect(() => {
-    localStorage.setItem(SPLIT_POSITION_KEY, splitPosition.toString());
+    setStorageItem(SPLIT_POSITION_KEY, splitPosition.toString());
   }, [splitPosition]);
 
   const handleMouseDown = (e) => {

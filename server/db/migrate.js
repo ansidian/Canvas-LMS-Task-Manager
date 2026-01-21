@@ -33,6 +33,21 @@ async function runMigration(name, sql) {
     .filter((s) => s.length > 0);
 
   for (const statement of statements) {
+    const addColumnMatch = statement.match(
+      /^ALTER\s+TABLE\s+["`]?([A-Za-z0-9_]+)["`]?\s+ADD\s+COLUMN\s+["`]?([A-Za-z0-9_]+)["`]?/i,
+    );
+    if (addColumnMatch) {
+      const [, tableName, columnName] = addColumnMatch;
+      const result = await db.execute(`PRAGMA table_info(${tableName})`);
+      const exists = result.rows.some((row) => row.name === columnName);
+      if (exists) {
+        console.warn(
+          `Skipping ${tableName}.${columnName}; column already exists.`,
+        );
+        continue;
+      }
+    }
+
     await db.execute(statement);
   }
 

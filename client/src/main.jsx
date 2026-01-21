@@ -5,12 +5,16 @@ import {
   createTheme,
   useMantineColorScheme,
 } from "@mantine/core";
+import { Notifications } from "@mantine/notifications";
 import { ClerkProvider } from "@clerk/clerk-react";
 import { dark } from "@clerk/themes";
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
+import "@mantine/notifications/styles.css";
 import App from "./App";
 import "./index.css";
+import ErrorBoundary from "./components/ErrorBoundary";
+import { getStorageItem } from "./utils/storage";
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
@@ -39,7 +43,7 @@ const theme = createTheme({
 
 // Get initial color scheme from localStorage, default to dark
 const getInitialColorScheme = () => {
-  const stored = localStorage.getItem("mantine-color-scheme");
+  const stored = getStorageItem("mantine-color-scheme");
   return stored || "dark";
 };
 
@@ -87,7 +91,10 @@ ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <MantineProvider theme={theme} defaultColorScheme={getInitialColorScheme()}>
       <ThemedClerkProvider>
-        <App />
+        <Notifications position="top-center" />
+        <ErrorBoundary>
+          <App />
+        </ErrorBoundary>
       </ThemedClerkProvider>
     </MantineProvider>
   </React.StrictMode>,
