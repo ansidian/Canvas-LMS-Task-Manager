@@ -137,14 +137,23 @@ VITE_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
 
 - **Frontend:** React 19, Vite, Mantine UI v8
 - **Backend:** Express.js
+- **Libraries** Framer Motion (transitions), Sonner (Toast Notifications), TipTap (Notes section), DnD Kit, Day.js, Tippy.js (for @mention).
 - **Database:** LibSQL/Turso (SQLite-compatible)
 - **Auth:** Clerk (OAuth2)
 - **Deployment:** Render.com
 
+## Frontend Architecture
+
+The frontend was designed from the start to keep App lean and put state where it naturally belongs:
+
+- **Contexts** own distinct state domains (events, UI state, filters, onboarding).
+- **Hooks** package workflows like Canvas sync/reconcile/fetch and settings modal state.
+- **Local storage** is intentionally limited to lightweight UI preferences (filters, onboarding status, last fetch timestamp, pending cache).
+
 ## Security Notes
 
-- **No credential storage** - Your Canvas token is stored locally in your browser, never sent to CTM's servers
-- **API proxying** - Canvas API calls are proxied through the backend to avoid CORS issues, but credentials are passed via headers on each request
+- **Credential storage** - Canvas URL/token are saved in your user settings (database) and are not stored in localStorage
+- **API proxying** - Canvas API calls are proxied through the backend to avoid CORS issues; the server uses your saved settings to authenticate requests
 - **OAuth2 authentication** - Clerk handles all auth, so no password management needed
 - **Submission verification** - Before submitting assignments, CTM verifies with Canvas to prevent ghost submissions
 
@@ -172,6 +181,6 @@ A: You can manually create events without connecting to Canvas, but the main val
 
 **Q: Is my data private?**
 
-A: Your Canvas API token is stored locally in your browser and never sent to any server. Assignment data (titles, descriptions, due dates, notes) is stored in the database - either a local SQLite file for development or Turso (cloud) for production. All data is scoped to your Clerk user ID, so it's isolated per user.
+A: Your Canvas API token is saved in your user settings in the database (local SQLite for development or Turso for production) and is not stored in localStorage. Assignment data (titles, descriptions, due dates, notes) is stored in the same database. All data is scoped to your Clerk user ID, so it's isolated per user.
 
 ---
