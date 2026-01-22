@@ -5,6 +5,8 @@ import {
 } from "../utils/storage";
 import { clearGuestData, GUEST_STORAGE_KEYS } from "./guestStorage";
 
+const AUTO_RESUME_BLOCK_KEY = "guest_auto_resume_blocked";
+
 const parseTimestamp = (value) => {
   if (!value) return null;
   const parsed = Number(value);
@@ -58,4 +60,21 @@ export const resetGuestSession = () => {
   removeStorageItem(GUEST_STORAGE_KEYS.sessionCreatedAt);
   removeStorageItem(GUEST_STORAGE_KEYS.sessionLastActiveAt);
   return createGuestSession();
+};
+
+export const ensureGuestSession = () => {
+  const existing = getGuestSession();
+  if (existing?.id) return existing;
+  return createGuestSession();
+};
+
+export const getAutoResumeBlocked = () =>
+  getStorageItem(AUTO_RESUME_BLOCK_KEY) === "1";
+
+export const setAutoResumeBlocked = (blocked) => {
+  if (blocked) {
+    setStorageItem(AUTO_RESUME_BLOCK_KEY, "1");
+  } else {
+    removeStorageItem(AUTO_RESUME_BLOCK_KEY);
+  }
 };
