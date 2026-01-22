@@ -118,7 +118,7 @@ export default function AppHeader({ pendingCount }) {
 						{pendingCount} pending
 					</Badge>
 				)}
-				<UserButton />
+				<UserButton afterSignOutUrl="/?signedOut=1" />
 			</Group>
 		</Group>
 	);

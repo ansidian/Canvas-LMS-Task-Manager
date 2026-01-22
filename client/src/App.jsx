@@ -4,7 +4,7 @@ import { spotlight } from "@mantine/spotlight";
 import "@mantine/spotlight/styles.css";
 import { OnboardingTour } from "@gfazioli/mantine-onboarding-tour";
 import "@gfazioli/mantine-onboarding-tour/styles.css";
-import { SignedIn, SignedOut, SignIn, useAuth } from "@clerk/clerk-react";
+import { SignedIn, SignedOut, useAuth } from "@clerk/clerk-react";
 import AppLayout from "./components/app/AppLayout";
 import "./onboarding-tour.css";
 import { EventsProvider } from "./contexts/EventsContext";
@@ -13,40 +13,24 @@ import { OnboardingProvider } from "./contexts/OnboardingContext";
 import { UIProvider } from "./contexts/UIContext";
 import { AppControllerProvider } from "./contexts/AppControllerContext";
 import useAppController from "./hooks/useAppController";
+import GuestEntry from "./components/auth/GuestEntry";
+import guestApi from "./guest/guestApi";
+import {
+  GuestSessionProvider,
+  useGuestSession,
+} from "./contexts/GuestSessionContext";
 
 const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
 const modKey = isMac ? "⌘" : "Ctrl";
 
 // Main App Component
-function AppContent() {
-  const { getToken } = useAuth();
-
-  // API helper with Clerk auth
-  const api = async (endpoint, options = {}) => {
-    const token = await getToken();
-    const res = await fetch(`/api${endpoint}`, {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-        ...options.headers,
-      },
-      ...options,
-    });
-    if (!res.ok) {
-      const error = await res
-        .json()
-        .catch(() => ({ message: "Request failed" }));
-      throw new Error(error.message || "Request failed");
-    }
-    return res.json();
-  };
-
+function AppContent({ api, isGuest }) {
   return (
     <EventsProvider api={api}>
       <FiltersProvider>
         <UIProvider>
           <OnboardingProvider>
-            <AppContentBody api={api} />
+            <AppContentBody api={api} isGuest={isGuest} />
           </OnboardingProvider>
         </UIProvider>
       </FiltersProvider>
@@ -54,9 +38,9 @@ function AppContent() {
   );
 }
 
-function AppContentBody({ api }) {
+function AppContentBody({ api, isGuest }) {
   const { toggleColorScheme } = useMantineColorScheme();
-  const controller = useAppController({ api, modKey });
+  const controller = useAppController({ api, modKey, isGuest });
   const shouldStartOnboarding =
     controller.showOnboarding &&
     !controller.loading &&
@@ -105,39 +89,52 @@ function AppContentBody({ api }) {
   );
 }
 
-// Sign-in page wrapper component
-function SignInPage() {
-  const { colorScheme } = useMantineColorScheme();
+function AppShell({ getToken }) {
+  const { hasGuestSession, autoResumeBlocked } = useGuestSession();
 
-  const backgroundStyle = {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    minHeight: "100vh",
-    background:
-      colorScheme === "dark"
-        ? "linear-gradient(135deg, #1f2937 0%, #1e293b 50%, #0f172a 100%)"
-        : "linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)",
+  const api = async (endpoint, options = {}) => {
+    const token = await getToken();
+    const res = await fetch(`/api${endpoint}`, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        ...options.headers,
+      },
+      ...options,
+    });
+    if (!res.ok) {
+      const error = await res
+        .json()
+        .catch(() => ({ message: "Request failed" }));
+      throw new Error(error.message || "Request failed");
+    }
+    return res.json();
   };
 
   return (
-    <div style={backgroundStyle}>
-      <SignIn />
-    </div>
+    <>
+      <SignedOut>
+        {hasGuestSession && !autoResumeBlocked ? (
+          <AppContent api={guestApi} isGuest />
+        ) : (
+          <GuestEntry />
+        )}
+      </SignedOut>
+
+      <SignedIn>
+        <AppContent api={api} isGuest={false} />
+      </SignedIn>
+    </>
   );
 }
 
 // Main export with authentication
 export default function App() {
-  return (
-    <>
-      <SignedOut>
-        <SignInPage />
-      </SignedOut>
+  const { getToken, isSignedIn } = useAuth();
 
-      <SignedIn>
-        <AppContent />
-      </SignedIn>
-    </>
+  return (
+    <GuestSessionProvider isSignedIn={isSignedIn}>
+      <AppShell getToken={getToken} />
+    </GuestSessionProvider>
   );
 }

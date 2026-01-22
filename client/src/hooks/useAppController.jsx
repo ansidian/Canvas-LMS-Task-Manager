@@ -10,7 +10,7 @@ import useClassFiltersSync from "./useClassFiltersSync";
 import useEventFiltering from "./useEventFiltering";
 import useOnboardingTour from "./useOnboardingTour";
 
-export default function useAppController({ api, modKey }) {
+export default function useAppController({ api, modKey, isGuest }) {
 	const {
 		events,
 		setEvents,
@@ -156,6 +156,8 @@ export default function useAppController({ api, modKey }) {
 	const goToToday = () => setCurrentDate(dayjs());
 
 	return {
+		api,
+		isGuest: Boolean(isGuest),
 		modKey,
 		classes: canvas.classes,
 		pendingItems: canvas.pendingItems,
