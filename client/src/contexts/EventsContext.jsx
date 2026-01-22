@@ -156,21 +156,22 @@ export function EventsProvider({ api, children }) {
 				index: eventIndex,
 			});
 
+			const deletedTitle = deletedEvent?.title || "Untitled event";
 			notifyUndo({
-        title: "Event deleted",
-        message: "Event has been deleted.",
-        onUndo: () => {
-          const pending = pendingDeleteRef.current.get(eventId);
-          if (!pending) return;
-          clearTimeout(pending.timeoutId);
-          pendingDeleteRef.current.delete(eventId);
-          dispatch({
-            type: "RESTORE_EVENT",
-            event: pending.event,
-            index: pending.index,
-          });
-        },
-      });
+				title: `Deleted "${deletedTitle}"`,
+				message: "Event has been deleted.",
+				onUndo: () => {
+					const pending = pendingDeleteRef.current.get(eventId);
+					if (!pending) return;
+					clearTimeout(pending.timeoutId);
+					pendingDeleteRef.current.delete(eventId);
+					dispatch({
+						type: "RESTORE_EVENT",
+						event: pending.event,
+						index: pending.index,
+					});
+				},
+			});
 
 			return true;
 		},
@@ -191,20 +192,26 @@ export function EventsProvider({ api, children }) {
           updatedDueDate = toUTCString(localDateTime);
         }
 
+        if (originalEvent && updatedDueDate === originalEvent.due_date) {
+          return originalEvent;
+        }
+
         const updated = await api(`/events/${eventId}`, {
           method: "PATCH",
           body: JSON.stringify({ due_date: updatedDueDate }),
         });
         dispatch({ type: "UPDATE_EVENT", event: updated });
         if (updated?.canvas_id && !updated?.canvas_due_date_override) {
+          const eventTitle = originalEvent.title;
           notifyAction({
             id: CANVAS_DND_TOAST_ID,
-            title: "Date changed locally",
+            title: `${eventTitle}'s date changed locally`,
             message: "Canvas will resync this due date on the next fetch.",
             actionLabel: "Keep change",
             onAction: () =>
               updateEvent(eventId, { canvas_due_date_override: 1 }),
             duration: 7000,
+            countdown: 7,
           });
         }
         return updated;

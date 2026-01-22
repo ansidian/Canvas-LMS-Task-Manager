@@ -176,7 +176,7 @@ export default function useApprovalFlow({
     });
 
     notifyUndo({
-      title: "Item rejected",
+      title: `Rejected "${item.title}"`,
       message: "Item has been rejected.",
       onUndo: () => {
         const pending = pendingRejectsRef.current.get(item.canvas_id);

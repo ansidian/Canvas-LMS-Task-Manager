@@ -12,6 +12,7 @@ import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
 import App from "./App";
 import "./index.css";
+import "./sonner.css";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { getStorageItem } from "./utils/storage";
 
