@@ -1,4 +1,4 @@
-import { AppShell } from "@mantine/core";
+import { AppShell, Box } from "@mantine/core";
 import { Spotlight } from "@mantine/spotlight";
 import { IconSearch } from "@tabler/icons-react";
 import { useAppControllerContext } from "../../contexts/AppControllerContext";
@@ -7,10 +7,12 @@ import AppMain from "./AppMain";
 import AppModals from "./AppModals";
 import AppOnboardingDemos from "./AppOnboardingDemos";
 import AppSidebar from "./AppSidebar";
+import GuestBanner from "./GuestBanner";
 
 export default function AppLayout() {
 	const controller = useAppControllerContext();
 	const pendingCount = controller.filteredPendingItems.length;
+	const headerHeight = controller.isGuest ? 92 : 60;
 
 	return (
 		<>
@@ -25,7 +27,7 @@ export default function AppLayout() {
 			/>
 
 			<AppShell
-				header={{ height: 60 }}
+				header={{ height: headerHeight }}
 				aside={{
 					width: 320,
 					breakpoint: "sm",
@@ -34,7 +36,10 @@ export default function AppLayout() {
 				padding="md"
 			>
 				<AppShell.Header>
-					<AppHeader pendingCount={pendingCount} />
+					<Box>
+						{controller.isGuest && <GuestBanner />}
+						<AppHeader pendingCount={pendingCount} />
+					</Box>
 				</AppShell.Header>
 				<AppMain />
 				<AppSidebar />
