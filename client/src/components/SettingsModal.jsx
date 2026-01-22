@@ -1,7 +1,6 @@
-import { useCallback, useEffect } from "react";
+import { useEffect } from "react";
 import useSettingsModalState from "../hooks/useSettingsModalState";
 import { Modal, Tabs } from "@mantine/core";
-import { useAuth } from "@clerk/clerk-react";
 import SettingsCanvasTab from "./settings/SettingsCanvasTab";
 import SettingsClassesTab from "./settings/SettingsClassesTab";
 import SettingsHelpTab from "./settings/SettingsHelpTab";
@@ -12,6 +11,9 @@ import { removeStorageItem } from "../utils/storage";
 export default function SettingsModal({
   opened,
   onClose,
+  api,
+  isGuest = false,
+  resetGuestSession,
   classes,
   onClassesChange,
   onEventsChange,
@@ -24,25 +26,6 @@ export default function SettingsModal({
   unassignedColor = "#a78b71",
   onUnassignedColorChange,
 }) {
-  const { getToken } = useAuth();
-
-  // API helper with Clerk auth
-  const api = useCallback(
-    async (endpoint, options = {}) => {
-      const token = await getToken();
-      const res = await fetch(`/api${endpoint}`, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-          ...options.headers,
-        },
-        ...options,
-      });
-      if (!res.ok) throw new Error("Request failed");
-      return res.json();
-    },
-    [getToken],
-  );
   const {
     canvasUrl,
     setCanvasUrl,
@@ -87,6 +70,8 @@ export default function SettingsModal({
 
   const settingsApi = useSettingsApi({
     api,
+    isGuest,
+    resetGuestSession,
     onClassesChange,
     onEventsChange,
     onClassUpdate,
@@ -196,7 +181,7 @@ export default function SettingsModal({
 
         <Tabs.Panel value="help" pt="md">
           <SettingsHelpTab
-            config={{ showResetConfirm, resetting }}
+            config={{ showResetConfirm, resetting, isGuest }}
             handlers={{
               resetOnboarding: settingsApi.resetOnboarding,
               handleResetData: settingsApi.handleResetData,

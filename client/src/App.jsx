@@ -40,7 +40,13 @@ function AppContent({ api, isGuest }) {
 
 function AppContentBody({ api, isGuest }) {
   const { toggleColorScheme } = useMantineColorScheme();
-  const controller = useAppController({ api, modKey, isGuest });
+  const { resetGuestSession } = useGuestSession();
+  const controller = useAppController({
+    api,
+    modKey,
+    isGuest,
+    resetGuestSession,
+  });
   const shouldStartOnboarding =
     controller.showOnboarding &&
     !controller.loading &&

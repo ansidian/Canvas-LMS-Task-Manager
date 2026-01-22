@@ -12,6 +12,9 @@ export default function AppModals() {
 			<SettingsModal
 				opened={controller.settingsOpen}
 				onClose={() => controller.setSettingsOpen(false)}
+				api={controller.api}
+				isGuest={controller.isGuest}
+				resetGuestSession={controller.resetGuestSession}
 				classes={controller.classes}
 				onClassesChange={controller.loadClasses}
 				onEventsChange={controller.loadEvents}

@@ -3,6 +3,8 @@ import { getStorageItem, setStorageItem } from "../utils/storage";
 
 export default function useSettingsApi({
   api,
+  isGuest = false,
+  resetGuestSession,
   onClassesChange,
   onEventsChange,
   onClassUpdate,
@@ -29,6 +31,14 @@ export default function useSettingsApi({
     setResetting(true);
     try {
       await api("/reset-data", { method: "POST" });
+
+      if (isGuest) {
+        if (typeof resetGuestSession === "function") {
+          resetGuestSession();
+        }
+        window.location.reload();
+        return;
+      }
 
       // Clear localStorage (except onboarding status)
       const hasCompletedOnboarding = getStorageItem("hasCompletedOnboarding");
