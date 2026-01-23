@@ -22,27 +22,85 @@ router.post("/", async (req, res) => {
     let mergedClassesCount = 0;
     const classIdMapping = {}; // Maps guest class IDs to authenticated class IDs
 
-    // 1. Merge classes
-    // For each guest class, check if authenticated user has a class with same canvas_course_id
+    // Merge classes
+    // For each guest class, check for duplicates and apply resolution
     if (guestClasses && Array.isArray(guestClasses)) {
       for (const guestClass of guestClasses) {
-        let authClassId = null;
+        let isDuplicate = false;
+        let existingClassId = null;
 
-        // Check if user has a class with this canvas_course_id
+        // Check for duplicate by canvas_course_id
         if (guestClass.canvas_course_id) {
-          const existingClass = await db.execute({
+          const canvasMatch = await db.execute({
             sql: "SELECT id FROM classes WHERE user_id = ? AND canvas_course_id = ?",
             args: [userId, guestClass.canvas_course_id],
           });
 
-          if (existingClass.rows.length > 0) {
-            // Class already exists, use its ID
-            authClassId = existingClass.rows[0].id;
+          if (canvasMatch.rows.length > 0) {
+            isDuplicate = true;
+            existingClassId = canvasMatch.rows[0].id;
           }
         }
 
-        // If no matching class found, insert new class
-        if (!authClassId) {
+        // If no Canvas course ID match, check by exact name match
+        if (!isDuplicate && guestClass.name) {
+          const nameMatch = await db.execute({
+            sql: "SELECT id FROM classes WHERE user_id = ? AND name = ?",
+            args: [userId, guestClass.name],
+          });
+
+          if (nameMatch.rows.length > 0) {
+            isDuplicate = true;
+            existingClassId = nameMatch.rows[0].id;
+          }
+        }
+
+        // Handle based on duplicate status and resolution
+        if (isDuplicate) {
+          const resolutionKey = `class-${guestClass.id}-${existingClassId}`;
+          const resolution = resolutions?.[resolutionKey] || "auth";
+
+          if (resolution === "guest") {
+            // Update existing class with guest data
+            await db.execute({
+              sql: `UPDATE classes
+                    SET name = ?, color = ?, canvas_course_id = ?,
+                        is_synced = ?, sort_order = ?
+                    WHERE id = ? AND user_id = ?`,
+              args: [
+                guestClass.name,
+                guestClass.color || "#3498db",
+                guestClass.canvas_course_id || null,
+                guestClass.is_synced !== undefined ? guestClass.is_synced : 1,
+                guestClass.sort_order || 0,
+                existingClassId,
+                userId,
+              ],
+            });
+            classIdMapping[guestClass.id] = existingClassId;
+            mergedClassesCount++;
+          } else if (resolution === "both") {
+            // Insert as new class
+            const result = await db.execute({
+              sql: `INSERT INTO classes (user_id, name, color, canvas_course_id, is_synced, sort_order)
+                    VALUES (?, ?, ?, ?, ?, ?)`,
+              args: [
+                userId,
+                guestClass.name,
+                guestClass.color || "#3498db",
+                null, // Clear canvas_course_id to avoid conflict
+                guestClass.is_synced !== undefined ? guestClass.is_synced : 1,
+                guestClass.sort_order || 0,
+              ],
+            });
+            classIdMapping[guestClass.id] = result.lastInsertRowid;
+            mergedClassesCount++;
+          } else {
+            // resolution === "auth" - keep existing, just map IDs
+            classIdMapping[guestClass.id] = existingClassId;
+          }
+        } else {
+          // Not a duplicate - insert new class
           const result = await db.execute({
             sql: `INSERT INTO classes (user_id, name, color, canvas_course_id, is_synced, sort_order)
                   VALUES (?, ?, ?, ?, ?, ?)`,
@@ -55,23 +113,20 @@ router.post("/", async (req, res) => {
               guestClass.sort_order || 0,
             ],
           });
-          authClassId = result.lastInsertRowid;
+          classIdMapping[guestClass.id] = result.lastInsertRowid;
           mergedClassesCount++;
         }
-
-        // Map guest class ID to authenticated class ID
-        classIdMapping[guestClass.id] = authClassId;
       }
     }
 
-    // 2. Merge events
+    // Merge events
     // For each guest event, check for duplicates and apply resolution
     if (guestEvents && Array.isArray(guestEvents)) {
       for (const guestEvent of guestEvents) {
         let isDuplicate = false;
         let existingEventId = null;
 
-        // Check for duplicate by canvas_id first (most reliable)
+        // Check for duplicate by canvas_id first
         if (guestEvent.canvas_id) {
           const canvasMatch = await db.execute({
             sql: "SELECT id FROM events WHERE user_id = ? AND canvas_id = ?",
@@ -99,7 +154,8 @@ router.post("/", async (req, res) => {
 
         // Handle based on duplicate status and resolution
         if (isDuplicate) {
-          const resolution = resolutions?.[guestEvent.id] || "auth";
+          const resolutionKey = `event-${guestEvent.id}-${existingEventId}`;
+          const resolution = resolutions?.[resolutionKey] || "auth";
 
           // Map guest class_id to authenticated class_id
           const mappedClassId = guestEvent.class_id
@@ -188,7 +244,7 @@ router.post("/", async (req, res) => {
       }
     }
 
-    // 3. Migrate Canvas credentials if guest has them and auth user doesn't
+    // Migrate Canvas credentials if guest has them and auth user doesn't
     if (guestSettings?.canvas_url && guestSettings?.canvas_token) {
       // Check if user already has Canvas credentials
       const existingSettings = await db.execute({
@@ -214,11 +270,7 @@ router.post("/", async (req, res) => {
           sql: `UPDATE settings
                 SET canvas_url = ?, canvas_token = ?, updated_at = CURRENT_TIMESTAMP
                 WHERE user_id = ?`,
-          args: [
-            guestSettings.canvas_url,
-            guestSettings.canvas_token,
-            userId,
-          ],
+          args: [guestSettings.canvas_url, guestSettings.canvas_token, userId],
         });
       }
     }

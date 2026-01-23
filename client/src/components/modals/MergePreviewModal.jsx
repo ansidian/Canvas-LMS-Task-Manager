@@ -117,6 +117,30 @@ export default function MergePreviewModal({
     }));
   };
 
+  // Calculate items being added from "both" resolutions
+  const bothItems = useMemo(() => {
+    const bothEvents = [];
+    const bothClasses = [];
+
+    duplicateEvents.forEach((dup) => {
+      if (finalResolutions[`event-${dup.id}`] === 'both') {
+        bothEvents.push(dup.guest);
+      }
+    });
+
+    duplicateClasses.forEach((dup) => {
+      if (finalResolutions[`class-${dup.id}`] === 'both') {
+        bothClasses.push(dup.guest);
+      }
+    });
+
+    return {
+      events: bothEvents,
+      classes: bothClasses,
+      count: bothEvents.length + bothClasses.length,
+    };
+  }, [duplicateEvents, duplicateClasses, finalResolutions]);
+
   const handleConfirmClick = async () => {
     try {
       await confirmMerge(finalResolutions, {
@@ -157,7 +181,7 @@ export default function MergePreviewModal({
           <Text size="sm">
             <strong>{duplicateCount}</strong> duplicate item
             {duplicateCount !== 1 ? 's' : ''} found,{' '}
-            <strong>{uniqueCount}</strong> new item{uniqueCount !== 1 ? 's' : ''}{' '}
+            <strong>{uniqueCount + bothItems.count}</strong> new item{(uniqueCount + bothItems.count) !== 1 ? 's' : ''}{' '}
             will be added
             {hasCanvasCredentials && (
               <>
@@ -236,6 +260,25 @@ export default function MergePreviewModal({
                 ))}
               </Table.Tbody>
             </Table>
+          </>
+        )}
+
+        {/* Items Being Added From Duplicates Section */}
+        {bothItems.count > 0 && (
+          <>
+            <Divider label="Items Being Added From Duplicates" labelPosition="center" />
+            <Stack gap="xs">
+              {bothItems.events.map((event) => (
+                <Badge key={event.id} size="lg" variant="light" color="orange">
+                  {event.title} - {formatDate(event.due_date)}
+                </Badge>
+              ))}
+              {bothItems.classes.map((classItem) => (
+                <Badge key={classItem.id} size="lg" variant="light" color="orange">
+                  {classItem.name}
+                </Badge>
+              ))}
+            </Stack>
           </>
         )}
 
