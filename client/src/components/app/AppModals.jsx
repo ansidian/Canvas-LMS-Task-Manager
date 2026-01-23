@@ -59,6 +59,8 @@ export default function AppModals() {
 				onUpdate={controller.handleEventUpdate}
 				onDelete={controller.handleEventDelete}
 				onOpenEvent={controller.handleOpenEvent}
+				api={controller.api}
+				isGuest={controller.isGuest}
 			/>
 
 			<CreateEventModal

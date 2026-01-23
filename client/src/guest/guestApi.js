@@ -313,6 +313,12 @@ export default async function guestApi(endpoint, options = {}) {
         allAssignments: data?.allAssignments,
       };
     }
+    if (segments.length === 2 && segments[1] === "assignment" && method === "GET") {
+      return requestGuestCanvas(endpoint, {
+        signal: options.signal,
+        headers: options.headers,
+      });
+    }
     if (
       segments.length === 3 &&
       segments[1] === "submissions" &&

@@ -11,6 +11,7 @@ export default function useEventModalSubmission({
   onUpdate,
   markUserEdited,
   setSubmissionDirty,
+  isGuest,
 }) {
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [submissionComment, setSubmissionComment] = useState("");
@@ -98,6 +99,10 @@ export default function useEventModalSubmission({
 
   const handleCanvasSubmission = async () => {
     if (!event) return;
+    if (isGuest) {
+      setSubmissionError("Canvas submissions are not enabled for guests yet.");
+      return;
+    }
     if (!canvasIds) {
       setSubmissionError("This event is not linked to a Canvas assignment.");
       return;

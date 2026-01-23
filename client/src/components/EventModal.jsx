@@ -19,11 +19,13 @@ export default function EventModal({
   onUpdate,
   onDelete,
   onOpenEvent,
+  api,
+  isGuest,
 }) {
   const { colorScheme } = useMantineColorScheme();
   const { getToken } = useAuth();
 
-  const canvas = useEventModalCanvas({ event, getToken, onUpdate });
+  const canvas = useEventModalCanvas({ event, api, onUpdate });
 
   const form = useEventModalForm({
     event,
@@ -46,6 +48,7 @@ export default function EventModal({
     onUpdate,
     markUserEdited: form.markUserEdited,
     setSubmissionDirty: form.setSubmissionDirty,
+    isGuest,
   });
 
   if (!event) return null;

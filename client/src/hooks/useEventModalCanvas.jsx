@@ -42,7 +42,7 @@ const parseCanvasIds = (canvasId) => {
   return { courseId, assignmentId };
 };
 
-export default function useEventModalCanvas({ event, getToken, onUpdate }) {
+export default function useEventModalCanvas({ event, api, onUpdate }) {
   const [assignmentInfo, setAssignmentInfo] = useState(null);
   const [assignmentLoading, setAssignmentLoading] = useState(false);
   const [assignmentError, setAssignmentError] = useState("");
@@ -55,39 +55,17 @@ export default function useEventModalCanvas({ event, getToken, onUpdate }) {
   const canvasIds = useMemo(() => parseCanvasIds(event?.canvas_id), [event]);
 
   const fetchAssignmentInfo = async (ids, signal) => {
-    const token = await getToken();
-    const res = await fetch(
-      `/api/canvas/assignment?courseId=${ids.courseId}&assignmentId=${ids.assignmentId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        signal,
-      },
+    return api(
+      `/canvas/assignment?courseId=${ids.courseId}&assignmentId=${ids.assignmentId}`,
+      { signal },
     );
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ message: "Request failed" }));
-      throw new Error(err.message || "Request failed");
-    }
-    return res.json();
   };
 
   const fetchSubmissionInfo = async (ids, signal) => {
-    const token = await getToken();
-    const res = await fetch(
-      `/api/canvas/submissions/self?courseId=${ids.courseId}&assignmentId=${ids.assignmentId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        signal,
-      },
+    return api(
+      `/canvas/submissions/self?courseId=${ids.courseId}&assignmentId=${ids.assignmentId}`,
+      { signal },
     );
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ message: "Request failed" }));
-      throw new Error(err.message || "Request failed");
-    }
-    return res.json();
   };
 
   useEffect(() => {
@@ -176,7 +154,7 @@ export default function useEventModalCanvas({ event, getToken, onUpdate }) {
     }
 
     return () => controller.abort();
-  }, [event, canvasIds, getToken, onUpdate]);
+  }, [event, canvasIds, api, onUpdate]);
 
   const descriptionHtml =
     event?.description ?? assignmentInfo?.description ?? "";
