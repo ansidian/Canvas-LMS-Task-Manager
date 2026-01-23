@@ -16,7 +16,7 @@ import { clearGuestData } from '../guest/guestStorage';
  * @returns {Object} { confirmMerge, isLoading, error }
  */
 export default function useMergeFlow(api, guestSessionId) {
-  const { setMergeStatus, setMergeError, setMergeCompleted } = useMerge();
+  const { setMergeStatus, setMergeError, setMergedSessionId } = useMerge();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -56,8 +56,8 @@ export default function useMergeFlow(api, guestSessionId) {
         // Successful merge - clear guest data from localStorage
         clearGuestData();
 
-        // Mark merge as completed in context (persists to sessionStorage)
-        setMergeCompleted(true);
+        // Mark this guest session as merged in context (persists to sessionStorage)
+        setMergedSessionId(guestSessionId);
         setMergeStatus('success');
         setIsLoading(false);
 
@@ -76,7 +76,7 @@ export default function useMergeFlow(api, guestSessionId) {
         throw err;
       }
     },
-    [api, guestSessionId, setMergeStatus, setMergeError, setMergeCompleted]
+    [api, guestSessionId, setMergeStatus, setMergeError, setMergedSessionId]
   );
 
   return {

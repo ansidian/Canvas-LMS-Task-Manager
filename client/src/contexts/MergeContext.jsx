@@ -2,32 +2,32 @@ import { createContext, useContext, useState, useMemo, useCallback } from 'react
 
 const MergeContext = createContext(null);
 
-const MERGE_COMPLETED_KEY = 'merge_completed';
+const MERGED_SESSION_ID_KEY = 'merged_session_id';
 
 /**
- * Get merge completion status from sessionStorage
- * @returns {boolean}
+ * Get merged guest session ID from sessionStorage
+ * @returns {string|null} The guest session ID that was merged, or null if none
  */
-const getMergeCompleted = () => {
-  if (typeof window === 'undefined') return false;
+const getMergedSessionId = () => {
+  if (typeof window === 'undefined') return null;
   try {
-    return sessionStorage.getItem(MERGE_COMPLETED_KEY) === 'true';
+    return sessionStorage.getItem(MERGED_SESSION_ID_KEY);
   } catch {
-    return false;
+    return null;
   }
 };
 
 /**
- * Set merge completion status in sessionStorage
- * @param {boolean} completed
+ * Set merged guest session ID in sessionStorage
+ * @param {string|null} sessionId - The guest session ID that was merged, or null to clear
  */
-const storeMergeCompleted = (completed) => {
+const storeMergedSessionId = (sessionId) => {
   if (typeof window === 'undefined') return;
   try {
-    if (completed) {
-      sessionStorage.setItem(MERGE_COMPLETED_KEY, 'true');
+    if (sessionId) {
+      sessionStorage.setItem(MERGED_SESSION_ID_KEY, sessionId);
     } else {
-      sessionStorage.removeItem(MERGE_COMPLETED_KEY);
+      sessionStorage.removeItem(MERGED_SESSION_ID_KEY);
     }
   } catch {
     // Silently ignore storage errors
@@ -42,12 +42,17 @@ export function MergeProvider({ children }) {
   const [mergeStatus, setMergeStatus] = useState(null); // null | 'pending' | 'success' | 'error'
   const [mergeError, setMergeError] = useState(null); // string | null
   const [showMergeModal, setShowMergeModal] = useState(false); // boolean
-  const [mergeCompleted, setMergeCompletedState] = useState(() => getMergeCompleted());
+  const [mergedSessionId, setMergedSessionIdState] = useState(() => getMergedSessionId());
 
-  const setMergeCompleted = useCallback((completed) => {
-    setMergeCompletedState(completed);
-    storeMergeCompleted(completed);
+  const setMergedSessionId = useCallback((sessionId) => {
+    setMergedSessionIdState(sessionId);
+    storeMergedSessionId(sessionId);
   }, []);
+
+  // Helper to check if a specific session was already merged
+  const isMergeCompleted = useCallback((currentSessionId) => {
+    return mergedSessionId === currentSessionId;
+  }, [mergedSessionId]);
 
   const value = useMemo(
     () => ({
@@ -57,10 +62,11 @@ export function MergeProvider({ children }) {
       setMergeError,
       showMergeModal,
       setShowMergeModal,
-      mergeCompleted,
-      setMergeCompleted,
+      mergedSessionId,
+      setMergedSessionId,
+      isMergeCompleted,
     }),
-    [mergeStatus, mergeError, showMergeModal, mergeCompleted, setMergeCompleted]
+    [mergeStatus, mergeError, showMergeModal, mergedSessionId, setMergedSessionId, isMergeCompleted]
   );
 
   return <MergeContext.Provider value={value}>{children}</MergeContext.Provider>;

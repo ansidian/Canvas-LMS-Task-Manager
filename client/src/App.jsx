@@ -110,8 +110,8 @@ function AppShell({ getToken, isSignedIn }) {
   const {
     showMergeModal,
     setShowMergeModal,
-    mergeCompleted,
-    setMergeCompleted,
+    isMergeCompleted,
+    setMergedSessionId,
   } = useMerge();
 
   const [mergeData, setMergeData] = useState(null);
@@ -137,8 +137,8 @@ function AppShell({ getToken, isSignedIn }) {
 
   // Detect sign-in and trigger merge modal
   useEffect(() => {
-    // Skip if not signed in, no guest session, or merge already completed
-    if (!isSignedIn || !hasGuestSession || mergeCompleted) {
+    // Skip if not signed in, no guest session, or this session already merged
+    if (!isSignedIn || !hasGuestSession || isMergeCompleted(guestSessionId)) {
       return;
     }
 
@@ -196,7 +196,8 @@ function AppShell({ getToken, isSignedIn }) {
   }, [
     isSignedIn,
     hasGuestSession,
-    mergeCompleted,
+    guestSessionId,
+    isMergeCompleted,
     session?.status,
     api,
     setShowMergeModal,
@@ -216,9 +217,11 @@ function AppShell({ getToken, isSignedIn }) {
   );
 
   const handleMergeConfirm = () => {
+    // Mark this guest session as merged
+    setMergedSessionId(guestSessionId);
+
     // Clear guest session after successful merge
     clearGuestSession();
-    setMergeCompleted(true);
     setShowMergeModal(false);
     setMergeData(null);
     sessionStorage.removeItem('merge_triggered');
@@ -276,7 +279,7 @@ function AppShell({ getToken, isSignedIn }) {
         <AppContent api={api} isGuest={false} />
 
         {/* Retry Merge Button - shows when guest data exists but merge dismissed */}
-        {hasActualGuestData && !mergeCompleted && !showMergeModal && (
+        {hasActualGuestData && !isMergeCompleted(guestSessionId) && !showMergeModal && (
           <Box
             style={{
               position: "fixed",
