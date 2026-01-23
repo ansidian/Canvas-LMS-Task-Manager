@@ -17,7 +17,7 @@ export default function GuestBanner() {
   const iconColor = isDark ? theme.colors.gray[2] : theme.colors.gray[6];
 
   return (
-    <Popover position="bottom-start" withArrow shadow="sm" openDelay={150}>
+    <Popover position="bottom-start" withArrow shadow="sm">
       <Popover.Target>
         <Box
           role="status"
