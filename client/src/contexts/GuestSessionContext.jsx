@@ -13,6 +13,7 @@ import {
   setAutoResumeBlocked,
   touchGuestSession,
 } from "../guest/guestSession";
+import { clearGuestData } from "../guest/guestStorage";
 
 const GuestSessionContext = createContext(null);
 
@@ -83,6 +84,11 @@ export function GuestSessionProvider({ children, isSignedIn = false }) {
     setAutoResumeBlocked(false);
   };
 
+  const clearGuestSession = () => {
+    clearGuestData();
+    setSession(null);
+  };
+
   const value = useMemo(
     () => ({
       hasGuestSession: Boolean(session?.id),
@@ -92,6 +98,7 @@ export function GuestSessionProvider({ children, isSignedIn = false }) {
       resetGuestSession,
       ensureGuestSession,
       clearAutoResumeBlocked,
+      clearGuestSession,
     }),
     [session?.id, autoResumeBlocked],
   );
