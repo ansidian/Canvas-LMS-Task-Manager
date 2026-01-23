@@ -41,6 +41,27 @@ export default function SettingsHelpTab({ config, handlers }) {
 
       <Divider my="md" />
 
+      {isGuest && (
+        <>
+          <Text size="sm" c="dimmed">
+            Dismissed the upgrade banner? Click here to see it again.
+          </Text>
+          <Button
+            onClick={() => {
+              sessionStorage.removeItem('upgrade_banner_dismissed');
+              localStorage.removeItem('upgrade_banner_last_dismissed');
+              window.location.reload();
+            }}
+            variant="light"
+          >
+            Reset Upgrade Banner
+          </Button>
+          <Divider my="md" />
+        </>
+      )}
+
+      <Divider my="md" />
+
       <Text size="sm" c="dimmed">
         {isGuest
           ? "Reset guest data stored on this device while keeping UI preferences."

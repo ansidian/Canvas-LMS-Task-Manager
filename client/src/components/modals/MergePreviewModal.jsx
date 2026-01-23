@@ -138,6 +138,9 @@ export default function MergePreviewModal({
   const duplicateCount = duplicateEvents.length + duplicateClasses.length;
   const uniqueCount = uniqueGuestEvents.length + uniqueGuestClasses.length;
 
+  const hasCanvasCredentials =
+    guestSettings?.canvas_url && guestSettings?.canvas_token;
+
   return (
     <Modal
       opened={opened}
@@ -145,6 +148,8 @@ export default function MergePreviewModal({
       title={<Title order={3}>Review Merge</Title>}
       size="xl"
       centered
+      closeOnClickOutside={false}
+      closeOnEscape={false}
     >
       <Stack gap="md">
         {/* Summary */}
@@ -154,6 +159,12 @@ export default function MergePreviewModal({
             {duplicateCount !== 1 ? 's' : ''} found,{' '}
             <strong>{uniqueCount}</strong> new item{uniqueCount !== 1 ? 's' : ''}{' '}
             will be added
+            {hasCanvasCredentials && (
+              <>
+                <br />
+                Canvas credentials will be migrated to your account
+              </>
+            )}
           </Text>
         </Alert>
 

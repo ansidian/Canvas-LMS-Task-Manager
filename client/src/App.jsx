@@ -229,7 +229,14 @@ function AppShell({ getToken, isSignedIn }) {
 
   const handleMergeClose = () => {
     setShowMergeModal(false);
-    // Note: Don't clear merge_triggered on close - user may want to retry
+    // Clear merge_triggered so user can retry on reload or manual trigger
+    sessionStorage.removeItem('merge_triggered');
+  };
+
+  // Manual merge trigger function (for retry button)
+  const handleRetryMerge = () => {
+    sessionStorage.removeItem('merge_triggered');
+    window.location.reload(); // Reload to trigger useEffect again
   };
 
   // Create API client for merge modal with proper auth
@@ -259,6 +266,35 @@ function AppShell({ getToken, isSignedIn }) {
 
       <SignedIn>
         <AppContent api={api} isGuest={false} />
+
+        {/* Retry Merge Button - shows when guest data exists but merge dismissed */}
+        {hasGuestSession && !mergeCompleted && !showMergeModal && (
+          <div
+            style={{
+              position: 'fixed',
+              bottom: '20px',
+              right: '20px',
+              zIndex: 1000,
+            }}
+          >
+            <button
+              onClick={handleRetryMerge}
+              style={{
+                padding: '12px 20px',
+                backgroundColor: '#228be6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: 500,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+              }}
+            >
+              Complete Guest Data Merge
+            </button>
+          </div>
+        )}
 
         {/* Merge Modal */}
         {mergeData && (

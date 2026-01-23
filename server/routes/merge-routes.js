@@ -20,6 +20,7 @@ router.post("/", async (req, res) => {
   try {
     let mergedEventsCount = 0;
     let mergedClassesCount = 0;
+    const classIdMapping = {}; // Maps guest class IDs to authenticated class IDs
 
     // 1. Merge classes
     // For each guest class, check if authenticated user has a class with same canvas_course_id
@@ -57,6 +58,9 @@ router.post("/", async (req, res) => {
           authClassId = result.lastInsertRowid;
           mergedClassesCount++;
         }
+
+        // Map guest class ID to authenticated class ID
+        classIdMapping[guestClass.id] = authClassId;
       }
     }
 
@@ -97,6 +101,11 @@ router.post("/", async (req, res) => {
         if (isDuplicate) {
           const resolution = resolutions?.[guestEvent.id] || "auth";
 
+          // Map guest class_id to authenticated class_id
+          const mappedClassId = guestEvent.class_id
+            ? classIdMapping[guestEvent.class_id] || null
+            : null;
+
           if (resolution === "guest") {
             // Update existing event with guest data
             await db.execute({
@@ -110,7 +119,7 @@ router.post("/", async (req, res) => {
                 guestEvent.title,
                 guestEvent.description || null,
                 guestEvent.due_date,
-                guestEvent.class_id || null,
+                mappedClassId,
                 guestEvent.event_type || null,
                 guestEvent.status || "incomplete",
                 guestEvent.notes || null,
@@ -134,7 +143,7 @@ router.post("/", async (req, res) => {
                 guestEvent.title,
                 guestEvent.description || null,
                 guestEvent.due_date,
-                guestEvent.class_id || null,
+                mappedClassId,
                 guestEvent.event_type || null,
                 guestEvent.status || "incomplete",
                 guestEvent.notes || null,
@@ -148,6 +157,11 @@ router.post("/", async (req, res) => {
           }
           // If resolution === 'auth', keep existing - no action needed
         } else {
+          // Map guest class_id to authenticated class_id
+          const mappedClassId = guestEvent.class_id
+            ? classIdMapping[guestEvent.class_id] || null
+            : null;
+
           // No duplicate, insert as new event
           await db.execute({
             sql: `INSERT INTO events (user_id, title, description, due_date, class_id,
@@ -159,7 +173,7 @@ router.post("/", async (req, res) => {
               guestEvent.title,
               guestEvent.description || null,
               guestEvent.due_date,
-              guestEvent.class_id || null,
+              mappedClassId,
               guestEvent.event_type || null,
               guestEvent.status || "incomplete",
               guestEvent.notes || null,

@@ -18,9 +18,14 @@ export default function UpgradeBanner({ onDismiss }) {
 					borderLeft: 0,
 					borderRight: 0,
 					borderTop: 0,
+					overflow: "visible",
 				},
 				wrapper: {
 					alignItems: "center",
+					overflow: "visible",
+				},
+				body: {
+					overflow: "visible",
 				},
 			}}
 		>
