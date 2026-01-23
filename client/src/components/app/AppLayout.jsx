@@ -36,9 +36,11 @@ export default function AppLayout() {
 				padding="md"
 			>
 				<AppShell.Header>
-					<Box>
+					<Box h="100%" style={{ display: "flex", flexDirection: "column" }}>
 						{controller.isGuest && <GuestBanner />}
-						<AppHeader pendingCount={pendingCount} />
+						<Box style={{ flex: 1, display: "flex", alignItems: "center" }}>
+							<AppHeader pendingCount={pendingCount} />
+						</Box>
 					</Box>
 				</AppShell.Header>
 				<AppMain />

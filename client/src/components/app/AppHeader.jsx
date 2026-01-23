@@ -29,11 +29,11 @@ export default function AppHeader({ pendingCount }) {
 	const { colorScheme, toggleColorScheme } = useMantineColorScheme();
 
 	return (
-		<Group h="100%" px="md" justify="space-between">
-			<Group>
+		<Group h="100%" px="md" style={{ width: "100%" }} wrap="nowrap">
+			<Group style={{ flex: 1 }} justify="flex-start">
 				<Title order={3}>Canvas Task Manager (CTM)</Title>
 			</Group>
-			<Group gap="xs">
+			<Group style={{ flex: 1 }} justify="center" gap="xs">
 				<Tooltip label="Previous month (P)">
 					<ActionIcon
 						variant="subtle"
@@ -65,7 +65,7 @@ export default function AppHeader({ pendingCount }) {
 					</ActionIcon>
 				</Tooltip>
 			</Group>
-			<Group>
+			<Group style={{ flex: 1 }} justify="flex-end">
 				<OnboardingTour.Target id="header-utilities">
 					<Group gap="xs">
 						<Tooltip label={`Search (${modKey}+K)`}>
