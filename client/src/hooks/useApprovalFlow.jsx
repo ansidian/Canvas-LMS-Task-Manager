@@ -4,6 +4,14 @@ import { removeStorageItem, setStorageJSON } from "../utils/storage";
 
 const PENDING_CACHE_KEY = "canvas_pending_items";
 
+const resolveClassId = (classId) => {
+  if (classId === null || classId === undefined || classId === "") {
+    return null;
+  }
+  const parsed = Number(classId);
+  return Number.isNaN(parsed) ? classId : parsed;
+};
+
 export default function useApprovalFlow({
   api,
   events,
@@ -66,7 +74,7 @@ export default function useApprovalFlow({
       id: tempId,
       title: item.title,
       due_date: formData.dueDate || item.due_date,
-      class_id: formData.classId ? parseInt(formData.classId) : null,
+      class_id: resolveClassId(formData.classId),
       event_type: formData.eventType,
       status: "incomplete",
       notes: formData.notes,
@@ -105,7 +113,7 @@ export default function useApprovalFlow({
           title: item.title,
           description: item.description ?? null,
           due_date: formData.dueDate || item.due_date,
-          class_id: formData.classId ? parseInt(formData.classId) : null,
+          class_id: resolveClassId(formData.classId),
           event_type: formData.eventType,
           status: "incomplete",
           notes: formData.notes,
