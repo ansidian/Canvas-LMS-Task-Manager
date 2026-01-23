@@ -76,6 +76,30 @@ const updateEvents = (updater) => {
   return sortEvents(next);
 };
 
+const buildCanvasHeaders = (options = {}) => {
+  const { canvas_url: canvasUrl, canvas_token: canvasToken } = getGuestSettings();
+  return {
+    "Content-Type": "application/json",
+    "X-Canvas-Url": canvasUrl,
+    "X-Canvas-Token": canvasToken,
+    ...(options.headers || {}),
+  };
+};
+
+const requestGuestCanvas = async (endpoint, options = {}) => {
+  const res = await fetch(`/api/guest${endpoint}`, {
+    ...options,
+    headers: buildCanvasHeaders(options),
+  });
+  if (!res.ok) {
+    const error = await res
+      .json()
+      .catch(() => ({ message: "Request failed" }));
+    throw new Error(error.message || "Request failed");
+  }
+  return res.json();
+};
+
 export default async function guestApi(endpoint, options = {}) {
   const method = (options.method || "GET").toUpperCase();
   const path = endpoint.split("?")[0];
@@ -257,6 +281,37 @@ export default async function guestApi(endpoint, options = {}) {
       };
       setGuestSettings(next);
       return next;
+    }
+  }
+
+  if (segments[0] === "canvas") {
+    if (segments.length === 2 && segments[1] === "assignments" && method === "GET") {
+      const data = await requestGuestCanvas(endpoint, {
+        signal: options.signal,
+        headers: options.headers,
+      });
+      const approvedIds = new Set(
+        getGuestEvents()
+          .map((event) => event?.canvas_id)
+          .filter(Boolean),
+      );
+      const rejectedIds = new Set(
+        getGuestRejectedItems()
+          .map((item) => (typeof item === "string" ? item : item?.canvas_id))
+          .filter(Boolean),
+      );
+      const assignments = Array.isArray(data?.assignments)
+        ? data.assignments.filter(
+            (assignment) =>
+              !approvedIds.has(assignment?.canvas_id) &&
+              !rejectedIds.has(assignment?.canvas_id),
+          )
+        : [];
+      return {
+        assignments,
+        courses: data?.courses,
+        allAssignments: data?.allAssignments,
+      };
     }
   }
 
