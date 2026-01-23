@@ -81,9 +81,10 @@ export default function MergePreviewModal({
   guestEvents = [],
   guestSettings = {},
   onConfirm,
+  api = { post: fetch }, // API client with auth
 }) {
   const { confirmMerge, isLoading, error } = useMergeFlow(
-    { post: fetch }, // Simple fetch-based API client
+    api,
     guestSessionId
   );
 
