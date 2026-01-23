@@ -87,4 +87,36 @@ router.get(
   },
 );
 
+// Fetch current submission for assignment (guest access)
+router.get(
+  "/submissions/self",
+  validateCanvasCredentials(),
+  async (req, res) => {
+    const { courseId, assignmentId } = req.query;
+
+    if (!courseId || !assignmentId) {
+      return res
+        .status(400)
+        .json({ message: "courseId and assignmentId required" });
+    }
+
+    try {
+      const submissionRes = await fetch(
+        `${req.canvasBaseUrl}/api/v1/courses/${courseId}/assignments/${assignmentId}/submissions/self`,
+        { headers: { Authorization: `Bearer ${req.canvasToken}` } },
+      );
+
+      if (!submissionRes.ok) {
+        throw new Error(`Canvas API error: ${submissionRes.status}`);
+      }
+
+      const submission = await submissionRes.json();
+      res.json(submission);
+    } catch (err) {
+      console.error("Error fetching Canvas submission:", err);
+      res.status(500).json({ message: "Failed to fetch Canvas submission" });
+    }
+  },
+);
+
 export default router;
