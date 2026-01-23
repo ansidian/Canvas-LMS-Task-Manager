@@ -169,13 +169,10 @@ function AppShell({ getToken, isSignedIn }) {
         // Mark merge as triggered to prevent duplicate modal
         sessionStorage.setItem('merge_triggered', 'true');
 
-        const [authEventsRes, authClassesRes] = await Promise.all([
+        const [authEvents, authClasses] = await Promise.all([
           api('/events'),
           api('/classes'),
         ]);
-
-        const authEvents = authEventsRes.events || [];
-        const authClasses = authClassesRes.classes || [];
 
         // Store data for modal
         setMergeData({
@@ -225,6 +222,9 @@ function AppShell({ getToken, isSignedIn }) {
     setShowMergeModal(false);
     setMergeData(null);
     sessionStorage.removeItem('merge_triggered');
+
+    // Reload page to show merged data immediately
+    window.location.reload();
   };
 
   const handleMergeClose = () => {

@@ -1,6 +1,7 @@
 import {
 	ActionIcon,
 	Badge,
+	Button,
 	Group,
 	Text,
 	Title,
@@ -17,14 +18,14 @@ import {
 	IconSettings,
 	IconSun,
 } from "@tabler/icons-react";
-import { UserButton } from "@clerk/clerk-react";
+import { UserButton, SignInButton } from "@clerk/clerk-react";
 import { spotlight } from "@mantine/spotlight";
 import { useAppControllerContext } from "../../contexts/AppControllerContext";
 
 const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
 const modKey = isMac ? "⌘" : "Ctrl";
 
-export default function AppHeader({ pendingCount }) {
+export default function AppHeader({ pendingCount, isGuest }) {
 	const controller = useAppControllerContext();
 	const { colorScheme, toggleColorScheme } = useMantineColorScheme();
 
@@ -118,7 +119,15 @@ export default function AppHeader({ pendingCount }) {
 						{pendingCount} pending
 					</Badge>
 				)}
-				<UserButton afterSignOutUrl="/?signedOut=1" />
+				{isGuest ? (
+					<SignInButton mode="modal">
+						<Button size="sm" variant="filled">
+							Sign In
+						</Button>
+					</SignInButton>
+				) : (
+					<UserButton afterSignOutUrl="/?signedOut=1" />
+				)}
 			</Group>
 		</Group>
 	);

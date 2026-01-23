@@ -61,7 +61,7 @@ export default function AppLayout() {
 							<UpgradeBanner onDismiss={dismissBanner} />
 						)}
 						<Box style={{ flex: 1, display: "flex", alignItems: "center" }}>
-							<AppHeader pendingCount={pendingCount} />
+							<AppHeader pendingCount={pendingCount} isGuest={controller.isGuest} />
 						</Box>
 					</Box>
 				</AppShell.Header>
