@@ -10,3 +10,4 @@ server/db/*.db
 *.log
 .env
 client/.env
+.planning/
