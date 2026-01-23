@@ -4,6 +4,14 @@ import { useAnimation } from "framer-motion";
 import { parseDueDate, toUTCString } from "../utils/datetime";
 import { PREVIEW_SIZE } from "../components/event-modal/constants";
 
+const resolveClassId = (classId) => {
+  if (classId === null || classId === undefined || classId === "") {
+    return null;
+  }
+  const parsed = Number(classId);
+  return Number.isNaN(parsed) ? classId : parsed;
+};
+
 export default function useEventModalForm({
   event,
   opened,
@@ -136,7 +144,7 @@ export default function useEventModalForm({
     const updates = {
       title: formData.title,
       due_date: toUTCString(formData.due_date),
-      class_id: formData.class_id ? parseInt(formData.class_id) : null,
+      class_id: resolveClassId(formData.class_id),
       event_type: formData.event_type,
       status: formData.status,
       notes: formData.notes,
