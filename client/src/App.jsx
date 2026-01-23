@@ -1,11 +1,11 @@
-import { useMantineColorScheme } from "@mantine/core";
+import { Box, Button, useMantineColorScheme } from "@mantine/core";
 import { useHotkeys } from "@mantine/hooks";
 import { spotlight } from "@mantine/spotlight";
 import "@mantine/spotlight/styles.css";
 import { OnboardingTour } from "@gfazioli/mantine-onboarding-tour";
 import "@gfazioli/mantine-onboarding-tour/styles.css";
 import { SignedIn, SignedOut, useAuth, useSession } from "@clerk/clerk-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import AppLayout from "./components/app/AppLayout";
 import "./onboarding-tour.css";
 import { EventsProvider } from "./contexts/EventsContext";
@@ -233,6 +233,14 @@ function AppShell({ getToken, isSignedIn }) {
     sessionStorage.removeItem('merge_triggered');
   };
 
+  // Check if guest data actually exists (not just empty session)
+  const hasActualGuestData = useMemo(() => {
+    if (!hasGuestSession) return false;
+    const guestEvents = getGuestEvents();
+    const guestClasses = getGuestClasses();
+    return guestEvents.length > 0 || guestClasses.length > 0;
+  }, [hasGuestSession]);
+
   // Manual merge trigger function (for retry button)
   const handleRetryMerge = () => {
     sessionStorage.removeItem('merge_triggered');
@@ -268,32 +276,27 @@ function AppShell({ getToken, isSignedIn }) {
         <AppContent api={api} isGuest={false} />
 
         {/* Retry Merge Button - shows when guest data exists but merge dismissed */}
-        {hasGuestSession && !mergeCompleted && !showMergeModal && (
-          <div
+        {hasActualGuestData && !mergeCompleted && !showMergeModal && (
+          <Box
             style={{
-              position: 'fixed',
-              bottom: '20px',
-              right: '20px',
+              position: "fixed",
+              bottom: "20px",
+              right: "20px",
               zIndex: 1000,
             }}
           >
-            <button
+            <Button
               onClick={handleRetryMerge}
+              size="md"
+              variant="filled"
+              color="blue"
               style={{
-                padding: '12px 20px',
-                backgroundColor: '#228be6',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: 500,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
               }}
             >
-              Complete Guest Data Merge
-            </button>
-          </div>
+              Merge Guest Data
+            </Button>
+          </Box>
         )}
 
         {/* Merge Modal */}
