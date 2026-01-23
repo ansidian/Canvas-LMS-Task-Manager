@@ -1,10 +1,6 @@
 import { Router } from "express";
-import {
-  CONCURRENT_ASSIGNMENT_FETCHES,
-  fetchAllPages,
-  mapLimit,
-} from "../services/canvas-api.js";
 import { validateCanvasCredentials } from "../middleware/canvas-auth.js";
+import { fetchCanvasAssignments } from "../services/canvas-assignments.js";
 
 const router = Router();
 
@@ -14,57 +10,10 @@ router.get(
   validateCanvasCredentials({ stripApiPath: true }),
   async (req, res) => {
     try {
-      const headers = { Authorization: `Bearer ${req.canvasToken}` };
-      const courses = await fetchAllPages(
-        `${req.canvasBaseUrl}/api/v1/courses?enrollment_state=active&per_page=100`,
-        headers,
+      const { allAssignments, canvasCourses } = await fetchCanvasAssignments(
+        req.canvasBaseUrl,
+        req.canvasToken,
       );
-
-      const allAssignments = [];
-
-      const assignmentResults = await mapLimit(
-        courses,
-        CONCURRENT_ASSIGNMENT_FETCHES,
-        async (course) => {
-          try {
-            const assignments = await fetchAllPages(
-              `${req.canvasBaseUrl}/api/v1/courses/${course.id}/assignments?per_page=100`,
-              headers,
-            );
-            return { course, assignments };
-          } catch (err) {
-            console.error(
-              `Error fetching assignments for course ${course.id}:`,
-              err,
-            );
-            return { course, assignments: [] };
-          }
-        },
-      );
-
-      for (const { course, assignments } of assignmentResults) {
-        const courseIdStr = String(course.id);
-        for (const assignment of assignments) {
-          if (assignment.due_at) {
-            allAssignments.push({
-              canvas_id: `${course.id}-${assignment.id}`,
-              canvas_course_id: courseIdStr,
-              title: assignment.name,
-              due_date: assignment.due_at,
-              course_name: course.name,
-              url: assignment.html_url,
-              description: assignment.description,
-              points_possible: assignment.points_possible,
-              quiz_id: assignment.quiz_id || null,
-            });
-          }
-        }
-      }
-
-      const canvasCourses = courses.map((course) => ({
-        canvas_course_id: String(course.id),
-        name: course.name,
-      }));
 
       res.json({
         assignments: allAssignments,

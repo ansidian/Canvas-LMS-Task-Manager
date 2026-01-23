@@ -2,12 +2,8 @@ import { Router } from "express";
 import multer from "multer";
 import db from "../db/connection.js";
 import { requireUser } from "../middleware/clerk-auth.js";
-import {
-  CONCURRENT_ASSIGNMENT_FETCHES,
-  fetchAllPages,
-  mapLimit,
-} from "../services/canvas-api.js";
 import { validateCanvasCredentials } from "../middleware/canvas-auth.js";
+import { fetchCanvasAssignments } from "../services/canvas-assignments.js";
 
 const router = Router();
 const upload = multer({
@@ -25,53 +21,10 @@ router.get(
     const userId = req.auth().userId;
 
     try {
-      const headers = { Authorization: `Bearer ${req.canvasToken}` };
-      const courses = await fetchAllPages(
-        `${req.canvasBaseUrl}/api/v1/courses?enrollment_state=active&per_page=100`,
-        headers,
+      const { allAssignments, canvasCourses } = await fetchCanvasAssignments(
+        req.canvasBaseUrl,
+        req.canvasToken,
       );
-
-      // Fetch assignments from all courses (sync filtering happens client-side)
-      const allAssignments = [];
-
-      const assignmentResults = await mapLimit(
-        courses,
-        CONCURRENT_ASSIGNMENT_FETCHES,
-        async (course) => {
-          try {
-            const assignments = await fetchAllPages(
-              `${req.canvasBaseUrl}/api/v1/courses/${course.id}/assignments?per_page=100`,
-              headers,
-            );
-            return { course, assignments };
-          } catch (err) {
-            console.error(
-              `Error fetching assignments for course ${course.id}:`,
-              err,
-            );
-            return { course, assignments: [] };
-          }
-        },
-      );
-
-      for (const { course, assignments } of assignmentResults) {
-        const courseIdStr = String(course.id);
-        for (const assignment of assignments) {
-          if (assignment.due_at) {
-            allAssignments.push({
-              canvas_id: `${course.id}-${assignment.id}`,
-              canvas_course_id: courseIdStr,
-              title: assignment.name,
-              due_date: assignment.due_at, // Preserve full ISO 8601 timestamp
-              course_name: course.name,
-              url: assignment.html_url,
-              description: assignment.description,
-              points_possible: assignment.points_possible,
-              quiz_id: assignment.quiz_id || null,
-            });
-          }
-        }
-      }
 
       // Filter out already approved or rejected items for this user
       const existingEvents = await db.execute({
@@ -91,12 +44,6 @@ router.get(
       const pendingAssignments = allAssignments.filter(
         (a) => !existingIds.has(a.canvas_id),
       );
-
-      // Return both assignments and all courses (for class creation)
-      const canvasCourses = courses.map((c) => ({
-        canvas_course_id: String(c.id),
-        name: c.name,
-      }));
 
       res.json({
         assignments: pendingAssignments,
