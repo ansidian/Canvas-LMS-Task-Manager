@@ -64,7 +64,7 @@ export const resetGuestSession = () => {
 
 export const ensureGuestSession = () => {
   const existing = getGuestSession();
-  if (existing?.id) return existing;
+  if (existing?.id) return touchGuestSession();
   return createGuestSession();
 };
 
