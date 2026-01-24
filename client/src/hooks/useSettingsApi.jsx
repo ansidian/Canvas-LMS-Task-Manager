@@ -97,7 +97,7 @@ export default function useSettingsApi({
       });
       setNewClassName("");
       setNewClassColor("#228be6");
-      onClassesChange();
+      await onClassesChange();
     } catch (err) {
       console.error("Failed to add class:", err);
       notifyError(err.message || "Failed to add class.");
@@ -109,7 +109,7 @@ export default function useSettingsApi({
     try {
       await api(`/classes/${id}`, { method: "DELETE" });
       setDeleteClassId(null);
-      onClassesChange();
+      await onClassesChange();
       onEventsChange();
     } catch (err) {
       console.error("Failed to delete class:", err);
@@ -138,7 +138,7 @@ export default function useSettingsApi({
         body: JSON.stringify({ name: editName.trim(), color: editColor }),
       });
       setEditingClassId(null);
-      onClassesChange();
+      await onClassesChange();
     } catch (err) {
       console.error("Failed to update class:", err);
       notifyError(err.message || "Failed to update class.");
