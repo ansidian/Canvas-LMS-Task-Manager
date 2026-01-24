@@ -54,6 +54,7 @@ function ThemedClerkProvider({ children }) {
   return (
     <ClerkProvider
       publishableKey={PUBLISHABLE_KEY}
+      afterSignOutUrl="/?signedOut=1"
       appearance={{
         baseTheme: colorScheme === "dark" ? dark : undefined,
         layout: {
