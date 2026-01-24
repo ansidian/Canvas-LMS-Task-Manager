@@ -51,11 +51,6 @@ export default function ExpirationWarningBanner({
           {message}
         </Text>
         <Group gap="xs" wrap="nowrap">
-          <SignInButton mode="modal">
-            <Button size="xs" variant="filled" color="blue">
-              Sign In
-            </Button>
-          </SignInButton>
           <CloseButton
             size="sm"
             onClick={onDismiss}
