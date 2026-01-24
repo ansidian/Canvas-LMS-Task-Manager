@@ -96,6 +96,19 @@ export function GuestSessionProvider({ children, isSignedIn = false }) {
     setSession(null);
   };
 
+  /**
+   * Expiration + Merge Flow Interaction (MSG-03):
+   *
+   * When an expired guest clicks "Sign In" from ExpirationModal:
+   * 1. SignInButton routes to Clerk (data NOT cleared yet)
+   * 2. After Clerk sign-in, App.jsx detects guest session + merge needed
+   * 3. MergePreviewModal shows with guest data still intact
+   * 4. User confirms merge → guest data migrates to auth account
+   * 5. handleMergeConfirm calls clearGuestSession() → data finally cleared
+   *
+   * This ensures guest data is never lost before merge confirmation.
+   * clearExpiredSession is only called for "Continue as Guest" path.
+   */
   const clearExpiredSession = () => {
     // Clear data but preserve session ID (same guest identity, fresh data)
     clearGuestData();
