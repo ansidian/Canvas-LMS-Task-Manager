@@ -80,14 +80,6 @@ function Card({
       ? toUTCString(formData.dueDate)
       : item.due_date;
 
-    console.log("[ApprovalModal] Submitting:", {
-      formDataDate: formData.dueDate,
-      formattedLocal: formData.dueDate
-        ? dayjs(formData.dueDate).format("YYYY-MM-DD HH:mm:ss")
-        : null,
-      convertedUTC: dueDate,
-    });
-
     handlers.onApprove(item, {
       ...formData,
       dueDate,
@@ -236,12 +228,6 @@ export default function ApprovalModal({
 
       // Parse the due_date (handles both date-only and datetime)
       const { date } = parseDueDate(item.due_date);
-
-      console.log("[ApprovalModal] Parsing due date:", {
-        original: item.due_date,
-        parsed: date,
-        formatted: date ? dayjs(date).format("YYYY-MM-DD HH:mm:ss") : null,
-      });
 
       const nextFormData = {
         dueDate: date,
