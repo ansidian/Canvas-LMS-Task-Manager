@@ -1,0 +1,180 @@
+import { useEffect, useState } from "react";
+import { useSession } from "@clerk/clerk-react";
+import { useGuestSession } from "../contexts/GuestSessionContext";
+import { useMerge } from "../contexts/MergeContext";
+import useMergeDetection from "./useMergeDetection";
+import {
+  getGuestEvents,
+  getGuestClasses,
+  getGuestSettings,
+} from "../guest/guestStorage";
+
+export default function useMergeFlow(getToken, isSignedIn) {
+  const { hasGuestSession, guestSessionId, clearGuestSession } =
+    useGuestSession();
+  const { session } = useSession();
+  const {
+    showMergeModal,
+    setShowMergeModal,
+    mergedSessionId,
+    isMergeCompleted,
+    setMergedSessionId,
+  } = useMerge();
+
+  const [mergeData, setMergeData] = useState(null);
+
+  // Clear merged session ID on sign-out to allow re-merge on next sign-in
+  useEffect(() => {
+    if (!isSignedIn) {
+      setMergedSessionId(null);
+    }
+  }, [isSignedIn, setMergedSessionId]);
+
+  // Detect sign-in and trigger merge modal
+  useEffect(() => {
+    // Skip if not signed in or no session object
+    if (!isSignedIn || !session) {
+      return;
+    }
+
+    // Skip if no guest session or this session already merged
+    if (!hasGuestSession || isMergeCompleted(guestSessionId)) {
+      return;
+    }
+
+    // Load guest data
+    const guestEvents = getGuestEvents();
+    const guestClasses = getGuestClasses();
+    const guestSettings = getGuestSettings();
+
+    // Skip if guest data is empty - this handles:
+    // 1. Fresh guests with no data
+    // 2. Guests who clicked "Continue as Guest" from expiration modal (data cleared)
+    // 3. Guests whose merge already completed (data cleared by handleMergeConfirm)
+    if (guestEvents.length === 0 && guestClasses.length === 0) {
+      return;
+    }
+
+    // Create api function for fetching auth data
+    const api = async (endpoint, options = {}) => {
+      const token = await getToken();
+      const res = await fetch(`/api${endpoint}`, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          ...options.headers,
+        },
+        ...options,
+      });
+      if (!res.ok) {
+        const error = await res
+          .json()
+          .catch(() => ({ message: "Request failed" }));
+        throw new Error(error.message || "Request failed");
+      }
+      return res.json();
+    };
+
+    // Fetch authenticated data and detect duplicates
+    const fetchAuthDataAndDetect = async () => {
+      try {
+        const [authEvents, authClasses] = await Promise.all([
+          api("/events"),
+          api("/classes"),
+        ]);
+
+        // Store data for modal
+        setMergeData({
+          guestEvents,
+          guestClasses,
+          guestSettings,
+          authEvents,
+          authClasses,
+        });
+
+        // Show merge modal
+        setShowMergeModal(true);
+      } catch (err) {
+        console.error("Failed to fetch auth data for merge:", err);
+      }
+    };
+
+    fetchAuthDataAndDetect();
+  }, [
+    isSignedIn,
+    session,
+    hasGuestSession,
+    guestSessionId,
+    mergedSessionId, // Track merged session ID instead of callback
+    // Stable/omitted:
+    // - getToken: stable from useAuth
+    // - setShowMergeModal: stable from context
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  ]);
+
+  // Compute merge detection results when mergeData is available
+  const {
+    duplicateEvents = [],
+    duplicateClasses = [],
+    uniqueGuestEvents = [],
+    uniqueGuestClasses = [],
+  } = useMergeDetection(
+    mergeData?.guestEvents,
+    mergeData?.guestClasses,
+    mergeData?.authEvents,
+    mergeData?.authClasses,
+  );
+
+  const handleMergeConfirm = () => {
+    // Mark this guest session as merged
+    setMergedSessionId(guestSessionId);
+
+    // Clear guest session after successful merge
+    clearGuestSession();
+    setShowMergeModal(false);
+    setMergeData(null);
+
+    // Reload page to show merged data immediately
+    window.location.reload();
+  };
+
+  const handleMergeClose = () => {
+    setShowMergeModal(false);
+  };
+
+  // Create API client for merge modal with proper auth
+  const mergeApiClient = {
+    post: async (endpoint, payload) => {
+      const token = await getToken();
+      return fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+    },
+  };
+
+  // Return null if no merge data, otherwise return all modal props
+  const mergeModalProps = mergeData
+    ? {
+        opened: showMergeModal,
+        onClose: handleMergeClose,
+        duplicateEvents,
+        duplicateClasses,
+        uniqueGuestEvents,
+        uniqueGuestClasses,
+        guestSessionId,
+        guestClasses: mergeData.guestClasses,
+        guestEvents: mergeData.guestEvents,
+        guestSettings: mergeData.guestSettings,
+        authClasses: mergeData.authClasses,
+        onConfirm: handleMergeConfirm,
+        api: mergeApiClient,
+      }
+    : null;
+
+  return { mergeModalProps };
+}
