@@ -101,7 +101,7 @@ export default function CreateEventModal({
     onCreate({
       title: formData.title.trim(),
       due_date: toUTCString(formData.dueDate),
-      class_id: formData.classId ? parseInt(formData.classId) : null,
+      class_id: formData.classId || null,
       event_type: formData.eventType,
       notes: formData.notes,
       url: formData.url,
