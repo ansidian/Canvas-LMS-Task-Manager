@@ -2,6 +2,15 @@ import { createContext, useContext, useState, useMemo, useCallback } from 'react
 
 const MergeContext = createContext(null);
 
+/**
+ * Merge state is stored in sessionStorage (MERGED_SESSION_ID_KEY),
+ * separate from guest data in localStorage.
+ *
+ * This ensures:
+ * - Expiration clears guest DATA but not merge tracking
+ * - If user signs in after seeing expiration modal, merge can still proceed
+ * - isMergeCompleted checks the current guestSessionId, which persists
+ */
 const MERGED_SESSION_ID_KEY = 'merged_session_id';
 
 /**
