@@ -34,7 +34,9 @@ CTM fixes this by giving you an approval workflow: assignments come in, you deci
 
 ### Initial Setup
 
-1. **Authentication** - Sign in using OAuth2 through Clerk (secure, no password management needed)
+1. **Choose Your Mode**:
+   - **Sign in** - Use OAuth2 through Clerk for cloud-synced data across devices
+   - **Guest Mode** - Use CTM locally without an account (data stays in your browser)
 2. **Canvas Integration** - Add your Canvas URL and API token in Settings
 3. **Fetch Assignments** - Hit the refresh button to pull assignments from Canvas
 
@@ -152,9 +154,11 @@ The frontend was designed from the start to keep App lean and put state where it
 
 ## Security Notes
 
-- **Credential storage** - Canvas URL/token are saved in your user settings (database) and are not stored in localStorage
-- **API proxying** - Canvas API calls are proxied through the backend to avoid CORS issues; the server uses your saved settings to authenticate requests
-- **OAuth2 authentication** - Clerk handles all auth, so no password management needed
+- **Credential storage**:
+  - **Signed-in users** - Canvas URL/token are saved in your user settings (database) and are not stored in localStorage
+  - **Guest mode** - Canvas credentials are stored in localStorage only; your events, classes, and other data never leave your browser
+- **API proxying** - Canvas API calls are proxied through the backend to avoid CORS issues. For signed-in users, credentials come from the database; for guest mode, credentials are passed from localStorage via request headers (the server doesn't store them)
+- **OAuth2 authentication** - Clerk handles all auth for signed-in users, so no password management needed
 - **Submission verification** - Before submitting assignments, CTM verifies with Canvas to prevent ghost submissions
 
 ## Contributing
@@ -181,6 +185,12 @@ A: You can manually create events without connecting to Canvas, but the main val
 
 **Q: Is my data private?**
 
-A: Your Canvas API token is saved in your user settings in the database (local SQLite for development or Turso for production) and is not stored in localStorage. Assignment data (titles, descriptions, due dates, notes) is stored in the same database. All data is scoped to your Clerk user ID, so it's isolated per user.
+A: It depends on how you use CTM:
+- **Signed-in users** - Your Canvas API token and assignment data are saved in the database (scoped to your Clerk user ID). Data syncs across devices.
+- **Guest mode** - All your data (credentials, events, classes) is stored in your browser's localStorage only. Canvas API calls are still proxied through the server to avoid CORS issues, but the server doesn't store any guest data—credentials are passed via headers and discarded after the request.
+
+**Q: What's the difference between signing in and guest mode?**
+
+A: Signing in syncs your data to the cloud, so you can access it from any device. Guest mode keeps everything in your browser's localStorage—more private, but if you clear your browser data or switch devices, your data won't carry over.
 
 ---
