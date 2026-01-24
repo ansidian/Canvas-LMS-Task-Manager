@@ -66,8 +66,11 @@ export default function useCanvasFetch({
 					? "Canvas URL looks invalid. Check the base URL for your school."
 					: "Canvas rejected the credentials. Verify your Canvas URL and API token.";
 				setCanvasAuthError(errorLabel);
-				setHighlightCredentials(true);
-				setSettingsOpen(true);
+				// Only auto-open settings on explicit user action, not background refresh
+				if (!silent) {
+					setHighlightCredentials(true);
+					setSettingsOpen(true);
+				}
 			}
 		} finally {
 			if (fetchRequestIdRef.current === requestId) {
