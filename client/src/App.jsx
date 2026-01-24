@@ -168,7 +168,10 @@ function AppShell({ getToken, isSignedIn }) {
     const guestClasses = getGuestClasses();
     const guestSettings = getGuestSettings();
 
-    // Skip if guest data is empty
+    // Skip if guest data is empty - this handles:
+    // 1. Fresh guests with no data
+    // 2. Guests who clicked "Continue as Guest" from expiration modal (data cleared)
+    // 3. Guests whose merge already completed (data cleared by handleMergeConfirm)
     if (guestEvents.length === 0 && guestClasses.length === 0) {
       return;
     }
