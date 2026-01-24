@@ -8,7 +8,6 @@ import {
   Stack,
   Select,
   Text,
-  Title,
   Divider,
   Alert,
   Loader,
@@ -26,16 +25,33 @@ const formatDate = (dateString) => {
 };
 
 /**
+ * Get class name for an event
+ */
+const getClassName = (event, classes) => {
+  if (!event) return null;
+  if (!event.class_id) return 'Unassigned';
+  if (!classes) return null;
+  const classItem = classes.find((c) => c.id === event.class_id);
+  return classItem?.name || 'Unassigned';
+};
+
+/**
  * Get display text for a duplicate event
  */
-const getEventDisplay = (event) => {
+const getEventDisplay = (event, classes) => {
   if (!event) return 'N/A';
+  const className = getClassName(event, classes);
   return (
     <>
       <strong>{event.title}</strong>
       <br />
       <Text size="xs" c="dimmed">
         Due: {formatDate(event.due_date)}
+        {className && (
+          <Text component="span" size="xs" c="dimmed" ml="xs" style={{ fontSize: '0.7rem' }}>
+            • {className}
+          </Text>
+        )}
       </Text>
     </>
   );
@@ -80,6 +96,7 @@ export default function MergePreviewModal({
   guestClasses = [],
   guestEvents = [],
   guestSettings = {},
+  authClasses = [],
   onConfirm,
   api = { post: fetch }, // API client with auth
 }) {
@@ -169,20 +186,21 @@ export default function MergePreviewModal({
     <Modal
       opened={opened}
       onClose={onClose}
-      title={<Title order={3}>Review Merge</Title>}
+      title="Review Merge"
       size="xl"
       centered
       closeOnClickOutside={false}
       closeOnEscape={false}
+      withCloseButton={false}
     >
       <Stack gap="md">
         {/* Summary */}
         <Alert icon={<IconInfoCircle size={16} />} color="blue">
           <Text size="sm">
             <strong>{duplicateCount}</strong> duplicate item
-            {duplicateCount !== 1 ? 's' : ''} found,{' '}
-            <strong>{uniqueCount + bothItems.count}</strong> new item{(uniqueCount + bothItems.count) !== 1 ? 's' : ''}{' '}
-            will be added
+            {duplicateCount !== 1 ? "s" : ""} found,{" "}
+            <strong>{uniqueCount + bothItems.count}</strong> new item
+            {uniqueCount + bothItems.count !== 1 ? "s" : ""} will be added
             {hasCanvasCredentials && (
               <>
                 <br />
@@ -194,7 +212,11 @@ export default function MergePreviewModal({
 
         {/* Error display */}
         {error && (
-          <Alert icon={<IconAlertCircle size={16} />} color="red" title="Merge Error">
+          <Alert
+            icon={<IconAlertCircle size={16} />}
+            color="red"
+            title="Merge Error"
+          >
             {error}
           </Alert>
         )}
@@ -218,19 +240,19 @@ export default function MergePreviewModal({
               <Table.Tbody>
                 {duplicateEvents.map((dup) => (
                   <Table.Tr key={dup.id}>
-                    <Table.Td>{getEventDisplay(dup.guest)}</Table.Td>
-                    <Table.Td>{getEventDisplay(dup.auth)}</Table.Td>
+                    <Table.Td>{getEventDisplay(dup.guest, guestClasses)}</Table.Td>
+                    <Table.Td>{getEventDisplay(dup.auth, authClasses)}</Table.Td>
                     <Table.Td>
                       <Select
                         size="sm"
-                        value={finalResolutions[`event-${dup.id}`] || 'auth'}
+                        value={finalResolutions[`event-${dup.id}`] || "auth"}
                         onChange={(value) =>
                           handleResolutionChange(`event-${dup.id}`, value)
                         }
                         data={[
-                          { value: 'auth', label: 'Your version' },
-                          { value: 'guest', label: 'Guest version' },
-                          { value: 'both', label: 'Keep both' },
+                          { value: "auth", label: "Your version" },
+                          { value: "guest", label: "Guest version" },
+                          { value: "both", label: "Keep both" },
                         ]}
                         disabled={isLoading}
                       />
@@ -244,14 +266,14 @@ export default function MergePreviewModal({
                     <Table.Td>
                       <Select
                         size="sm"
-                        value={finalResolutions[`class-${dup.id}`] || 'auth'}
+                        value={finalResolutions[`class-${dup.id}`] || "auth"}
                         onChange={(value) =>
                           handleResolutionChange(`class-${dup.id}`, value)
                         }
                         data={[
-                          { value: 'auth', label: 'Your version' },
-                          { value: 'guest', label: 'Guest version' },
-                          { value: 'both', label: 'Keep both' },
+                          { value: "auth", label: "Your version" },
+                          { value: "guest", label: "Guest version" },
+                          { value: "both", label: "Keep both" },
                         ]}
                         disabled={isLoading}
                       />
@@ -266,15 +288,33 @@ export default function MergePreviewModal({
         {/* Items Being Added From Duplicates Section */}
         {bothItems.count > 0 && (
           <>
-            <Divider label="Items Being Added From Duplicates" labelPosition="center" />
+            <Divider
+              label="Items Being Added From Duplicates"
+              labelPosition="center"
+            />
             <Stack gap="xs">
-              {bothItems.events.map((event) => (
-                <Badge key={event.id} size="lg" variant="light" color="orange">
-                  {event.title} - {formatDate(event.due_date)}
-                </Badge>
-              ))}
+              {bothItems.events.map((event) => {
+                const className = getClassName(event, guestClasses);
+                return (
+                  <div key={event.id}>
+                    <Badge size="lg" variant="light" color="orange">
+                      {event.title} - {formatDate(event.due_date)}
+                    </Badge>
+                    {className && (
+                      <Text size="xs" c="dimmed" ml="xs" style={{ fontSize: '0.7rem', display: 'inline' }}>
+                        ({className})
+                      </Text>
+                    )}
+                  </div>
+                );
+              })}
               {bothItems.classes.map((classItem) => (
-                <Badge key={classItem.id} size="lg" variant="light" color="orange">
+                <Badge
+                  key={classItem.id}
+                  size="lg"
+                  variant="light"
+                  color="orange"
+                >
                   {classItem.name}
                 </Badge>
               ))}
@@ -287,13 +327,28 @@ export default function MergePreviewModal({
           <>
             <Divider label="New Items to Add" labelPosition="center" />
             <Stack gap="xs">
-              {uniqueGuestEvents.map((event) => (
-                <Badge key={event.id} size="lg" variant="light" color="green">
-                  {event.title} - {formatDate(event.due_date)}
-                </Badge>
-              ))}
+              {uniqueGuestEvents.map((event) => {
+                const className = getClassName(event, guestClasses);
+                return (
+                  <div key={event.id}>
+                    <Badge size="lg" variant="light" color="green">
+                      {event.title} - {formatDate(event.due_date)}
+                    </Badge>
+                    {className && (
+                      <Text size="xs" c="dimmed" ml="xs" style={{ fontSize: '0.7rem', display: 'inline' }}>
+                        ({className})
+                      </Text>
+                    )}
+                  </div>
+                );
+              })}
               {uniqueGuestClasses.map((classItem) => (
-                <Badge key={classItem.id} size="lg" variant="light" color="blue">
+                <Badge
+                  key={classItem.id}
+                  size="lg"
+                  variant="light"
+                  color="blue"
+                >
                   {classItem.name}
                 </Badge>
               ))}
@@ -318,7 +373,7 @@ export default function MergePreviewModal({
             disabled={isLoading || (duplicateCount === 0 && uniqueCount === 0)}
             leftSection={isLoading ? <Loader size="xs" /> : null}
           >
-            {isLoading ? 'Merging...' : 'Confirm & Merge'}
+            {isLoading ? "Merging..." : "Confirm & Merge"}
           </Button>
         </Group>
       </Stack>
