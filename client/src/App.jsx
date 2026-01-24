@@ -160,12 +160,6 @@ function AppShell({ getToken, isSignedIn }) {
       return;
     }
 
-    // Check if merge was already triggered this session
-    const mergeTriggered = sessionStorage.getItem("merge_triggered");
-    if (mergeTriggered === "true") {
-      return;
-    }
-
     // Load guest data
     const guestEvents = getGuestEvents();
     const guestClasses = getGuestClasses();
@@ -179,9 +173,6 @@ function AppShell({ getToken, isSignedIn }) {
     // Fetch authenticated data and detect duplicates
     const fetchAuthDataAndDetect = async () => {
       try {
-        // Mark merge as triggered to prevent duplicate modal
-        sessionStorage.setItem("merge_triggered", "true");
-
         const [authEvents, authClasses] = await Promise.all([
           api("/events"),
           api("/classes"),
@@ -200,8 +191,6 @@ function AppShell({ getToken, isSignedIn }) {
         setShowMergeModal(true);
       } catch (err) {
         console.error("Failed to fetch auth data for merge:", err);
-        // Clear the trigger flag on error so it can retry
-        sessionStorage.removeItem("merge_triggered");
       }
     };
 
@@ -239,7 +228,6 @@ function AppShell({ getToken, isSignedIn }) {
     clearGuestSession();
     setShowMergeModal(false);
     setMergeData(null);
-    sessionStorage.removeItem("merge_triggered");
 
     // Reload page to show merged data immediately
     window.location.reload();
@@ -247,22 +235,6 @@ function AppShell({ getToken, isSignedIn }) {
 
   const handleMergeClose = () => {
     setShowMergeModal(false);
-    // Clear merge_triggered so user can retry on reload or manual trigger
-    sessionStorage.removeItem("merge_triggered");
-  };
-
-  // Check if guest data actually exists (not just empty session)
-  const hasActualGuestData = useMemo(() => {
-    if (!hasGuestSession) return false;
-    const guestEvents = getGuestEvents();
-    const guestClasses = getGuestClasses();
-    return guestEvents.length > 0 || guestClasses.length > 0;
-  }, [hasGuestSession]);
-
-  // Manual merge trigger function (for retry button)
-  const handleRetryMerge = () => {
-    sessionStorage.removeItem("merge_triggered");
-    window.location.reload(); // Reload to trigger useEffect again
   };
 
   // Create API client for merge modal with proper auth
@@ -293,32 +265,6 @@ function AppShell({ getToken, isSignedIn }) {
       <SignedIn>
         <AppContent api={api} isGuest={false} />
 
-        {/* Retry Merge Button - shows when guest data exists but merge dismissed */}
-        {hasActualGuestData &&
-          !isMergeCompleted(guestSessionId) &&
-          !showMergeModal && (
-            <Box
-              style={{
-                position: "fixed",
-                bottom: "20px",
-                right: "20px",
-                zIndex: 1000,
-              }}
-            >
-              <Button
-                onClick={handleRetryMerge}
-                size="md"
-                variant="filled"
-                color="blue"
-                style={{
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-                }}
-              >
-                Merge Guest Data
-              </Button>
-            </Box>
-          )}
-
         {/* Merge Modal */}
         {mergeData && (
           <MergePreviewModal
@@ -332,6 +278,7 @@ function AppShell({ getToken, isSignedIn }) {
             guestClasses={mergeData.guestClasses}
             guestEvents={mergeData.guestEvents}
             guestSettings={mergeData.guestSettings}
+            authClasses={mergeData.authClasses}
             onConfirm={handleMergeConfirm}
             api={mergeApiClient}
           />
