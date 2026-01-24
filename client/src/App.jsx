@@ -22,6 +22,7 @@ import {
 } from "./contexts/GuestSessionContext";
 import { MergeProvider, useMerge } from "./contexts/MergeContext";
 import MergePreviewModal from "./components/modals/MergePreviewModal";
+import ExpirationModal from "./components/modals/ExpirationModal";
 import useMergeDetection from "./hooks/useMergeDetection";
 import {
   getGuestEvents,
@@ -110,6 +111,8 @@ function AppShell({ getToken, isSignedIn }) {
     autoResumeBlocked,
     guestSessionId,
     clearGuestSession,
+    expiredOnLoad,
+    clearExpiredSession,
   } = useGuestSession();
   const { session } = useSession();
   const {
@@ -255,7 +258,13 @@ function AppShell({ getToken, isSignedIn }) {
   return (
     <>
       <SignedOut>
-        {hasGuestSession && !autoResumeBlocked ? (
+        {expiredOnLoad ? (
+          <ExpirationModal
+            opened={expiredOnLoad}
+            onContinueAsGuest={clearExpiredSession}
+            onClose={clearExpiredSession}
+          />
+        ) : hasGuestSession && !autoResumeBlocked ? (
           <AppContent api={guestApi} isGuest />
         ) : (
           <GuestEntry />
