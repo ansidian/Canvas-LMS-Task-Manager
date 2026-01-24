@@ -30,13 +30,14 @@ export default function useEventFiltering({
 	const classFilterSet = useMemo(() => new Set(classFilters), [classFilters]);
 
 	const filteredEvents = useMemo(() => {
-		return events.filter((event) => {
-			const statusMatch = statusFilterSet.has(event.status);
-			const classMatch = event.class_id
-				? classFilterSet.has(String(event.class_id))
-				: classFilterSet.has("unassigned");
-			return statusMatch && classMatch;
-		});
+		const filtered = events.filter((event) => {
+      const statusMatch = statusFilterSet.has(event.status);
+      const classMatch = event.class_id
+        ? classFilterSet.has(String(event.class_id))
+        : classFilterSet.has("unassigned");
+      return statusMatch && classMatch;
+    });
+		return filtered;
 	}, [events, statusFilterSet, classFilterSet]);
 
 	const filteredPendingItems = useMemo(() => {

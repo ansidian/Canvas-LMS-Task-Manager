@@ -12,22 +12,22 @@ export default function useClassFiltersSync({ classes, setClassFilters }) {
 				getStorageItem(CLASS_FILTERS_KEY) !== null;
 
 			if (!hasLocalStorageKey) {
-				setClassFilters([...allClassIds, "unassigned"]);
-				setStorageJSON(SEEN_CLASSES_KEY, allClassIds);
-			} else {
-				const seenClasses = getStorageJSON(SEEN_CLASSES_KEY, []);
-				const genuinelyNewClassIds = allClassIds.filter(
-					(id) => !seenClasses.includes(id),
-				);
+        setClassFilters([...allClassIds, "unassigned"]);
+        setStorageJSON(SEEN_CLASSES_KEY, allClassIds);
+      } else {
+        const seenClasses = getStorageJSON(SEEN_CLASSES_KEY, []);
+        const genuinelyNewClassIds = allClassIds.filter(
+          (id) => !seenClasses.includes(id),
+        );
 
-				if (genuinelyNewClassIds.length > 0) {
-					setClassFilters((prev) => [
-						...prev,
-						...genuinelyNewClassIds,
-					]);
-					setStorageJSON(SEEN_CLASSES_KEY, allClassIds);
-				}
-			}
+        if (genuinelyNewClassIds.length > 0) {
+          setClassFilters((prev) => {
+            const next = [...prev, ...genuinelyNewClassIds];
+            return next;
+          });
+          setStorageJSON(SEEN_CLASSES_KEY, allClassIds);
+        }
+      }
 		}
 	}, [classes, setClassFilters]);
 }
