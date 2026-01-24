@@ -93,7 +93,11 @@ export function GuestSessionProvider({ children, isSignedIn = false }) {
 
   const clearGuestSession = () => {
     clearGuestData();
+    // Reset expiration timestamp; prevent stale expiration state after merge
+    touchGuestSession();
     setSession(null);
+    // Clear expiration flag so modal doesn't reappear on sign-out
+    setExpiredOnLoad(false);
   };
 
   /**
@@ -106,7 +110,7 @@ export function GuestSessionProvider({ children, isSignedIn = false }) {
    * 4. User confirms merge → guest data migrates to auth account
    * 5. handleMergeConfirm calls clearGuestSession() → data finally cleared
    *
-   * This ensures guest data is never lost before merge confirmation.
+   * Ensures guest data is never lost before merge confirmation.
    * clearExpiredSession is only called for "Continue as Guest" path.
    */
   const clearExpiredSession = () => {
