@@ -14,6 +14,7 @@ import {
   touchGuestSession,
 } from "../guest/guestSession";
 import { clearGuestData } from "../guest/guestStorage";
+import { isGuestSessionExpired } from "../guest/guestExpiration";
 
 const GuestSessionContext = createContext(null);
 
@@ -45,6 +46,12 @@ export function GuestSessionProvider({ children, isSignedIn = false }) {
   const [autoResumeBlocked, setAutoResumeBlockedState] = useState(
     () => initialAutoResumeBlocked,
   );
+
+  // Detect if session was expired on initial load
+  const [expiredOnLoad, setExpiredOnLoad] = useState(() => {
+    const existing = getGuestSession();
+    return existing?.id ? isGuestSessionExpired() : false;
+  });
 
   useEffect(() => {
     if (!signedOutParam) return;
@@ -89,18 +96,30 @@ export function GuestSessionProvider({ children, isSignedIn = false }) {
     setSession(null);
   };
 
+  const clearExpiredSession = () => {
+    // Clear data but preserve session ID (same guest identity, fresh data)
+    clearGuestData();
+    // Reset lastActiveAt to now
+    const freshSession = touchGuestSession();
+    setSession(freshSession);
+    // Mark expiration handled
+    setExpiredOnLoad(false);
+  };
+
   const value = useMemo(
     () => ({
       hasGuestSession: Boolean(session?.id),
       guestSessionId: session?.id ?? null,
       autoResumeBlocked,
+      expiredOnLoad,
       startGuestSession,
       resetGuestSession,
       ensureGuestSession,
       clearAutoResumeBlocked,
       clearGuestSession,
+      clearExpiredSession,
     }),
-    [session?.id, autoResumeBlocked],
+    [session?.id, autoResumeBlocked, expiredOnLoad],
   );
 
   return (
