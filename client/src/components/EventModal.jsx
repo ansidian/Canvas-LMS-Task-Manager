@@ -76,14 +76,13 @@ export default function EventModal({
             style={{
               display: "flex",
               flexDirection: "column",
-              height: "75vh",
-              maxHeight: "650px",
+              minHeight: "400px",
+              maxHeight: "80vh",
             }}
           >
             <Box
               style={{
                 flex: 1,
-                overflow: "hidden",
                 display: "flex",
                 gap: 24,
                 marginBottom: 0,

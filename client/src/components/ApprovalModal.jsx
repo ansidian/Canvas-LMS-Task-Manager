@@ -90,7 +90,6 @@ function Card({
   return (
     <motion.div
       style={{
-        position: "absolute",
         width: "100%",
         maxWidth: "500px",
       }}
@@ -406,9 +405,9 @@ export default function ApprovalModal({
           position: "relative",
           width: "100%",
           maxWidth: "600px",
-          height: "600px",
+          minHeight: "400px",
           display: "flex",
-          alignItems: "center",
+          alignItems: "flex-start",
           justifyContent: "center",
         }}
       >

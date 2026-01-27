@@ -8,6 +8,7 @@ import {
   Group,
   HoverCard,
   Select,
+  Stack,
   Text,
   TextInput,
   Tooltip,
@@ -15,11 +16,18 @@ import {
 } from "@mantine/core";
 import { DateTimePicker } from "@mantine/dates";
 import { AnimatePresence, motion } from "framer-motion";
-import { IconLock, IconLockOpen, IconX } from "@tabler/icons-react";
+import {
+  IconCalendar,
+  IconFileText,
+  IconLink,
+  IconLock,
+  IconLockOpen,
+  IconTag,
+  IconX,
+} from "@tabler/icons-react";
 import dayjs from "dayjs";
 import NotesTextarea from "../NotesTextarea";
-import { formatRelativeTime } from "../../utils/datetime";
-import { toLocalDate } from "../../utils/datetime";
+import { formatRelativeTime, toLocalDate } from "../../utils/datetime";
 
 const EVENT_TYPES = [
   { value: "assignment", label: "Assignment" },
@@ -28,6 +36,36 @@ const EVENT_TYPES = [
   { value: "homework", label: "Homework" },
   { value: "lab", label: "Lab" },
 ];
+
+// Subtle section card for visual grouping
+function SectionCard({ children, accent = null }) {
+  return (
+    <Box
+      style={{
+        background: "var(--parchment)",
+        borderRadius: 8,
+        padding: "14px 16px",
+        position: "relative",
+        overflow: "hidden",
+      }}
+    >
+      {accent && (
+        <Box
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: 3,
+            backgroundColor: accent,
+            borderRadius: "8px 0 0 8px",
+          }}
+        />
+      )}
+      {children}
+    </Box>
+  );
+}
 
 export function ApprovalCardHeader({ item, onAttemptClose }) {
   return (
@@ -73,24 +111,20 @@ export function ApprovalDueDateField({
   };
 
   return (
-    <Box>
+    <SectionCard>
       <DateTimePicker
         label={
-          <Group gap={6} align="center">
-            <Text size="sm" fw={500}>
+          <Group gap={6} align="center" mb={2}>
+            <IconCalendar size={14} style={{ opacity: 0.5 }} />
+            <Text size="sm" fw={600} c="dimmed">
               Due Date & Time
             </Text>
             {isCanvasLinked ? (
-              <HoverCard
-                width={240}
-                shadow="md"
-                position="top"
-                withArrow
-              >
+              <HoverCard width={240} shadow="md" position="top" withArrow>
                 <HoverCard.Target>
                   <ActionIcon
                     variant="subtle"
-                    size="sm"
+                    size="xs"
                     aria-label={
                       isSyncLocked
                         ? "Canvas sync enabled"
@@ -110,9 +144,9 @@ export function ApprovalDueDateField({
                       style={{ display: "inline-flex" }}
                     >
                       {isSyncLocked ? (
-                        <IconLock size={14} color="var(--accent-hover)" />
+                        <IconLock size={12} color="var(--accent-hover)" />
                       ) : (
-                        <IconLockOpen size={14} color="var(--accent-hover)" />
+                        <IconLockOpen size={12} color="var(--accent-hover)" />
                       )}
                     </motion.span>
                   </ActionIcon>
@@ -128,62 +162,60 @@ export function ApprovalDueDateField({
             ) : null}
           </Group>
         }
-      placeholder="Pick date and optionally time"
-      value={formData.dueDate}
-      onChange={(v) => {
-        // Presets pass strings, normalize to local Date
-        setFormData((f) => ({ ...f, dueDate: toLocalDate(v) }));
-        onUserEdit();
-      }}
-      disabled={isSyncLocked}
-      clearable={false}
-      firstDayOfWeek={0}
-      valueFormat="MMM DD, YYYY hh:mm A"
-      presets={[
-        {
-          value: dayjs().subtract(1, "day").format("YYYY-MM-DD"),
-          label: "Yesterday",
-        },
-        {
-          value: dayjs().format("YYYY-MM-DD"),
-          label: "Today",
-        },
-        {
-          value: dayjs().add(1, "day").format("YYYY-MM-DD"),
-          label: "Tomorrow",
-        },
-        {
-          value: dayjs().add(1, "month").format("YYYY-MM-DD"),
-          label: "Next month",
-        },
-        {
-          value: dayjs().add(1, "year").format("YYYY-MM-DD"),
-          label: "Next year",
-        },
-        {
-          value: dayjs().subtract(1, "month").format("YYYY-MM-DD"),
-          label: "Last month",
-        },
-      ].map((preset) => ({
-        ...preset,
-        value: (() => {
-          // Preserve current time when using presets
-          const currentTime = formData.dueDate
-            ? dayjs(formData.dueDate)
-            : dayjs().hour(23).minute(59);
-          const newDate = dayjs(preset.value)
-            .hour(currentTime.hour())
-            .minute(currentTime.minute())
-            .second(currentTime.second());
-          return newDate.toDate();
-        })(),
-      }))}
-      timePickerProps={{
-        popoverProps: { withinPortal: false },
-        format: "12h",
-      }}
+        placeholder="Pick date and optionally time"
+        value={formData.dueDate}
+        onChange={(v) => {
+          setFormData((f) => ({ ...f, dueDate: toLocalDate(v) }));
+          onUserEdit();
+        }}
+        disabled={isSyncLocked}
+        clearable={false}
+        firstDayOfWeek={0}
+        valueFormat="MMM DD, YYYY hh:mm A"
+        presets={[
+          {
+            value: dayjs().subtract(1, "day").format("YYYY-MM-DD"),
+            label: "Yesterday",
+          },
+          {
+            value: dayjs().format("YYYY-MM-DD"),
+            label: "Today",
+          },
+          {
+            value: dayjs().add(1, "day").format("YYYY-MM-DD"),
+            label: "Tomorrow",
+          },
+          {
+            value: dayjs().add(1, "month").format("YYYY-MM-DD"),
+            label: "Next month",
+          },
+          {
+            value: dayjs().add(1, "year").format("YYYY-MM-DD"),
+            label: "Next year",
+          },
+          {
+            value: dayjs().subtract(1, "month").format("YYYY-MM-DD"),
+            label: "Last month",
+          },
+        ].map((preset) => ({
+          ...preset,
+          value: (() => {
+            const currentTime = formData.dueDate
+              ? dayjs(formData.dueDate)
+              : dayjs().hour(23).minute(59);
+            const newDate = dayjs(preset.value)
+              .hour(currentTime.hour())
+              .minute(currentTime.minute())
+              .second(currentTime.second());
+            return newDate.toDate();
+          })(),
+        }))}
+        timePickerProps={{
+          popoverProps: { withinPortal: false },
+          format: "12h",
+        }}
       />
-    </Box>
+    </SectionCard>
   );
 }
 
@@ -200,50 +232,61 @@ export function ApprovalClassSelect({
       label: c.name,
     }));
 
+  const currentClassColor = formData.classId
+    ? classes.find((c) => String(c.id) === formData.classId)?.color
+    : null;
+
   return (
-    <Select
-      label="Class"
-      placeholder="Select a class"
-      data={classOptions}
-      value={formData.classId}
-      onChange={(v) => {
-        setFormData((f) => ({ ...f, classId: v }));
-        onUserEdit();
-      }}
-      clearable
-      renderOption={({ option }) => {
-        const cls = classes.find((c) => String(c.id) === option.value);
-        return (
-          <Group gap="xs" wrap="nowrap">
+    <SectionCard accent={currentClassColor}>
+      <Select
+        label={
+          <Group gap={6} mb={2}>
+            <IconTag size={14} style={{ opacity: 0.5 }} />
+            <Text size="sm" fw={600} c="dimmed">
+              Class
+            </Text>
+          </Group>
+        }
+        placeholder="Select a class"
+        data={classOptions}
+        value={formData.classId}
+        onChange={(v) => {
+          setFormData((f) => ({ ...f, classId: v }));
+          onUserEdit();
+        }}
+        clearable
+        renderOption={({ option }) => {
+          const cls = classes.find((c) => String(c.id) === option.value);
+          return (
+            <Group gap="xs" wrap="nowrap">
+              <Box
+                style={{
+                  width: 10,
+                  height: 10,
+                  backgroundColor: cls?.color || "#a78b71",
+                  borderRadius: 2,
+                  flexShrink: 0,
+                }}
+              />
+              <Text size="sm">{option.label}</Text>
+            </Group>
+          );
+        }}
+        leftSection={
+          formData.classId ? (
             <Box
               style={{
-                width: 12,
-                height: 12,
-                backgroundColor: cls?.color || "#a78b71",
+                width: 10,
+                height: 10,
+                backgroundColor: currentClassColor || "#a78b71",
                 borderRadius: 2,
                 flexShrink: 0,
               }}
             />
-            <Text size="sm">{option.label}</Text>
-          </Group>
-        );
-      }}
-      leftSection={
-        formData.classId ? (
-          <Box
-            style={{
-              width: 12,
-              height: 12,
-              backgroundColor:
-                classes.find((c) => String(c.id) === formData.classId)?.color ||
-                "#a78b71",
-              borderRadius: 2,
-              flexShrink: 0,
-            }}
-          />
-        ) : null
-      }
-    />
+          ) : null
+        }
+      />
+    </SectionCard>
   );
 }
 
@@ -254,43 +297,66 @@ export function ApprovalEventTypeSelect({
   eventTypePulse,
 }) {
   return (
-    <Select
-      label="Event Type"
-      data={EVENT_TYPES}
-      value={formData.eventType}
-      onChange={(v) => {
-        setFormData((f) => ({ ...f, eventType: v }));
-        onUserEdit();
-      }}
-      classNames={{
-        input: eventTypePulse ? "event-type-pulse" : undefined,
-      }}
-    />
+    <SectionCard>
+      <Select
+        label={
+          <Group gap={6} mb={2}>
+            <IconFileText size={14} style={{ opacity: 0.5 }} />
+            <Text size="sm" fw={600} c="dimmed">
+              Event Type
+            </Text>
+          </Group>
+        }
+        data={EVENT_TYPES}
+        value={formData.eventType}
+        onChange={(v) => {
+          setFormData((f) => ({ ...f, eventType: v }));
+          onUserEdit();
+        }}
+        classNames={{
+          input: eventTypePulse ? "event-type-pulse" : undefined,
+        }}
+      />
+    </SectionCard>
   );
 }
 
 export function ApprovalUrlField({ formData, setFormData, onUserEdit }) {
   return (
-    <>
-      <TextInput
-        label="URL"
-        placeholder="Canvas URL"
-        value={formData.url}
-        onChange={(e) => {
-          setFormData((f) => ({
-            ...f,
-            url: e.target.value,
-          }));
-          onUserEdit();
-        }}
-      />
-
-      {formData.url && (
-        <Anchor href={formData.url} target="_blank" size="sm">
-          Open in Canvas
-        </Anchor>
-      )}
-    </>
+    <SectionCard>
+      <Stack gap="xs">
+        <TextInput
+          label={
+            <Group gap={6} mb={2}>
+              <IconLink size={14} style={{ opacity: 0.5 }} />
+              <Text size="sm" fw={600} c="dimmed">
+                URL
+              </Text>
+            </Group>
+          }
+          placeholder="Canvas URL"
+          value={formData.url}
+          onChange={(e) => {
+            setFormData((f) => ({
+              ...f,
+              url: e.target.value,
+            }));
+            onUserEdit();
+          }}
+          size="sm"
+        />
+        {formData.url && (
+          <Anchor
+            href={formData.url}
+            target="_blank"
+            size="xs"
+            style={{ display: "inline-block" }}
+          >
+            Open in Canvas
+          </Anchor>
+        )}
+      </Stack>
+    </SectionCard>
   );
 }
 
@@ -300,12 +366,16 @@ export function ApprovalPointsBadge({ item }) {
   }
 
   return (
-    <Group gap="xs">
-      <Text size="sm" fw={500}>
-        Points
-      </Text>
-      <Badge variant="light">{item.points_possible}</Badge>
-    </Group>
+    <SectionCard>
+      <Group gap="xs">
+        <Text size="sm" fw={600} c="dimmed">
+          Points
+        </Text>
+        <Badge variant="light" size="sm" styles={{ root: { fontWeight: 600 } }}>
+          {item.points_possible}
+        </Badge>
+      </Group>
+    </SectionCard>
   );
 }
 
@@ -318,21 +388,23 @@ export function ApprovalLockStatus({ item }) {
     item.unlock_at && dayjs(item.unlock_at).isAfter(dayjs());
 
   return (
-    <Text size="sm" c="red">
-      <IconLock size={14} style={{ verticalAlign: "middle", marginRight: 4 }} />
-      Assignment opens
-      {unlockInFuture ? (
-        <Tooltip label={formatRelativeTime(item.unlock_at)} withArrow>
-          <span style={{ cursor: "help" }}>
-            {" "}
-            on {dayjs(item.unlock_at).format("MMM D, YYYY h:mm A")}
-          </span>
-        </Tooltip>
-      ) : (
-        ""
-      )}
-      .
-    </Text>
+    <SectionCard>
+      <Group gap="xs" wrap="nowrap">
+        <IconLock size={14} color="var(--overdue)" style={{ flexShrink: 0 }} />
+        <Text size="sm" c="red">
+          {unlockInFuture ? (
+            <Tooltip label={formatRelativeTime(item.unlock_at)} withArrow>
+              <span style={{ cursor: "help" }}>
+                {"Assignment locked "}
+                until {dayjs(item.unlock_at).format("MMM D, YYYY h:mm A")}
+              </span>
+            </Tooltip>
+          ) : (
+            ""
+          )}
+        </Text>
+      </Group>
+    </SectionCard>
   );
 }
 
@@ -365,7 +437,7 @@ export function ApprovalDescriptionPreview({
   return (
     <Box>
       <Group justify="space-between">
-        <Text size="sm" fw={500}>
+        <Text size="sm" fw={600} c="dimmed">
           Description
         </Text>
         <Box
@@ -375,7 +447,17 @@ export function ApprovalDescriptionPreview({
         >
           <Button
             size="xs"
-            variant="light"
+            variant="subtle"
+            styles={{
+              root: {
+                padding: "4px 10px",
+                background: "var(--parchment)",
+              },
+              label: {
+                fontWeight: 500,
+                fontSize: "0.8125rem",
+              },
+            }}
             onClick={() => {
               setShowDescriptionPreview(false);
               setShowDescriptionFullscreen(true);
