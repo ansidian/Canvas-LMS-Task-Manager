@@ -9,8 +9,10 @@ import {
   Text,
   TextInput,
   Textarea,
+  Tooltip,
 } from "@mantine/core";
 import dayjs from "dayjs";
+import { formatRelativeTime } from "../../utils/datetime";
 
 export default function CanvasSubmissionPanel({
   canvasIds,
@@ -93,7 +95,25 @@ export default function CanvasSubmissionPanel({
           )}
           {isCanvasLocked && (
             <Text size="sm" c="red">
-              Canvas has locked this assignment.
+              Assignment opens
+              {assignmentInfo?.unlock_at &&
+              dayjs(assignmentInfo.unlock_at).isAfter(dayjs()) ? (
+                <Tooltip
+                  label={formatRelativeTime(assignmentInfo.unlock_at)}
+                  withArrow
+                >
+                  <span style={{ cursor: "help" }}>
+                    {" "}
+                    on{" "}
+                    {dayjs(assignmentInfo.unlock_at).format(
+                      "MMM D, YYYY h:mm A",
+                    )}
+                  </span>
+                </Tooltip>
+              ) : (
+                ""
+              )}
+              .
             </Text>
           )}
           {submissionOptions.length > 1 && (

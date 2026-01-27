@@ -100,6 +100,7 @@ router.get("/assignment", validateCanvasCredentials(), async (req, res) => {
       allowed_extensions: assignment.allowed_extensions || [],
       locked_for_user: !!assignment.locked_for_user,
       lock_explanation: assignment.lock_explanation || null,
+      unlock_at: assignment.unlock_at || null,
       quiz_id: assignment.quiz_id || null,
       due_at: assignment.due_at || null,
     });

@@ -49,6 +49,8 @@ export async function fetchCanvasAssignments(canvasBaseUrl, canvasToken) {
           points_possible: assignment.points_possible,
           quiz_id: assignment.quiz_id || null,
           has_submitted: hasSubmitted,
+          unlock_at: assignment.unlock_at || null,
+          locked_for_user: !!assignment.locked_for_user,
         });
       }
     }

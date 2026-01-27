@@ -1,9 +1,11 @@
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
+import relativeTime from "dayjs/plugin/relativeTime";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
+dayjs.extend(relativeTime);
 
 /**
  * Parse a due_date value from the database.
@@ -140,4 +142,46 @@ export function combineLocalDateAndTime(dateString, timeString) {
     .second(0)
     .millisecond(0)
     .toDate();
+}
+
+/**
+ * Format a future date as granular relative time.
+ * Shows "in Xh Ym" for under 24h, "in Xd Yh" for under 7 days,
+ * otherwise falls back to "in X weeks/months".
+ *
+ * @param {string|Date} targetDate - The future date
+ * @returns {string} Granular relative time string
+ */
+export function formatRelativeTime(targetDate) {
+  const now = dayjs();
+  const target = dayjs(targetDate);
+  const diffMs = target.diff(now);
+
+  if (diffMs <= 0) return "now";
+
+  const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const hours = Math.floor(diffMs / (1000 * 60 * 60)) % 24;
+  const minutes = Math.floor(diffMs / (1000 * 60)) % 60;
+
+  // Under 1 hour
+  if (days === 0 && hours === 0) {
+    return `in ${plural(minutes, 'minute')}`;
+  }
+
+  // Under 24 hours
+  if (days === 0) {
+    if (minutes === 0) return `in ${plural(hours, 'hour')}`;
+    return `in ${plural(hours, 'hour')}, ${plural(minutes, 'minute')}`;
+  }
+
+  // Under 7 days
+  if (days < 7) {
+    if (hours === 0) return `in ${plural(days, 'day')}`;
+    return `in ${plural(days, 'day')}, ${plural(hours, 'hour')}, ${plural(minutes, 'minute')}`;
+  }
+
+  // Otherwise use dayjs relative time for weeks/months
+  return target.fromNow();
 }

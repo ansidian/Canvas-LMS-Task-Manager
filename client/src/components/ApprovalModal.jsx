@@ -11,6 +11,7 @@ import {
   ApprovalDescriptionPreview,
   ApprovalDueDateField,
   ApprovalEventTypeSelect,
+  ApprovalLockStatus,
   ApprovalNotesField,
   ApprovalPointsBadge,
   ApprovalUrlField,
@@ -148,6 +149,8 @@ function Card({
             />
 
             <ApprovalPointsBadge item={item} />
+
+            <ApprovalLockStatus item={item} />
 
             <ApprovalDescriptionPreview
               item={item}

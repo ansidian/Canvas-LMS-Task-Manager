@@ -10,6 +10,7 @@ import {
   Select,
   Text,
   TextInput,
+  Tooltip,
   TypographyStylesProvider,
 } from "@mantine/core";
 import { DateTimePicker } from "@mantine/dates";
@@ -17,6 +18,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { IconLock, IconLockOpen, IconX } from "@tabler/icons-react";
 import dayjs from "dayjs";
 import NotesTextarea from "../NotesTextarea";
+import { formatRelativeTime } from "../../utils/datetime";
 import { toLocalDate } from "../../utils/datetime";
 
 const EVENT_TYPES = [
@@ -304,6 +306,33 @@ export function ApprovalPointsBadge({ item }) {
       </Text>
       <Badge variant="light">{item.points_possible}</Badge>
     </Group>
+  );
+}
+
+export function ApprovalLockStatus({ item }) {
+  if (!item.locked_for_user) {
+    return null;
+  }
+
+  const unlockInFuture =
+    item.unlock_at && dayjs(item.unlock_at).isAfter(dayjs());
+
+  return (
+    <Text size="sm" c="red">
+      <IconLock size={14} style={{ verticalAlign: "middle", marginRight: 4 }} />
+      Assignment opens
+      {unlockInFuture ? (
+        <Tooltip label={formatRelativeTime(item.unlock_at)} withArrow>
+          <span style={{ cursor: "help" }}>
+            {" "}
+            on {dayjs(item.unlock_at).format("MMM D, YYYY h:mm A")}
+          </span>
+        </Tooltip>
+      ) : (
+        ""
+      )}
+      .
+    </Text>
   );
 }
 
