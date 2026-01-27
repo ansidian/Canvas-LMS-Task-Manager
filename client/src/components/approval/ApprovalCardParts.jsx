@@ -108,9 +108,9 @@ export function ApprovalDueDateField({
                       style={{ display: "inline-flex" }}
                     >
                       {isSyncLocked ? (
-                        <IconLock size={14} />
+                        <IconLock size={14} color="var(--accent-hover)" />
                       ) : (
-                        <IconLockOpen size={14} />
+                        <IconLockOpen size={14} color="var(--accent-hover)" />
                       )}
                     </motion.span>
                   </ActionIcon>

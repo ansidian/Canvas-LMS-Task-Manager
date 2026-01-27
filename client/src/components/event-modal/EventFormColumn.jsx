@@ -112,8 +112,7 @@ export default function EventFormColumn({
                         height: PREVIEW_SIZE.height,
                         padding: 10,
                         borderRadius: 10,
-                        border:
-                          "1px solid var(--mantine-color-default-border)",
+                        border: "1px solid var(--mantine-color-default-border)",
                         backgroundColor: "var(--mantine-color-body)",
                         boxShadow: "0 12px 28px rgba(0, 0, 0, 0.18)",
                         overflow: "hidden",
@@ -188,12 +187,7 @@ export default function EventFormColumn({
                   Due Date & Time
                 </Text>
                 {isCanvasLinked ? (
-                  <HoverCard
-                    width={240}
-                    shadow="md"
-                    position="top"
-                    withArrow
-                  >
+                  <HoverCard width={240} shadow="md" position="top" withArrow>
                     <HoverCard.Target>
                       <ActionIcon
                         variant="subtle"
@@ -217,9 +211,12 @@ export default function EventFormColumn({
                           style={{ display: "inline-flex" }}
                         >
                           {isSyncLocked ? (
-                            <IconLock size={14} />
+                            <IconLock size={14} color="var(--accent-hover)" />
                           ) : (
-                            <IconLockOpen size={14} />
+                            <IconLockOpen
+                              size={14}
+                              color="var(--accent-hover)"
+                            />
                           )}
                         </motion.span>
                       </ActionIcon>
