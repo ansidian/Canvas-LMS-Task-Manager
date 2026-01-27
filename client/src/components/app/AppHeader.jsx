@@ -25,12 +25,12 @@ import { useAppControllerContext } from "../../contexts/AppControllerContext";
 const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
 const modKey = isMac ? "⌘" : "Ctrl";
 
-export default function AppHeader({ pendingCount, isGuest }) {
-	const controller = useAppControllerContext();
-	const { colorScheme, toggleColorScheme } = useMantineColorScheme();
-	const { openSignIn } = useClerk();
+export default function AppHeader({ isGuest }) {
+  const controller = useAppControllerContext();
+  const { colorScheme, toggleColorScheme } = useMantineColorScheme();
+  const { openSignIn } = useClerk();
 
-	return (
+  return (
     <Group h="100%" px="md" style={{ width: "100%" }} wrap="nowrap">
       <Group style={{ flex: 1 }} justify="flex-start">
         <Title order={3}>Canvas Task Manager (CTM)</Title>
@@ -107,11 +107,6 @@ export default function AppHeader({ pendingCount, isGuest }) {
             </ActionIcon>
           </Tooltip>
         </OnboardingTour.Target>
-        {pendingCount > 0 && (
-          <Badge color="red" variant="filled">
-            {pendingCount} pending
-          </Badge>
-        )}
         {isGuest ? (
           <Button size="xs" variant="filled" onClick={() => openSignIn()}>
             Sign In
