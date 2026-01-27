@@ -35,6 +35,7 @@ export default function useApprovalFlow({
     }
   }, [approvalItem]);
 
+
   useEffect(() => {
     if (approvalIndex === -1) {
       selectedCanvasIdRef.current = null;
@@ -135,9 +136,6 @@ export default function useApprovalFlow({
   };
 
   const handleReject = async (item) => {
-    const previousPendingItems = pendingItems;
-    const previousApprovalIndex = approvalIndex;
-
     const removedIndex = pendingItems.findIndex(
       (p) => p.canvas_id === item.canvas_id,
     );
@@ -160,25 +158,15 @@ export default function useApprovalFlow({
       selectedCanvasIdRef.current = null;
     }
 
-    const timeoutId = setTimeout(async () => {
-      try {
-        await api("/rejected", {
-          method: "POST",
-          body: JSON.stringify({ canvas_id: item.canvas_id }),
-        });
-      } catch (err) {
-        console.error("Failed to reject item:", err);
-        notifyError(err.message || "Failed to reject item.");
-        setPendingItems(previousPendingItems);
-        setStorageJSON(PENDING_CACHE_KEY, previousPendingItems);
-        setApprovalIndex(previousApprovalIndex);
-      } finally {
-        pendingRejectsRef.current.delete(item.canvas_id);
-      }
-    }, 7000);
+    // Call API immediately (fire-and-forget) so it completes even if user leaves
+    api("/rejected", {
+      method: "POST",
+      body: JSON.stringify({ canvas_id: item.canvas_id }),
+    }).catch((err) => {
+      console.error("Failed to reject item:", err);
+    });
 
     pendingRejectsRef.current.set(item.canvas_id, {
-      timeoutId,
       item,
       index: removedIndex,
     });
@@ -189,8 +177,15 @@ export default function useApprovalFlow({
       onUndo: () => {
         const pending = pendingRejectsRef.current.get(item.canvas_id);
         if (!pending) return;
-        clearTimeout(pending.timeoutId);
         pendingRejectsRef.current.delete(item.canvas_id);
+
+        // Call unreject API to remove from rejected_items
+        api(`/rejected/${encodeURIComponent(item.canvas_id)}`, {
+          method: "DELETE",
+        }).catch((err) => {
+          console.error("Failed to unreject item:", err);
+        });
+
         let restoredIndex = null;
         let restoredId = null;
         setPendingItems((prev) => {

@@ -102,6 +102,22 @@ router.post("/rejected", async (req, res) => {
   }
 });
 
+// Remove rejected item (for undo)
+router.delete("/rejected/:canvasId", async (req, res) => {
+  const userId = req.auth().userId;
+  const { canvasId } = req.params;
+  try {
+    await db.execute({
+      sql: "DELETE FROM rejected_items WHERE user_id = ? AND canvas_id = ?",
+      args: [userId, canvasId],
+    });
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Error unreject item:", err);
+    res.status(500).json({ message: "Failed to unreject item" });
+  }
+});
+
 // Reset all user data (keep Canvas credentials and Canvas-linked classes)
 router.post("/reset-data", async (req, res) => {
   const userId = req.auth().userId;
