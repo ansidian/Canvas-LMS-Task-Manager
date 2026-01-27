@@ -68,7 +68,8 @@ export default function useCanvasReconcile({ api, events, updateEvent }) {
 				dueDateUpdates.push({ event, due_date: assignment.due_date });
 			}
 
-			if (event.status !== "complete" && assignment.quiz_id) {
+			// Only auto-complete if user hasn't manually overridden status
+			if (event.status !== "complete" && assignment.quiz_id && !event.canvas_status_override) {
 				const ids = parseCanvasIds(event.canvas_id);
 				if (ids) {
 					quizTargets.push({ event, ids });

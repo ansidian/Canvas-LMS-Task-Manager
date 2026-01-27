@@ -98,7 +98,7 @@ export default function useEventModalCanvas({ event, api, onUpdate }) {
     }
     if (!cachedSubmission) setSubmissionLoading(true);
 
-    if (cachedSubmission?.submitted_at && !autoStatusAppliedRef.current.has(event.id)) {
+    if (cachedSubmission?.submitted_at && !autoStatusAppliedRef.current.has(event.id) && !event.canvas_status_override) {
       autoStatusAppliedRef.current.add(event.id);
       onUpdate(event.id, { status: "complete" }, { keepOpen: true });
     }
@@ -132,7 +132,7 @@ export default function useEventModalCanvas({ event, api, onUpdate }) {
           if (requestIdRef.current !== requestId) return;
           setSubmissionInfo(data);
           writeLocalCache("submission", cacheKey, data);
-          if (data?.submitted_at && !autoStatusAppliedRef.current.has(event.id)) {
+          if (data?.submitted_at && !autoStatusAppliedRef.current.has(event.id) && !event.canvas_status_override) {
             autoStatusAppliedRef.current.add(event.id);
             onUpdate(event.id, { status: "complete" }, { keepOpen: true });
           }

@@ -42,11 +42,12 @@ router.post("/", async (req, res) => {
     canvas_id,
     points_possible,
     canvas_due_date_override,
+    canvas_status_override,
   } = req.body;
   try {
     const result = await db.execute({
-      sql: `INSERT INTO events (user_id, title, description, due_date, class_id, event_type, status, notes, url, canvas_id, points_possible, canvas_due_date_override)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      sql: `INSERT INTO events (user_id, title, description, due_date, class_id, event_type, status, notes, url, canvas_id, points_possible, canvas_due_date_override, canvas_status_override)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
         userId,
         title,
@@ -60,6 +61,7 @@ router.post("/", async (req, res) => {
         canvas_id ?? null,
         points_possible ?? null,
         canvas_due_date_override ?? 0,
+        canvas_status_override ?? 0,
       ],
     });
     const newEvent = await db.execute({
@@ -91,6 +93,7 @@ router.patch("/:id", async (req, res) => {
     url,
     points_possible,
     canvas_due_date_override,
+    canvas_status_override,
   } = req.body;
 
   try {
@@ -137,6 +140,10 @@ router.patch("/:id", async (req, res) => {
     if (canvas_due_date_override !== undefined) {
       updates.push("canvas_due_date_override = ?");
       args.push(canvas_due_date_override);
+    }
+    if (canvas_status_override !== undefined) {
+      updates.push("canvas_status_override = ?");
+      args.push(canvas_status_override);
     }
 
     updates.push("updated_at = CURRENT_TIMESTAMP");

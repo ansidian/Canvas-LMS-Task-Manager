@@ -152,6 +152,12 @@ export default function useEventModalForm({
       canvas_due_date_override: formData.canvas_due_date_override,
     };
 
+    // If user manually changes status from complete to non-complete,
+    // set override so Canvas sync won't auto-complete it again
+    if (event.status === "complete" && formData.status !== "complete") {
+      updates.canvas_status_override = 1;
+    }
+
     if (formData.status === "complete" && event.status !== "complete") {
       confetti({
         particleCount: 50,
