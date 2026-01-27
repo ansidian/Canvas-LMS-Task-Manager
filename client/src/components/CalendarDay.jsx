@@ -25,6 +25,21 @@ export default function CalendarDay({
   const [maxVisible, setMaxVisible] = useState(events.length);
   const containerRef = useRef(null);
   const measureRef = useRef(null);
+  const paperRef = useRef(null);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [isHovered, setIsHovered] = useState(false);
+
+  const handleMouseMove = useCallback((e) => {
+    if (!paperRef.current) return;
+    const rect = paperRef.current.getBoundingClientRect();
+    setMousePos({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    });
+  }, []);
+
+  const handleMouseEnter = useCallback(() => setIsHovered(true), []);
+  const handleMouseLeave = useCallback(() => setIsHovered(false), []);
 
   const getClassColor = (classId) => {
     const cls = classes.find((c) => c.id === classId);
@@ -91,26 +106,70 @@ export default function CalendarDay({
   const hiddenCount = events.length - maxVisible;
   const hiddenEvents = events.slice(maxVisible);
 
+  // Combine refs for droppable and our local ref
+  const combinedRef = useCallback(
+    (node) => {
+      setNodeRef(node);
+      paperRef.current = node;
+    },
+    [setNodeRef],
+  );
+
   return (
     <Paper
-      ref={setNodeRef}
+      ref={combinedRef}
       p="xs"
       withBorder
       onDoubleClick={onDoubleClick}
+      onMouseMove={handleMouseMove}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       className="calendar-day"
       style={{
         opacity: isCurrentMonth ? 1 : 0.4,
-        backgroundColor: isOver ? "var(--mantine-color-blue-light)" : "var(--card)",
-        borderColor: isToday ? "var(--mantine-color-blue-filled)" : "var(--rule)",
+        backgroundColor: isOver
+          ? "var(--mantine-color-blue-light)"
+          : "var(--card)",
+        borderColor: isToday
+          ? "var(--mantine-color-blue-filled)"
+          : "var(--rule)",
         borderWidth: isToday ? 2 : 1,
         overflow: "hidden",
         cursor: "default",
         height: "100%",
         display: "flex",
         flexDirection: "column",
+        position: "relative",
       }}
     >
-      <Stack gap={4} style={{ height: "100%", minHeight: 0 }}>
+      {/* Cursor-proximity border glow effect */}
+      {isHovered && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            pointerEvents: "none",
+            borderRadius: "inherit",
+            border: "1px solid transparent",
+            background: `radial-gradient(circle 120px at ${mousePos.x}px ${mousePos.y}px, rgba(34, 139, 230, 0.8), transparent) border-box`,
+            WebkitMask:
+              "linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0)",
+            WebkitMaskComposite: "xor",
+            mask: "linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0)",
+            maskComposite: "exclude",
+            zIndex: 10,
+          }}
+        />
+      )}
+      <Stack
+        gap={4}
+        style={{
+          height: "100%",
+          minHeight: 0,
+          position: "relative",
+          zIndex: 1,
+        }}
+      >
         <Text
           size="sm"
           fw={isToday ? 700 : 400}
