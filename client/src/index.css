@@ -462,3 +462,129 @@ body {
   min-width: 408px !important;
   width: 408px !important;
 }
+
+/* =============================================================================
+   Spotlight (Command Palette)
+   Feel: Like flipping through your planner's index
+   ============================================================================= */
+
+/* Spotlight overlay - softer than default */
+.mantine-Spotlight-overlay {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+  backdrop-filter: blur(4px);
+}
+
+/* Spotlight content wrapper */
+.mantine-Spotlight-content {
+  background: var(--card) !important;
+  border: 1px solid var(--rule) !important;
+  box-shadow: var(--shadow-lift) !important;
+  border-radius: 16px !important;
+  overflow: hidden;
+  max-width: 560px !important;
+}
+
+/* Search input area */
+.mantine-Spotlight-search {
+  border-bottom: 1px solid var(--rule-soft) !important;
+  padding: 16px 20px !important;
+}
+
+.mantine-Spotlight-search input {
+  background: var(--parchment) !important;
+  border: 1px solid var(--rule) !important;
+  border-radius: 10px !important;
+  color: var(--ink) !important;
+  font-size: 1rem !important;
+  padding: 12px 16px 12px 44px !important;
+  height: 48px !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.mantine-Spotlight-search input::placeholder {
+  color: var(--pencil) !important;
+}
+
+.mantine-Spotlight-search input:focus {
+  border-color: var(--ink-blue) !important;
+  box-shadow: 0 0 0 3px var(--ink-blue-light) !important;
+  outline: none !important;
+}
+
+/* Search icon positioning */
+.mantine-Spotlight-search .mantine-Input-section {
+  color: var(--graphite) !important;
+  padding-left: 16px !important;
+}
+
+/* Actions list container */
+.mantine-Spotlight-actionsList {
+  padding: 8px !important;
+  max-height: 400px !important;
+}
+
+/* Individual action items */
+.mantine-Spotlight-action {
+  background: transparent !important;
+  border-radius: 10px !important;
+  padding: 12px 14px !important;
+  margin-bottom: 2px !important;
+  transition: background-color 0.1s ease !important;
+  border: 1px solid transparent !important;
+}
+
+.mantine-Spotlight-action:hover,
+.mantine-Spotlight-action[data-selected] {
+  background: var(--card-hover) !important;
+  border-color: var(--rule-soft) !important;
+}
+
+/* Action content layout */
+.mantine-Spotlight-actionBody {
+  gap: 2px !important;
+}
+
+/* Action label (title) */
+.mantine-Spotlight-actionLabel {
+  color: var(--ink) !important;
+  font-weight: 500 !important;
+  font-size: 0.938rem !important;
+  line-height: 1.4 !important;
+}
+
+/* Action description (class + due date) */
+.mantine-Spotlight-actionDescription {
+  color: var(--graphite) !important;
+  font-size: 0.813rem !important;
+  line-height: 1.4 !important;
+}
+
+/* Left section (status icon) */
+.mantine-Spotlight-actionSection[data-position="left"] {
+  margin-right: 12px !important;
+}
+
+/* Nothing found state */
+.mantine-Spotlight-empty {
+  color: var(--pencil) !important;
+  padding: 32px 20px !important;
+  text-align: center !important;
+  font-size: 0.938rem !important;
+}
+
+/* Footer hint */
+.mantine-Spotlight-footer {
+  border-top: 1px solid var(--rule-soft) !important;
+  padding: 10px 16px !important;
+  background: var(--parchment) !important;
+}
+
+/* Keyboard shortcuts in footer */
+.mantine-Spotlight-footer kbd {
+  background: var(--card) !important;
+  border: 1px solid var(--rule) !important;
+  border-radius: 4px !important;
+  padding: 2px 6px !important;
+  font-size: 0.75rem !important;
+  color: var(--graphite) !important;
+}

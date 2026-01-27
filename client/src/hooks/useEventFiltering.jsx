@@ -1,10 +1,28 @@
 import { useMemo } from "react";
 import dayjs from "dayjs";
+import relativeTime from "dayjs/plugin/relativeTime";
+import isToday from "dayjs/plugin/isToday";
+import isTomorrow from "dayjs/plugin/isTomorrow";
 import {
 	IconCircle,
 	IconCircleHalf2,
 	IconCircleCheck,
 } from "@tabler/icons-react";
+
+dayjs.extend(relativeTime);
+dayjs.extend(isToday);
+dayjs.extend(isTomorrow);
+
+function formatDueDate(date) {
+	const d = dayjs(date);
+	const now = dayjs();
+
+	if (d.isToday()) return "Due today";
+	if (d.isTomorrow()) return "Due tomorrow";
+	if (d.isBefore(now, "day")) return `Overdue · ${d.format("MMM D")}`;
+	if (d.diff(now, "day") <= 7) return `Due ${d.fromNow()}`;
+	return `Due ${d.format("MMM D")}`;
+}
 
 export default function useEventFiltering({
 	events,
@@ -54,6 +72,7 @@ export default function useEventFiltering({
 	const spotlightActions = useMemo(() => {
 		return events.map((event) => {
 			const cls = classesById.get(event.class_id);
+			const color = cls?.color || unassignedColor;
 			const StatusIcon =
 				event.status === "complete"
 					? IconCircleCheck
@@ -64,11 +83,20 @@ export default function useEventFiltering({
 			return {
 				id: String(event.id),
 				label: event.title,
-				description: `${cls?.name || "No class"} • Due: ${dayjs(
-					event.due_date,
-				).format("MMM D, YYYY")}`,
+				description: `${cls?.name || "No class"} · ${formatDueDate(event.due_date)}`,
 				leftSection: (
-					<StatusIcon size={20} color={cls?.color || unassignedColor} />
+					<div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+						<div
+							style={{
+								width: 3,
+								height: 28,
+								borderRadius: 2,
+								backgroundColor: color,
+								flexShrink: 0,
+							}}
+						/>
+						<StatusIcon size={18} color={color} style={{ flexShrink: 0 }} />
+					</div>
 				),
 				onClick: () => onSelectEvent(event),
 			};

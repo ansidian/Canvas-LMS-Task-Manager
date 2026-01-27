@@ -43,49 +43,54 @@ export default function AppLayout() {
 	}
 
 	return (
-		<>
-			<Spotlight
-				actions={controller.spotlightActions}
-				nothingFound="No assignments found"
-				searchProps={{
-					leftSection: <IconSearch size={20} />,
-					placeholder: "Search assignments...",
-				}}
-				highlightQuery
-			/>
+    <>
+      <Spotlight
+        actions={controller.spotlightActions}
+        nothingFound="No assignments found"
+        searchProps={{
+          placeholder: "Find your assignments...",
+        }}
+        highlightQuery
+        limit={10}
+        scrollable
+        maxHeight={400}
+      />
 
-			<AppShell
-				header={{ height: headerHeight }}
-				aside={{
-					width: 320,
-					breakpoint: "sm",
-					collapsed: { mobile: pendingCount === 0 },
-				}}
-				padding="md"
-			>
-				<AppShell.Header>
-					<Box h="100%" style={{ display: "flex", flexDirection: "column" }}>
-						{controller.isGuest && <GuestBanner />}
-						{controller.isGuest && shouldShowWarning && (
-							<ExpirationWarningBanner
-								daysRemaining={daysRemaining}
-								warningLevel={warningLevel}
-								onDismiss={dismissWarning}
-							/>
-						)}
-						{controller.isGuest && shouldShowBanner && (
-							<UpgradeBanner onDismiss={dismissBanner} />
-						)}
-						<Box style={{ flex: 1, display: "flex", alignItems: "center" }}>
-							<AppHeader pendingCount={pendingCount} isGuest={controller.isGuest} />
-						</Box>
-					</Box>
-				</AppShell.Header>
-				<AppMain />
-				<AppSidebar />
-				<AppModals />
-				<AppOnboardingDemos />
-			</AppShell>
-		</>
-	);
+      <AppShell
+        header={{ height: headerHeight }}
+        aside={{
+          width: 320,
+          breakpoint: "sm",
+          collapsed: { mobile: pendingCount === 0 },
+        }}
+        padding="md"
+      >
+        <AppShell.Header>
+          <Box h="100%" style={{ display: "flex", flexDirection: "column" }}>
+            {controller.isGuest && <GuestBanner />}
+            {controller.isGuest && shouldShowWarning && (
+              <ExpirationWarningBanner
+                daysRemaining={daysRemaining}
+                warningLevel={warningLevel}
+                onDismiss={dismissWarning}
+              />
+            )}
+            {controller.isGuest && shouldShowBanner && (
+              <UpgradeBanner onDismiss={dismissBanner} />
+            )}
+            <Box style={{ flex: 1, display: "flex", alignItems: "center" }}>
+              <AppHeader
+                pendingCount={pendingCount}
+                isGuest={controller.isGuest}
+              />
+            </Box>
+          </Box>
+        </AppShell.Header>
+        <AppMain />
+        <AppSidebar />
+        <AppModals />
+        <AppOnboardingDemos />
+      </AppShell>
+    </>
+  );
 }
