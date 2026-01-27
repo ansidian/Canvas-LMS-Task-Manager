@@ -100,8 +100,8 @@ export default function CalendarDay({
       className="calendar-day"
       style={{
         opacity: isCurrentMonth ? 1 : 0.4,
-        backgroundColor: isOver ? "var(--mantine-color-blue-light)" : undefined,
-        borderColor: isToday ? "var(--mantine-color-blue-filled)" : undefined,
+        backgroundColor: isOver ? "var(--mantine-color-blue-light)" : "var(--card)",
+        borderColor: isToday ? "var(--mantine-color-blue-filled)" : "var(--rule)",
         borderWidth: isToday ? 2 : 1,
         overflow: "hidden",
         cursor: "default",

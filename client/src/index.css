@@ -14,54 +14,135 @@ html, body {
   overflow: hidden;
 }
 
-/* Dark theme variables */
+/* =============================================================================
+   Design System: Personal Planner
+   Feel: Warm, organized, calm. Like a well-kept paper planner.
+   ============================================================================= */
+
+/* Dark theme - blue-tinted charcoal, like writing at night */
 [data-mantine-color-scheme="dark"] {
-  --bg-primary: #0a0a0b;
-  --bg-secondary: #111113;
-  --bg-tertiary: #18181b;
-  --bg-card: #1c1c1f;
-  --bg-hover: #232326;
+  /* Surfaces - subtle blue undertone */
+  --paper: #171A1F;
+  --parchment: #1E2128;
+  --card: #252830;
+  --card-hover: #2E323B;
 
-  --border-primary: #2a2a2e;
-  --border-secondary: #3a3a3f;
-  --border-accent: #4a4a50;
+  /* Text */
+  --ink: #F8FAFC;
+  --graphite: #94A3B8;
+  --pencil: #64748B;
 
-  --text-primary: #fafafa;
-  --text-secondary: #a1a1aa;
-  --text-muted: #71717a;
+  /* Borders */
+  --rule: #3B4455;
+  --rule-soft: #2A2E38;
+  --rule-strong: #475569;
 
-  --accent: #3b82f6;
-  --accent-hover: #2563eb;
-  --accent-light: rgba(59, 130, 246, 0.1);
+  /* Accent - ink blue */
+  --ink-blue: #5B8DD9;
+  --ink-blue-hover: #7AA3E5;
+  --ink-blue-light: rgba(91, 141, 217, 0.12);
 
+  /* Semantic */
+  --complete: #4ADE80;
+  --complete-light: rgba(74, 222, 128, 0.12);
+  --overdue: #F87171;
+  --overdue-light: rgba(248, 113, 113, 0.12);
+  --in-progress: #A78BFA;
+  --in-progress-light: rgba(167, 139, 250, 0.12);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.25);
+  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.3);
+  --shadow-lift: 0 8px 24px rgba(0, 0, 0, 0.35);
+
+  /* Legacy mappings for gradual migration */
+  --bg-primary: var(--paper);
+  --bg-secondary: var(--parchment);
+  --bg-tertiary: var(--parchment);
+  --bg-card: var(--card);
+  --bg-hover: var(--card-hover);
+  --border-primary: var(--rule);
+  --border-secondary: var(--rule-strong);
+  --border-accent: var(--rule-strong);
+  --text-primary: var(--ink);
+  --text-secondary: var(--graphite);
+  --text-muted: var(--pencil);
+  --accent: var(--ink-blue);
+  --accent-hover: var(--ink-blue-hover);
+  --accent-light: var(--ink-blue-light);
 }
 
-/* Light theme variables */
+/* Light theme - warm paper, like a well-loved planner */
 [data-mantine-color-scheme="light"] {
-  --bg-primary: #ffffff;
-  --bg-secondary: #f9fafb;
-  --bg-tertiary: #f3f4f6;
-  --bg-card: #ffffff;
-  --bg-hover: #f3f4f6;
+  /* Surfaces - warm cream, like aged paper */
+  --paper: #EDEAE5;
+  --parchment: #E5E2DC;
+  --card: #F5F3F0;
+  --card-hover: #EDEBE6;
 
-  --border-primary: #e5e7eb;
-  --border-secondary: #d1d5db;
-  --border-accent: #9ca3af;
+  /* Text */
+  --ink: #1E293B;
+  --graphite: #475569;
+  --pencil: #94A3B8;
 
-  --text-primary: #111827;
-  --text-secondary: #4b5563;
-  --text-muted: #6b7280;
+  /* Borders */
+  --rule: #E2E8F0;
+  --rule-soft: #F1F5F9;
+  --rule-strong: #CBD5E1;
 
-  --accent: #3b82f6;
-  --accent-hover: #2563eb;
-  --accent-light: rgba(59, 130, 246, 0.1);
+  /* Accent - ink blue */
+  --ink-blue: #1E4D8C;
+  --ink-blue-hover: #163A6B;
+  --ink-blue-light: rgba(30, 77, 140, 0.08);
 
+  /* Semantic */
+  --complete: #2E7D4A;
+  --complete-light: rgba(46, 125, 74, 0.1);
+  --overdue: #B33D26;
+  --overdue-light: rgba(179, 61, 38, 0.1);
+  --in-progress: #6B4FA0;
+  --in-progress-light: rgba(107, 79, 160, 0.1);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(28, 25, 23, 0.04);
+  --shadow-md: 0 2px 8px rgba(28, 25, 23, 0.06);
+  --shadow-lg: 0 4px 16px rgba(28, 25, 23, 0.08);
+  --shadow-lift: 0 8px 24px rgba(28, 25, 23, 0.1);
+
+  /* Legacy mappings for gradual migration */
+  --bg-primary: var(--paper);
+  --bg-secondary: var(--parchment);
+  --bg-tertiary: var(--parchment);
+  --bg-card: var(--card);
+  --bg-hover: var(--card-hover);
+  --border-primary: var(--rule);
+  --border-secondary: var(--rule-strong);
+  --border-accent: var(--rule-strong);
+  --text-primary: var(--ink);
+  --text-secondary: var(--graphite);
+  --text-muted: var(--pencil);
+  --accent: var(--ink-blue);
+  --accent-hover: var(--ink-blue-hover);
+  --accent-light: var(--ink-blue-light);
+}
+
+/* Highlighter palette - class colors */
+:root {
+  --highlighter-yellow: #E9B44C;
+  --highlighter-pink: #D4799C;
+  --highlighter-green: #6B9B7A;
+  --highlighter-orange: #D68C45;
+  --highlighter-blue: #5B8DD9;
+  --highlighter-purple: #9B7BB8;
+  --highlighter-teal: #5B9A9A;
+  --highlighter-coral: #D97373;
 }
 
 /* Smooth transitions for theme changes */
 body {
-  background: var(--bg-primary);
-  color: var(--text-primary);
+  background: var(--paper);
+  color: var(--ink);
   transition: background-color 0.2s ease, color 0.2s ease;
   -webkit-font-smoothing: antialiased;
 }
@@ -73,16 +154,16 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--bg-secondary);
+  background: var(--parchment);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border-secondary);
+  background: var(--rule-strong);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--border-accent);
+  background: var(--pencil);
 }
 
 /* Modal animations */
@@ -110,7 +191,124 @@ body {
 
 /* Apply modal animation to Mantine modals */
 .mantine-Modal-content {
-  animation: modalEnter 0.2s ease-out;
+  animation: modalEnter 0.15s ease-out;
+}
+
+/* =============================================================================
+   AppShell Surface Overrides
+   Use design system surface tokens for shell components
+   ============================================================================= */
+
+.mantine-AppShell-header {
+  background-color: var(--card);
+}
+
+.mantine-AppShell-aside {
+  background-color: var(--card);
+}
+
+/* =============================================================================
+   Modal Design System
+   Consistent patterns for all modal dialogs
+   ============================================================================= */
+
+/* Modal content wrapper - applies design system tokens */
+.mantine-Modal-content {
+  background: var(--card) !important;
+  border: 1px solid var(--rule) !important;
+  box-shadow: var(--shadow-lg) !important;
+  border-radius: 12px !important;
+}
+
+/* Modal header styling */
+.mantine-Modal-header {
+  background: transparent !important;
+  padding: 20px 24px 0 24px !important;
+  border-bottom: none !important;
+}
+
+.mantine-Modal-title {
+  font-weight: 600 !important;
+  font-size: 1.125rem !important;
+  color: var(--ink) !important;
+  letter-spacing: -0.01em !important;
+}
+
+.mantine-Modal-close {
+  color: var(--graphite) !important;
+}
+
+.mantine-Modal-close:hover {
+  background: var(--card-hover) !important;
+  color: var(--ink) !important;
+}
+
+/* Modal body spacing */
+.mantine-Modal-body {
+  padding: 16px 24px 24px 24px !important;
+}
+
+/* Modal overlay styling */
+.mantine-Modal-overlay {
+  background-color: rgba(0, 0, 0, 0.6) !important;
+}
+
+/* Modal footer pattern - use this class for consistent footers */
+.modal-footer {
+  border-top: 1px solid var(--rule);
+  padding-top: 16px;
+  margin-top: 24px;
+}
+
+.modal-footer-flush {
+  border-top: 1px solid var(--rule);
+  padding-top: 16px;
+  margin-top: 16px;
+}
+
+/* Custom modal overlay (for ApprovalModal-style fullscreen) */
+.modal-overlay-custom {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  z-index: 200;
+  padding: 8dvh 8vw;
+  overflow-y: auto;
+}
+
+/* Custom modal card styling */
+.modal-card {
+  background: var(--card);
+  border: 1px solid var(--rule);
+  box-shadow: var(--shadow-lg);
+  border-radius: 12px;
+  position: relative;
+}
+
+/* Section dividers within modals */
+.modal-section-divider {
+  height: 1px;
+  background: var(--rule-soft);
+  margin: 16px 0;
+}
+
+/* Subtle info banner in modals */
+.modal-info-banner {
+  background: var(--ink-blue-light);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+
+/* Warning/destructive banner */
+.modal-warning-banner {
+  background: var(--overdue-light);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 12px 16px;
 }
 
 /* Calendar month slide transitions */
@@ -137,23 +335,23 @@ body {
 }
 
 .calendar-slide-right {
-  animation: slideInFromRight 0.3s ease-out;
+  animation: slideInFromRight 0.25s ease-out;
 }
 
 .calendar-slide-left {
-  animation: slideInFromLeft 0.3s ease-out;
+  animation: slideInFromLeft 0.25s ease-out;
 }
 
-/* Button hover effects */
+/* Button hover effects - subtle lift */
 .mantine-Button-root,
 .mantine-ActionIcon-root {
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
 }
 
 .mantine-Button-root:hover:not(:disabled),
 .mantine-ActionIcon-root:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
 }
 
 .mantine-Button-root:active:not(:disabled),
@@ -163,32 +361,32 @@ body {
 
 /* Pending item card hover effect */
 .pending-item-card {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .pending-item-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 
 .pending-item-card:active {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
 }
 
 /* Calendar day hover effect */
 .calendar-day {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .calendar-day:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 
 .calendar-day:active {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
 }
 
 /* Success flash animation for inline feedback */
@@ -197,7 +395,7 @@ body {
     background-color: transparent;
   }
   50% {
-    background-color: rgba(16, 185, 129, 0.2);
+    background-color: var(--complete-light);
   }
 }
 
@@ -208,12 +406,12 @@ body {
 /* Credential highlight pulse animation */
 @keyframes credentialPulse {
   0%, 100% {
-    border-color: var(--border-primary);
+    border-color: var(--rule);
     box-shadow: none;
   }
   50% {
-    border-color: #ef4444;
-    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+    border-color: var(--overdue);
+    box-shadow: 0 0 0 3px var(--overdue-light);
   }
 }
 
@@ -235,7 +433,7 @@ body {
 
 .skeleton-pulse {
   animation: skeletonPulse 1.5s ease-in-out infinite;
-  background: var(--bg-hover);
+  background: var(--card-hover);
   border-radius: 4px;
 }
 
@@ -243,21 +441,21 @@ body {
 .mantine-Input-input:focus,
 .mantine-Select-input:focus,
 .mantine-Textarea-input:focus {
-  border-color: var(--accent) !important;
-  box-shadow: 0 0 0 3px var(--accent-light) !important;
+  border-color: var(--ink-blue) !important;
+  box-shadow: 0 0 0 3px var(--ink-blue-light) !important;
 }
 
 /* Smooth transitions for all interactive elements */
 .mantine-Paper-root,
 .mantine-Card-root {
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
 }
 
 /* Enhanced empty states */
 .empty-state {
   padding: 2rem;
   text-align: center;
-  color: var(--text-muted);
+  color: var(--pencil);
 }
 
 .mantine-Popover-dropdown:has(.mantine-DateTimePicker-calendarHeader) {

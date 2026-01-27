@@ -28,9 +28,9 @@ const EVENT_TYPES = [
 ];
 
 const STATUS_COLORS = {
-  incomplete: "#94a3b8",
-  in_progress: "#7950f2",
-  complete: "#40c057",
+  incomplete: "#78716C",   // pencil - muted neutral
+  in_progress: "#8B6BC0", // violet blend
+  complete: "#4A9968",    // earthy green blend
 };
 
 const STATUS_OPTIONS = [
@@ -111,17 +111,10 @@ export function DemoApprovalModal({ onClose, visible = true }) {
 
   return (
     <div
-      className="onboarding-demo-modal"
+      className="onboarding-demo-modal modal-overlay-custom"
       style={{
-        position: "fixed",
-        inset: 0,
-        backgroundColor: visible ? "rgba(0, 0, 0, 0.75)" : "transparent",
-        display: "flex",
-        alignItems: "flex-start",
-        justifyContent: "center",
+        backgroundColor: visible ? "rgba(0, 0, 0, 0.6)" : "transparent",
         zIndex: 150,
-        padding: "8dvh 8vw",
-        overflowY: "auto",
         opacity: visible ? 1 : 0,
         pointerEvents: visible ? "auto" : "none",
       }}
@@ -129,12 +122,9 @@ export function DemoApprovalModal({ onClose, visible = true }) {
       {/* Use OnboardingTour.Target so the library tracks the real modal element and stays aligned on resize/devtools toggles. */}
       <OnboardingTour.Target id="demo-approval-modal">
         <Paper
-          shadow="xl"
+          className="modal-card"
           p="xl"
-          radius="md"
           style={{
-            backgroundColor: "var(--mantine-color-body)",
-            border: "1px solid var(--mantine-color-default-border)",
             position: "relative",
             width: "100%",
             maxWidth: "500px",
@@ -153,7 +143,7 @@ export function DemoApprovalModal({ onClose, visible = true }) {
             <IconX size={20} />
           </ActionIcon>
 
-          <Stack gap="md">
+          <Stack gap={16}>
             <Box>
               <Text fw={600} size="lg">
                 {DEMO_PENDING_ITEM.title}
@@ -429,17 +419,10 @@ export function DemoEventModal({ onClose, visible = true }) {
 
   return (
     <div
-      className="onboarding-demo-modal"
+      className="onboarding-demo-modal modal-overlay-custom"
       style={{
-        position: "fixed",
-        inset: 0,
-        backgroundColor: visible ? "rgba(0, 0, 0, 0.5)" : "transparent",
-        display: "flex",
-        alignItems: "flex-start",
-        justifyContent: "center",
+        backgroundColor: visible ? "rgba(0, 0, 0, 0.6)" : "transparent",
         zIndex: 150,
-        padding: "8dvh 8vw",
-        overflowY: "auto",
         opacity: visible ? 1 : 0,
         pointerEvents: visible ? "auto" : "none",
       }}
@@ -447,12 +430,9 @@ export function DemoEventModal({ onClose, visible = true }) {
       {/* Use OnboardingTour.Target so the library tracks the real modal element and stays aligned on resize/devtools toggles. */}
       <OnboardingTour.Target id="demo-event-modal">
         <Paper
-          shadow="xl"
+          className="modal-card"
           p="lg"
-          radius="md"
           style={{
-            backgroundColor: "var(--mantine-color-body)",
-            border: "1px solid var(--mantine-color-default-border)",
             position: "relative",
             width: "100%",
             maxWidth: "480px",

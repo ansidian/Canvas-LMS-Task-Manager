@@ -8,12 +8,7 @@ export default function EventModalFooter({
   onSubmit,
 }) {
   return (
-    <Box
-      style={{
-        borderTop: "1px solid var(--mantine-color-default-border)",
-        paddingTop: 16,
-      }}
-    >
+    <Box className="modal-footer">
       <Group justify="space-between">
         <Button
           color={confirmDelete ? "red" : "gray"}
@@ -22,7 +17,7 @@ export default function EventModalFooter({
         >
           {confirmDelete ? "Confirm Delete" : "Delete"}
         </Button>
-        <Group>
+        <Group gap={12}>
           <Button variant="subtle" onClick={onDiscard}>
             Cancel
           </Button>

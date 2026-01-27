@@ -107,16 +107,13 @@ function Card({
     >
       <motion.div animate={shakeControls}>
         <Paper
-          shadow="xl"
+          className="modal-card"
           p="xl"
-          radius="md"
           style={{
-            backgroundColor: "var(--mantine-color-body)",
-            border: "1px solid var(--mantine-color-default-border)",
             position: "relative",
           }}
         >
-          <Stack gap="md">
+          <Stack gap={16}>
             <ApprovalCardHeader
               item={item}
               onAttemptClose={handlers.onAttemptClose}
@@ -367,17 +364,7 @@ export default function ApprovalModal({
 
   return (
     <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        backgroundColor: "rgba(0, 0, 0, 0.75)",
-        display: "flex",
-        alignItems: "flex-start",
-        justifyContent: "center",
-        zIndex: 200,
-        padding: "8dvh 8vw",
-        overflowY: "auto",
-      }}
+      className="modal-overlay-custom"
       onClick={(e) => {
         if (e.target === e.currentTarget) handleAttemptClose();
       }}

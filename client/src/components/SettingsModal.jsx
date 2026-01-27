@@ -117,13 +117,13 @@ export default function SettingsModal({
   return (
     <Modal opened={opened} onClose={onClose} title="Settings" size="lg">
       <Tabs defaultValue="canvas">
-        <Tabs.List>
+        <Tabs.List style={{ borderBottom: '1px solid var(--rule)' }}>
           <Tabs.Tab value="canvas">Canvas API</Tabs.Tab>
           <Tabs.Tab value="classes">Classes</Tabs.Tab>
           <Tabs.Tab value="help">Help</Tabs.Tab>
         </Tabs.List>
 
-        <Tabs.Panel value="canvas" pt="md">
+        <Tabs.Panel value="canvas" pt={16}>
           <SettingsCanvasTab
             config={{
               canvasUrl,
@@ -141,7 +141,7 @@ export default function SettingsModal({
           />
         </Tabs.Panel>
 
-        <Tabs.Panel value="classes" pt="md">
+        <Tabs.Panel value="classes" pt={16}>
           <SettingsClassesTab
             config={{
               classes,
@@ -179,7 +179,7 @@ export default function SettingsModal({
           />
         </Tabs.Panel>
 
-        <Tabs.Panel value="help" pt="md">
+        <Tabs.Panel value="help" pt={16}>
           <SettingsHelpTab
             config={{ showResetConfirm, resetting, isGuest }}
             handlers={{

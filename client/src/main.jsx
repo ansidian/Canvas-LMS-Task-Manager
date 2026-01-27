@@ -24,20 +24,35 @@ if (!PUBLISHABLE_KEY) {
 
 const theme = createTheme({
   colors: {
+    // Blue-tinted charcoal - like writing at night
     dark: [
-      "#fafafa", // 0 - text-primary (dark mode)
-      "#a1a1aa", // 1 - text-secondary
-      "#71717a", // 2 - text-muted
-      "#3a3a3f", // 3 - border-secondary
-      "#2a2a2e", // 4 - border-primary
-      "#232326", // 5 - bg-hover
-      "#1c1c1f", // 6 - bg-card
-      "#18181b", // 7 - bg-tertiary
-      "#111113", // 8 - bg-secondary
-      "#0a0a0b", // 9 - bg-primary
+      "#F8FAFC", // 0 - ink (primary text)
+      "#94A3B8", // 1 - graphite (secondary text)
+      "#64748B", // 2 - pencil (muted text)
+      "#475569", // 3 - rule-strong (emphasis borders)
+      "#3B4455", // 4 - rule (primary borders)
+      "#2E323B", // 5 - card-hover
+      "#252830", // 6 - card
+      "#1E2128", // 7 - parchment
+      "#1A1D24", // 8 - between parchment and paper
+      "#171A1F", // 9 - paper (background)
+    ],
+    // Custom ink-blue as primary
+    inkBlue: [
+      "#E8F0FA",
+      "#C4D9F2",
+      "#9DBFE8",
+      "#7AA3E5",
+      "#5B8DD9",
+      "#4A7BC7",
+      "#3A6AB5",
+      "#2D5A9E",
+      "#1E4D8C",
+      "#163A6B",
     ],
   },
-  primaryColor: "blue",
+  primaryColor: "inkBlue",
+  primaryShade: { light: 8, dark: 4 },
   fontFamily: "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
 });
 

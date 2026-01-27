@@ -85,8 +85,8 @@ export default function EventModal({
                 flex: 1,
                 overflow: "hidden",
                 display: "flex",
-                gap: 32,
-                marginBottom: 16,
+                gap: 24,
+                marginBottom: 0,
               }}
             >
               <EventFormColumn

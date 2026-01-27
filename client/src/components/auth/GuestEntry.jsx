@@ -31,8 +31,8 @@ export default function GuestEntry() {
     minHeight: "100vh",
     background:
       colorScheme === "dark"
-        ? "linear-gradient(135deg, #111827 0%, #1e293b 50%, #0f172a 100%)"
-        : "linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)",
+        ? "linear-gradient(135deg, #171A1F 0%, #1E2128 50%, #151820 100%)"
+        : "linear-gradient(135deg, #1E4D8C 0%, #2D5A9E 50%, #163A6B 100%)",
     fontFamily: "'Plus Jakarta Sans', sans-serif",
   };
 

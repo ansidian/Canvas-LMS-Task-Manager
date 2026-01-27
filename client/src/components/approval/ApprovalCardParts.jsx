@@ -380,10 +380,10 @@ export function ApprovalDescriptionPreview({
                   width: 280,
                   height: 140,
                   padding: 10,
-                  borderRadius: 10,
-                  border: "1px solid var(--mantine-color-default-border)",
-                  backgroundColor: "var(--mantine-color-body)",
-                  boxShadow: "0 12px 28px rgba(0, 0, 0, 0.18)",
+                  borderRadius: 8,
+                  border: "1px solid var(--rule)",
+                  backgroundColor: "var(--card)",
+                  boxShadow: "var(--shadow-lg)",
                   overflow: "hidden",
                   zIndex: 5,
                 }}
@@ -443,15 +443,15 @@ export function ApprovalNotesField({
 
 export function ApprovalActionButtons({ item, onReject, onDiscard, onApprove }) {
   return (
-    <Group justify="space-between" mt="md">
-      <Button variant="light" color="red" onClick={() => onReject(item)} size="md">
+    <Group justify="space-between" className="modal-footer">
+      <Button variant="light" color="red" onClick={() => onReject(item)}>
         Reject
       </Button>
-      <Group>
-        <Button variant="subtle" onClick={onDiscard} size="md">
+      <Group gap={12}>
+        <Button variant="subtle" onClick={onDiscard}>
           Cancel
         </Button>
-        <Button onClick={onApprove} size="md">
+        <Button onClick={onApprove}>
           Add to Calendar
         </Button>
       </Group>

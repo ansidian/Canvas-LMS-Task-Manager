@@ -6,9 +6,9 @@ import { CSS } from '@dnd-kit/utilities';
 import { reorderSubset } from '../utils/reorder';
 
 const STATUS_COLORS = {
-  incomplete: '#94a3b8',
-  in_progress: '#7950f2',
-  complete: '#40c057',
+  incomplete: '#78716C',   // pencil - muted neutral
+  in_progress: '#8B6BC0', // violet blend
+  complete: '#4A9968',    // earthy green blend
 };
 
 function SortableFilterRow({ id, label, color, isChecked, onToggle }) {

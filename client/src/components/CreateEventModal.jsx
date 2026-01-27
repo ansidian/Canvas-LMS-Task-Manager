@@ -164,7 +164,7 @@ export default function CreateEventModal({
       size="md"
     >
       <motion.div animate={shakeControls}>
-        <Stack>
+        <Stack gap={16}>
           <TextInput
             ref={titleRef}
             label="Title"
@@ -311,7 +311,7 @@ export default function CreateEventModal({
             onOpenEvent={handleOpenMentionEvent}
           />
 
-          <Group justify="flex-end">
+          <Group justify="flex-end" className="modal-footer" gap={12}>
             <Button variant="subtle" onClick={handleDiscard}>
               Cancel
             </Button>

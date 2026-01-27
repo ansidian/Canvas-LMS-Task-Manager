@@ -157,7 +157,7 @@ export default function useEventModalForm({
         particleCount: 50,
         spread: 60,
         origin: { y: 0.6 },
-        colors: ["#3b82f6", "#10b981", "#f59e0b", "#a855f7"],
+        colors: ["#5B8DD9", "#6B9B7A", "#E9B44C", "#9B7BB8"],
       });
     }
 

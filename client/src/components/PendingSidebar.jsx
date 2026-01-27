@@ -28,6 +28,8 @@ export default function PendingSidebar({ items, onItemClick }) {
       <style>{`
         .pending-item {
           cursor: pointer;
+          background-color: var(--card);
+          border-color: var(--rule);
           transition: transform 160ms ease, box-shadow 160ms ease,
             border-color 160ms ease, background-color 160ms ease;
         }
