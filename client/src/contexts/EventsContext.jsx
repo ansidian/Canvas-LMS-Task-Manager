@@ -134,24 +134,12 @@ export function EventsProvider({ api, children }) {
 			const deletedEvent = state.events[eventIndex];
 			dispatch({ type: "REMOVE_EVENT", eventId });
 
-			const timeoutId = setTimeout(async () => {
-				try {
-					await api(`/events/${eventId}`, { method: "DELETE" });
-				} catch (err) {
-					console.error("Failed to delete event:", err);
-					dispatch({
-						type: "RESTORE_EVENT",
-						event: deletedEvent,
-						index: eventIndex,
-					});
-					notifyError(err.message || "Failed to delete event.");
-				} finally {
-					pendingDeleteRef.current.delete(eventId);
-				}
-			}, 7000);
+			// Delete immediately (fire-and-forget) so it completes even if user leaves
+			api(`/events/${eventId}`, { method: "DELETE" }).catch((err) => {
+				console.error("Failed to delete event:", err);
+			});
 
 			pendingDeleteRef.current.set(eventId, {
-				timeoutId,
 				event: deletedEvent,
 				index: eventIndex,
 			});
@@ -160,16 +148,27 @@ export function EventsProvider({ api, children }) {
 			notifyUndo({
 				title: `Deleted "${deletedTitle}"`,
 				message: "Event has been deleted.",
-				onUndo: () => {
+				onUndo: async () => {
 					const pending = pendingDeleteRef.current.get(eventId);
 					if (!pending) return;
-					clearTimeout(pending.timeoutId);
 					pendingDeleteRef.current.delete(eventId);
-					dispatch({
-						type: "RESTORE_EVENT",
-						event: pending.event,
-						index: pending.index,
-					});
+
+					// Recreate the event via POST
+					const { id, ...eventData } = pending.event;
+					try {
+						const recreated = await api("/events", {
+							method: "POST",
+							body: JSON.stringify(eventData),
+						});
+						dispatch({
+							type: "RESTORE_EVENT",
+							event: recreated,
+							index: pending.index,
+						});
+					} catch (err) {
+						console.error("Failed to restore event:", err);
+						notifyError(err.message || "Failed to restore event.");
+					}
 				},
 			});
 
