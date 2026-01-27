@@ -47,9 +47,18 @@ export default function useCanvasFetch({
 			// Reload classes to get updated list with canvas_course_id mappings
 			const updatedClasses = await loadClasses();
 
+			// Filter out items from unsynced classes (they won't show anywhere)
+			const syncedAssignments = data.assignments.filter((a) => {
+				const cls = updatedClasses.find(
+					(c) => c.canvas_course_id === a.canvas_course_id,
+				);
+				// Keep if no matching class (new) or class is synced
+				return !cls || cls.is_synced;
+			});
+
 			// Separate submitted items from pending items
-			const submittedItems = data.assignments.filter((a) => a.has_submitted);
-			const pendingAssignments = data.assignments.filter((a) => !a.has_submitted);
+			const submittedItems = syncedAssignments.filter((a) => a.has_submitted);
+			const pendingAssignments = syncedAssignments.filter((a) => !a.has_submitted);
 
 			// Auto-approve submitted items as complete
 			// Add all optimistic events immediately, then fire API calls in parallel
