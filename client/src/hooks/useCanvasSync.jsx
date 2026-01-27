@@ -80,6 +80,8 @@ export default function useCanvasSync({
 	setHighlightCredentials,
 	setSettingsOpen,
 	events,
+	addEvent,
+	replaceEvent,
 	updateEvent,
 }) {
 	const [state, dispatch] = useReducer(canvasReducer, initialState, initState);
@@ -178,6 +180,8 @@ export default function useCanvasSync({
 		setHighlightCredentials,
 		setSettingsOpen,
 		syncCanvasUpdates,
+		addEvent,
+		replaceEvent,
 	});
 
 	const handleClassesReorder = useCallback(async (orderedIds) => {

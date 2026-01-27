@@ -1,6 +1,6 @@
 import { useCallback, useRef } from "react";
 import { LAST_FETCH_KEY } from "./canvasSyncConstants";
-import { CANVAS_DND_TOAST_ID, dismissToast } from "../utils/notify.jsx";
+import { CANVAS_DND_TOAST_ID, dismissToast, notifySuccess } from "../utils/notify.jsx";
 import { setStorageItem } from "../utils/storage";
 
 export default function useCanvasFetch({
@@ -14,6 +14,8 @@ export default function useCanvasFetch({
 	setHighlightCredentials,
 	setSettingsOpen,
 	syncCanvasUpdates,
+	addEvent,
+	replaceEvent,
 }) {
 	const fetchInFlightRef = useRef(false);
 	const fetchRequestIdRef = useRef(0);
@@ -41,7 +43,69 @@ export default function useCanvasFetch({
 			await ensureClassesExist(data.courses, currentClasses);
 
 			if (fetchRequestIdRef.current !== requestId) return;
-			setPendingItems(data.assignments);
+
+			// Reload classes to get updated list with canvas_course_id mappings
+			const updatedClasses = await loadClasses();
+
+			// Separate submitted items from pending items
+			const submittedItems = data.assignments.filter((a) => a.has_submitted);
+			const pendingAssignments = data.assignments.filter((a) => !a.has_submitted);
+
+			// Auto-approve submitted items as complete
+			// Add all optimistic events immediately, then fire API calls in parallel
+			const autoApprovePromises = submittedItems.map((item) => {
+				const matchingClass = updatedClasses.find(
+					(cls) => cls.canvas_course_id === item.canvas_course_id,
+				);
+				const classId = matchingClass?.id ?? null;
+
+				const tempId = `temp-auto-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+				const optimisticEvent = {
+					id: tempId,
+					title: item.title,
+					due_date: item.due_date,
+					class_id: classId,
+					event_type: "assignment",
+					status: "complete",
+					notes: "",
+					url: item.url,
+					description: item.description ?? null,
+					points_possible: item.points_possible ?? null,
+					canvas_id: item.canvas_id,
+					canvas_due_date_override: 0,
+				};
+
+				addEvent(optimisticEvent);
+
+				return api("/events", {
+					method: "POST",
+					body: JSON.stringify({
+						title: item.title,
+						description: item.description ?? null,
+						due_date: item.due_date,
+						class_id: classId,
+						event_type: "assignment",
+						status: "complete",
+						notes: "",
+						url: item.url,
+						points_possible: item.points_possible ?? null,
+						canvas_id: item.canvas_id,
+						canvas_due_date_override: 0,
+					}),
+				})
+					.then((newEvent) => {
+						replaceEvent(tempId, newEvent);
+						notifySuccess(`"${item.title}" added as complete`);
+					})
+					.catch((err) => {
+						console.error("Failed to auto-approve submitted item:", err);
+					});
+			});
+
+			// Don't await - let them complete in background
+			Promise.allSettled(autoApprovePromises);
+
+			setPendingItems(pendingAssignments);
 			setCanvasAuthError("");
 			await syncCanvasUpdates(data);
 
@@ -90,6 +154,8 @@ export default function useCanvasFetch({
 		setCanvasAuthError,
 		setLastFetchTime,
 		syncCanvasUpdates,
+		addEvent,
+		replaceEvent,
 	]);
 
 	return { fetchCanvasAssignments };

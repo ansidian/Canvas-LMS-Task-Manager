@@ -67,6 +67,8 @@ export default function useAppController({
 		setHighlightCredentials,
 		setSettingsOpen,
 		events,
+		addEvent,
+		replaceEvent,
 		updateEvent: updateEventRecord,
 	});
 

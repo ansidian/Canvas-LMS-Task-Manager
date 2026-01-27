@@ -19,7 +19,7 @@ export async function fetchCanvasAssignments(canvasBaseUrl, canvasToken) {
     async (course) => {
       try {
         const assignments = await fetchAllPages(
-          `${canvasBaseUrl}/api/v1/courses/${course.id}/assignments?per_page=100`,
+          `${canvasBaseUrl}/api/v1/courses/${course.id}/assignments?per_page=100&include[]=submission`,
           headers,
         );
         return { course, assignments };
@@ -34,6 +34,10 @@ export async function fetchCanvasAssignments(canvasBaseUrl, canvasToken) {
     const courseIdStr = String(course.id);
     for (const assignment of assignments) {
       if (assignment.due_at) {
+        const submissionState = assignment.submission?.workflow_state;
+        const hasSubmitted = ["submitted", "graded", "pending_review"].includes(
+          submissionState,
+        );
         allAssignments.push({
           canvas_id: `${course.id}-${assignment.id}`,
           canvas_course_id: courseIdStr,
@@ -44,6 +48,7 @@ export async function fetchCanvasAssignments(canvasBaseUrl, canvasToken) {
           description: assignment.description,
           points_possible: assignment.points_possible,
           quiz_id: assignment.quiz_id || null,
+          has_submitted: hasSubmitted,
         });
       }
     }
