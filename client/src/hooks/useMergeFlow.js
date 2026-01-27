@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useSession } from "@clerk/clerk-react";
 import { useGuestSession } from "../contexts/GuestSessionContext";
 import { useMerge } from "../contexts/MergeContext";
@@ -7,6 +7,7 @@ import {
   getGuestEvents,
   getGuestClasses,
   getGuestSettings,
+  clearGuestData,
 } from "../guest/guestStorage";
 
 export default function useMergeFlow(getToken, isSignedIn) {
@@ -22,6 +23,8 @@ export default function useMergeFlow(getToken, isSignedIn) {
   } = useMerge();
 
   const [mergeData, setMergeData] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   // Clear merged session ID on sign-out to allow re-merge on next sign-in
   useEffect(() => {
@@ -125,37 +128,75 @@ export default function useMergeFlow(getToken, isSignedIn) {
     mergeData?.authClasses,
   );
 
-  const handleMergeConfirm = () => {
-    // Mark this guest session as merged
-    setMergedSessionId(guestSessionId);
-
-    // Clear guest session after successful merge
-    clearGuestSession();
-    setShowMergeModal(false);
-    setMergeData(null);
-
-    // Reload page to show merged data immediately
-    window.location.reload();
-  };
-
   const handleMergeClose = () => {
     setShowMergeModal(false);
   };
 
-  // Create API client for merge modal with proper auth
-  const mergeApiClient = {
-    post: async (endpoint, payload) => {
-      const token = await getToken();
-      return fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
+  const confirmMerge = useCallback(
+    async (resolutions) => {
+      if (!guestSessionId) {
+        setError("Guest session ID is required for merge");
+        return;
+      }
+
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const token = await getToken();
+        const payload = {
+          guestSessionId,
+          guestClasses: mergeData?.guestClasses || [],
+          guestEvents: mergeData?.guestEvents || [],
+          guestSettings: mergeData?.guestSettings || {},
+          resolutions: resolutions || {},
+        };
+
+        const response = await fetch("/api/merge", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(
+            errorData.error || `Merge failed with status ${response.status}`
+          );
+        }
+
+        // Successful merge - clear guest data
+        clearGuestData();
+        setMergedSessionId(guestSessionId);
+        clearGuestSession();
+        setShowMergeModal(false);
+        setMergeData(null);
+        setIsLoading(false);
+
+        // Reload page to show merged data immediately
+        window.location.reload();
+      } catch (err) {
+        const userMessage =
+          err.message === "Failed to fetch"
+            ? "Network error - please check your connection and try again"
+            : err.message || "An unexpected error occurred during merge";
+
+        setError(userMessage);
+        setIsLoading(false);
+      }
     },
-  };
+    [
+      guestSessionId,
+      getToken,
+      mergeData,
+      clearGuestSession,
+      setMergedSessionId,
+      setShowMergeModal,
+    ]
+  );
 
   // Return null if no merge data, otherwise return all modal props
   const mergeModalProps = mergeData
@@ -166,13 +207,12 @@ export default function useMergeFlow(getToken, isSignedIn) {
         duplicateClasses,
         uniqueGuestEvents,
         uniqueGuestClasses,
-        guestSessionId,
         guestClasses: mergeData.guestClasses,
-        guestEvents: mergeData.guestEvents,
         guestSettings: mergeData.guestSettings,
         authClasses: mergeData.authClasses,
-        onConfirm: handleMergeConfirm,
-        api: mergeApiClient,
+        confirmMerge,
+        isLoading,
+        error,
       }
     : null;
 

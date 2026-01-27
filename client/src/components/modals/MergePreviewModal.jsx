@@ -8,13 +8,11 @@ import {
   Stack,
   Select,
   Text,
-  Divider,
-  Alert,
+  Box,
   Loader,
 } from '@mantine/core';
 import { IconAlertCircle, IconInfoCircle } from '@tabler/icons-react';
 import dayjs from 'dayjs';
-import useMergeFlow from '../../hooks/useMergeFlow';
 
 /**
  * Format date for display in the preview table
@@ -92,18 +90,13 @@ export default function MergePreviewModal({
   duplicateClasses = [],
   uniqueGuestEvents = [],
   uniqueGuestClasses = [],
-  guestSessionId,
   guestClasses = [],
-  guestEvents = [],
   guestSettings = {},
   authClasses = [],
-  onConfirm,
-  api = { post: fetch }, // API client with auth
+  confirmMerge,
+  isLoading = false,
+  error = null,
 }) {
-  const { confirmMerge, isLoading, error } = useMergeFlow(
-    api,
-    guestSessionId
-  );
 
   // Track resolution choices for duplicates
   // Format: { 'event-{id}': 'auth' | 'guest' | 'both', 'class-{id}': ... }
@@ -158,22 +151,8 @@ export default function MergePreviewModal({
     };
   }, [duplicateEvents, duplicateClasses, finalResolutions]);
 
-  const handleConfirmClick = async () => {
-    try {
-      await confirmMerge(finalResolutions, {
-        classes: guestClasses,
-        events: guestEvents,
-        settings: guestSettings,
-      });
-
-      // Call parent callback if provided
-      if (onConfirm) {
-        onConfirm(finalResolutions);
-      }
-    } catch (err) {
-      // Error is already handled and displayed by useMergeFlow
-      console.error('[MergePreviewModal] Merge failed:', err);
-    }
+  const handleConfirmClick = () => {
+    confirmMerge(finalResolutions);
   };
 
   const duplicateCount = duplicateEvents.length + duplicateClasses.length;
@@ -193,119 +172,134 @@ export default function MergePreviewModal({
       closeOnEscape={false}
       withCloseButton={false}
     >
-      <Stack gap="md">
+      <Stack gap={16}>
         {/* Summary */}
-        <Alert icon={<IconInfoCircle size={16} />} color="blue">
-          <Text size="sm">
-            <strong>{duplicateCount}</strong> duplicate item
-            {duplicateCount !== 1 ? "s" : ""} found,{" "}
-            <strong>{uniqueCount + bothItems.count}</strong> new item
-            {uniqueCount + bothItems.count !== 1 ? "s" : ""} will be added
-            {hasCanvasCredentials && (
-              <>
-                <br />
-                Canvas credentials will be migrated to your account
-              </>
-            )}
-          </Text>
-        </Alert>
+        <Box className="modal-info-banner">
+          <Group gap={8} wrap="nowrap">
+            <IconInfoCircle size={18} style={{ color: 'var(--ink-blue)', flexShrink: 0 }} />
+            <Text size="sm" style={{ color: 'var(--ink)' }}>
+              <strong>{duplicateCount}</strong> duplicate item
+              {duplicateCount !== 1 ? "s" : ""} found,{" "}
+              <strong>{uniqueCount + bothItems.count}</strong> new item
+              {uniqueCount + bothItems.count !== 1 ? "s" : ""} will be added
+              {hasCanvasCredentials && (
+                <>
+                  <br />
+                  Canvas credentials will be migrated to your account
+                </>
+              )}
+            </Text>
+          </Group>
+        </Box>
 
         {/* Error display */}
         {error && (
-          <Alert
-            icon={<IconAlertCircle size={16} />}
-            color="red"
-            title="Merge Error"
-          >
-            {error}
-          </Alert>
+          <Box className="modal-warning-banner">
+            <Group gap={8} wrap="nowrap">
+              <IconAlertCircle size={18} style={{ color: 'var(--overdue)', flexShrink: 0 }} />
+              <div>
+                <Text size="sm" fw={500} style={{ color: 'var(--ink)' }}>Merge Error</Text>
+                <Text size="sm" style={{ color: 'var(--graphite)' }}>{error}</Text>
+              </div>
+            </Group>
+          </Box>
         )}
 
         {/* Duplicate Items Section */}
         {duplicateCount > 0 && (
-          <>
-            <Divider label="Duplicate Items" labelPosition="center" />
-            <Text size="sm" c="dimmed">
+          <Stack gap={12}>
+            <Text size="sm" fw={500} style={{ color: 'var(--ink)' }}>
+              Duplicate Items
+            </Text>
+            <Text size="xs" style={{ color: 'var(--graphite)' }}>
               Choose which version to keep for each duplicate item
             </Text>
 
-            <Table striped highlightOnHover>
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>Guest Version</Table.Th>
-                  <Table.Th>Your Version</Table.Th>
-                  <Table.Th>Keep</Table.Th>
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {duplicateEvents.map((dup) => (
-                  <Table.Tr key={dup.id}>
-                    <Table.Td>{getEventDisplay(dup.guest, guestClasses)}</Table.Td>
-                    <Table.Td>{getEventDisplay(dup.auth, authClasses)}</Table.Td>
-                    <Table.Td>
-                      <Select
-                        size="sm"
-                        value={finalResolutions[`event-${dup.id}`] || "auth"}
-                        onChange={(value) =>
-                          handleResolutionChange(`event-${dup.id}`, value)
-                        }
-                        data={[
-                          { value: "auth", label: "Your version" },
-                          { value: "guest", label: "Guest version" },
-                          { value: "both", label: "Keep both" },
-                        ]}
-                        disabled={isLoading}
-                      />
-                    </Table.Td>
+            <Box style={{
+              border: '1px solid var(--rule)',
+              borderRadius: 8,
+              overflow: 'hidden'
+            }}>
+              <Table>
+                <Table.Thead>
+                  <Table.Tr style={{ backgroundColor: 'var(--parchment)' }}>
+                    <Table.Th style={{ color: 'var(--graphite)', fontWeight: 500, fontSize: '0.8125rem' }}>Guest Version</Table.Th>
+                    <Table.Th style={{ color: 'var(--graphite)', fontWeight: 500, fontSize: '0.8125rem' }}>Your Version</Table.Th>
+                    <Table.Th style={{ color: 'var(--graphite)', fontWeight: 500, fontSize: '0.8125rem' }}>Keep</Table.Th>
                   </Table.Tr>
-                ))}
-                {duplicateClasses.map((dup) => (
-                  <Table.Tr key={dup.id}>
-                    <Table.Td>{getClassDisplay(dup.guest)}</Table.Td>
-                    <Table.Td>{getClassDisplay(dup.auth)}</Table.Td>
-                    <Table.Td>
-                      <Select
-                        size="sm"
-                        value={finalResolutions[`class-${dup.id}`] || "auth"}
-                        onChange={(value) =>
-                          handleResolutionChange(`class-${dup.id}`, value)
-                        }
-                        data={[
-                          { value: "auth", label: "Your version" },
-                          { value: "guest", label: "Guest version" },
-                          { value: "both", label: "Keep both" },
-                        ]}
-                        disabled={isLoading}
-                      />
-                    </Table.Td>
-                  </Table.Tr>
-                ))}
-              </Table.Tbody>
-            </Table>
-          </>
+                </Table.Thead>
+                <Table.Tbody>
+                  {duplicateEvents.map((dup) => (
+                    <Table.Tr key={dup.id}>
+                      <Table.Td>{getEventDisplay(dup.guest, guestClasses)}</Table.Td>
+                      <Table.Td>{getEventDisplay(dup.auth, authClasses)}</Table.Td>
+                      <Table.Td>
+                        <Select
+                          size="sm"
+                          value={finalResolutions[`event-${dup.id}`] || "auth"}
+                          onChange={(value) =>
+                            handleResolutionChange(`event-${dup.id}`, value)
+                          }
+                          data={[
+                            { value: "auth", label: "Your version" },
+                            { value: "guest", label: "Guest version" },
+                            { value: "both", label: "Keep both" },
+                          ]}
+                          disabled={isLoading}
+                        />
+                      </Table.Td>
+                    </Table.Tr>
+                  ))}
+                  {duplicateClasses.map((dup) => (
+                    <Table.Tr key={dup.id}>
+                      <Table.Td>{getClassDisplay(dup.guest)}</Table.Td>
+                      <Table.Td>{getClassDisplay(dup.auth)}</Table.Td>
+                      <Table.Td>
+                        <Select
+                          size="sm"
+                          value={finalResolutions[`class-${dup.id}`] || "auth"}
+                          onChange={(value) =>
+                            handleResolutionChange(`class-${dup.id}`, value)
+                          }
+                          data={[
+                            { value: "auth", label: "Your version" },
+                            { value: "guest", label: "Guest version" },
+                            { value: "both", label: "Keep both" },
+                          ]}
+                          disabled={isLoading}
+                        />
+                      </Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </Box>
+          </Stack>
         )}
 
         {/* Items Being Added From Duplicates Section */}
         {bothItems.count > 0 && (
-          <>
-            <Divider
-              label="Items Being Added From Duplicates"
-              labelPosition="center"
-            />
-            <Stack gap="xs">
+          <Stack gap={12}>
+            <Text size="sm" fw={500} style={{ color: 'var(--ink)' }}>
+              Items Being Added From Duplicates
+            </Text>
+            <Group gap={8}>
               {bothItems.events.map((event) => {
                 const className = getClassName(event, guestClasses);
                 return (
-                  <div key={event.id}>
-                    <Badge size="lg" variant="light" color="orange">
-                      {event.title} - {formatDate(event.due_date)}
-                    </Badge>
-                    {className && (
-                      <Text size="xs" c="dimmed" ml="xs" style={{ fontSize: '0.7rem', display: 'inline' }}>
-                        ({className})
-                      </Text>
-                    )}
-                  </div>
+                  <Badge
+                    key={event.id}
+                    size="lg"
+                    variant="light"
+                    style={{
+                      backgroundColor: 'rgba(230, 160, 60, 0.12)',
+                      color: 'var(--ink)',
+                      border: '1px solid var(--rule)'
+                    }}
+                  >
+                    {event.title} - {formatDate(event.due_date)}
+                    {className && ` (${className})`}
+                  </Badge>
                 );
               })}
               {bothItems.classes.map((classItem) => (
@@ -313,33 +307,42 @@ export default function MergePreviewModal({
                   key={classItem.id}
                   size="lg"
                   variant="light"
-                  color="orange"
+                  style={{
+                    backgroundColor: 'rgba(230, 160, 60, 0.12)',
+                    color: 'var(--ink)',
+                    border: '1px solid var(--rule)'
+                  }}
                 >
                   {classItem.name}
                 </Badge>
               ))}
-            </Stack>
-          </>
+            </Group>
+          </Stack>
         )}
 
         {/* New Items Section */}
         {uniqueCount > 0 && (
-          <>
-            <Divider label="New Items to Add" labelPosition="center" />
-            <Stack gap="xs">
+          <Stack gap={12}>
+            <Text size="sm" fw={500} style={{ color: 'var(--ink)' }}>
+              New Items to Add
+            </Text>
+            <Group gap={8}>
               {uniqueGuestEvents.map((event) => {
                 const className = getClassName(event, guestClasses);
                 return (
-                  <div key={event.id}>
-                    <Badge size="lg" variant="light" color="green">
-                      {event.title} - {formatDate(event.due_date)}
-                    </Badge>
-                    {className && (
-                      <Text size="xs" c="dimmed" ml="xs" style={{ fontSize: '0.7rem', display: 'inline' }}>
-                        ({className})
-                      </Text>
-                    )}
-                  </div>
+                  <Badge
+                    key={event.id}
+                    size="lg"
+                    variant="light"
+                    style={{
+                      backgroundColor: 'var(--complete-light)',
+                      color: 'var(--ink)',
+                      border: '1px solid var(--rule)'
+                    }}
+                  >
+                    {event.title} - {formatDate(event.due_date)}
+                    {className && ` (${className})`}
+                  </Badge>
                 );
               })}
               {uniqueGuestClasses.map((classItem) => (
@@ -347,24 +350,28 @@ export default function MergePreviewModal({
                   key={classItem.id}
                   size="lg"
                   variant="light"
-                  color="blue"
+                  style={{
+                    backgroundColor: 'var(--ink-blue-light)',
+                    color: 'var(--ink)',
+                    border: '1px solid var(--rule)'
+                  }}
                 >
                   {classItem.name}
                 </Badge>
               ))}
-            </Stack>
-          </>
+            </Group>
+          </Stack>
         )}
 
         {/* No items to merge */}
         {duplicateCount === 0 && uniqueCount === 0 && (
-          <Text c="dimmed" ta="center">
+          <Text style={{ color: 'var(--pencil)', textAlign: 'center', padding: '24px 0' }}>
             No items to merge
           </Text>
         )}
 
         {/* Action Buttons */}
-        <Group justify="flex-end" mt="md">
+        <Group justify="flex-end" className="modal-footer">
           <Button variant="subtle" onClick={onClose} disabled={isLoading}>
             Cancel
           </Button>
