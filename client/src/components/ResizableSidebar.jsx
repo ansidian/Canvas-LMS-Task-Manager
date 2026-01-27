@@ -109,6 +109,7 @@ export default function ResizableSidebar({
           <PendingSidebar
             items={filteredPendingItems}
             onItemClick={onPendingItemClick}
+            classes={classes}
           />
         </div>
       </OnboardingTour.Target>
