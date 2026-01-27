@@ -11,3 +11,4 @@ server/db/*.db
 .env
 client/.env
 .planning/
+.interface-design
