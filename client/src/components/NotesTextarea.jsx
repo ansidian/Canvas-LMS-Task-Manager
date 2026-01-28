@@ -11,6 +11,9 @@ import { EditorContent, ReactRenderer, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Mention from "@tiptap/extension-mention";
 import Placeholder from "@tiptap/extension-placeholder";
+import TaskList from "@tiptap/extension-task-list";
+import TaskItem from "@tiptap/extension-task-item";
+import Link from "@tiptap/extension-link";
 import tippy from "tippy.js";
 import "tippy.js/dist/tippy.css";
 
@@ -109,6 +112,7 @@ export default function NotesTextarea({
 	minRows = 3,
 	maxRows = 8,
 }) {
+	const [activeMarks, setActiveMarks] = useState({ bold: false, italic: false });
 	const classById = useMemo(() => {
 		const map = new Map();
 		classes.forEach((cls) => {
@@ -205,10 +209,23 @@ export default function NotesTextarea({
 		[events, classById, unassignedColor, currentEventId],
 	);
 
-	const editor = useEditor({
-		extensions: [
-			StarterKit,
+	const extensions = useMemo(
+		() => [
+			StarterKit.configure({
+				// Disable Link since we add our own configured version
+				link: false,
+			}),
 			Placeholder.configure({ placeholder }),
+			TaskList,
+			TaskItem.configure({
+				nested: true,
+			}),
+			Link.configure({
+				openOnClick: false,
+				HTMLAttributes: {
+					class: "notes-link",
+				},
+			}),
 			Mention.configure({
 				HTMLAttributes: {
 					class: "ctm-mention",
@@ -245,10 +262,20 @@ export default function NotesTextarea({
 				},
 			}),
 		],
+		[placeholder, suggestion],
+	);
+
+	const editor = useEditor({
+		extensions,
 		content: value || "",
+		immediatelyRender: false,
 		onUpdate({ editor: editorInstance, transaction }) {
 			if (!transaction?.docChanged) return;
-			onChange(editorInstance.isEmpty ? "" : editorInstance.getHTML());
+			// Don't use isEmpty - it returns true for empty lists/structures
+			// Check if there's only an empty paragraph
+			const html = editorInstance.getHTML();
+			const isActuallyEmpty = html === "<p></p>" || html === "";
+			onChange(isActuallyEmpty ? "" : html);
 			if (onUserEdit && editorInstance.isFocused) {
 				onUserEdit();
 			}
@@ -256,6 +283,45 @@ export default function NotesTextarea({
 		editorProps: {
 			attributes: {
 				style: `min-height:${minRows * 24}px; max-height:${maxRows * 24}px;`,
+			},
+			handleKeyDown: (view, event) => {
+				// Mod+Enter - prevent newline, let parent handle save
+				if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+					// Don't preventDefault - let the event bubble to the modal's save handler
+					// Just return true to prevent TipTap from inserting a newline
+					return true;
+				}
+				// Mod+K for links
+				if (event.key === "k" && (event.metaKey || event.ctrlKey)) {
+					event.preventDefault();
+					const { from, to } = view.state.selection;
+					const hasSelection = from !== to;
+
+					if (view.state.schema.marks.link) {
+						const isActive = view.state.doc
+							.rangeHasMark(from, to, view.state.schema.marks.link);
+
+						if (isActive) {
+							// Remove link
+							const tr = view.state.tr.removeMark(
+								from,
+								to,
+								view.state.schema.marks.link,
+							);
+							view.dispatch(tr);
+						} else if (hasSelection) {
+							// Prompt for URL and add link
+							const url = window.prompt("Enter URL:");
+							if (url) {
+								const mark = view.state.schema.marks.link.create({ href: url });
+								const tr = view.state.tr.addMark(from, to, mark);
+								view.dispatch(tr);
+							}
+						}
+					}
+					return true;
+				}
+				return false;
 			},
 		},
 	});
@@ -297,6 +363,25 @@ export default function NotesTextarea({
 		};
 	}, [editor, onOpenEvent, eventsById]);
 
+	// Track active formatting marks for visual feedback
+	useEffect(() => {
+		if (!editor) return;
+		const updateMarks = () => {
+			setActiveMarks({
+				bold: editor.isActive("bold"),
+				italic: editor.isActive("italic"),
+			});
+		};
+		editor.on("selectionUpdate", updateMarks);
+		editor.on("transaction", updateMarks);
+		return () => {
+			editor.off("selectionUpdate", updateMarks);
+			editor.off("transaction", updateMarks);
+		};
+	}, [editor]);
+
+	const hasActiveFormat = activeMarks.bold || activeMarks.italic;
+
 	return (
 		<Box>
 			<style>{`
@@ -312,6 +397,118 @@ export default function NotesTextarea({
 					color: var(--mantine-color-dimmed);
 					pointer-events: none;
 					height: 0;
+				}
+				/* Text formatting styles */
+				.notes-editor .ProseMirror strong {
+					font-weight: 700;
+				}
+				.notes-editor .ProseMirror em {
+					font-style: italic;
+				}
+				.notes-editor .ProseMirror code {
+					background: var(--mantine-color-gray-1, #f1f3f5);
+					padding: 2px 4px;
+					border-radius: 4px;
+					font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+					font-size: 0.9em;
+				}
+				[data-mantine-color-scheme="dark"] .notes-editor .ProseMirror code {
+					background: var(--mantine-color-dark-5, #373A40);
+				}
+				/* List styles */
+				.notes-editor .ProseMirror ul,
+				.notes-editor .ProseMirror ol {
+					padding-left: 24px;
+					margin: 4px 0;
+				}
+				.notes-editor .ProseMirror ul {
+					list-style-type: disc;
+				}
+				.notes-editor .ProseMirror ol {
+					list-style-type: decimal;
+				}
+				.notes-editor .ProseMirror li {
+					margin: 2px 0;
+				}
+				.notes-editor .ProseMirror li p {
+					margin: 0;
+				}
+				/* Task list / checkbox styles */
+				.notes-editor .ProseMirror ul[data-type="taskList"] {
+					list-style: none;
+					padding-left: 0;
+					margin: 4px 0;
+				}
+				.notes-editor .ProseMirror ul[data-type="taskList"] li {
+					display: flex;
+					align-items: flex-start;
+					gap: 8px;
+					margin: 4px 0;
+				}
+				.notes-editor .ProseMirror ul[data-type="taskList"] li > label {
+					flex-shrink: 0;
+					display: flex;
+					align-items: center;
+					justify-content: center;
+					width: 18px;
+					height: 18px;
+					margin-top: 3px;
+					cursor: pointer;
+					user-select: none;
+				}
+				.notes-editor .ProseMirror ul[data-type="taskList"] li > label input[type="checkbox"] {
+					appearance: none;
+					-webkit-appearance: none;
+					width: 16px;
+					height: 16px;
+					border: 1.5px solid var(--mantine-color-default-border);
+					border-radius: 4px;
+					background: var(--mantine-color-body);
+					cursor: pointer;
+					transition: all 150ms ease;
+					position: relative;
+				}
+				.notes-editor .ProseMirror ul[data-type="taskList"] li > label input[type="checkbox"]:hover {
+					border-color: var(--mantine-color-primary-6, var(--mantine-primary-color-6));
+					background: var(--mantine-color-primary-light, rgba(34, 139, 230, 0.1));
+				}
+				.notes-editor .ProseMirror ul[data-type="taskList"] li > label input[type="checkbox"]:checked {
+					background: var(--mantine-color-primary-6, var(--mantine-primary-color-6));
+					border-color: var(--mantine-color-primary-6, var(--mantine-primary-color-6));
+				}
+				.notes-editor .ProseMirror ul[data-type="taskList"] li > label input[type="checkbox"]:checked::after {
+					content: '';
+					position: absolute;
+					left: 4.5px;
+					top: 1.5px;
+					width: 4px;
+					height: 8px;
+					border: solid white;
+					border-width: 0 2px 2px 0;
+					transform: rotate(45deg);
+				}
+				.notes-editor .ProseMirror ul[data-type="taskList"] li > div {
+					flex: 1;
+					min-width: 0;
+				}
+				.notes-editor .ProseMirror ul[data-type="taskList"] li[data-checked="true"] > div {
+					text-decoration: line-through;
+					color: var(--mantine-color-dimmed);
+				}
+				/* Link styles */
+				.notes-editor .ProseMirror a,
+				.notes-editor .notes-link {
+					color: var(--mantine-color-blue-6, #228be6);
+					text-decoration: underline;
+					text-decoration-color: var(--mantine-color-blue-3, #74c0fc);
+					text-underline-offset: 2px;
+					cursor: pointer;
+					transition: color 150ms ease, text-decoration-color 150ms ease;
+				}
+				.notes-editor .ProseMirror a:hover,
+				.notes-editor .notes-link:hover {
+					color: var(--mantine-color-blue-7, #1c7ed6);
+					text-decoration-color: var(--mantine-color-blue-6, #228be6);
 				}
 				.notes-editor .ctm-mention,
 				.notes-editor [data-mention-id] {
@@ -376,9 +573,54 @@ export default function NotesTextarea({
 					border: "1px solid var(--mantine-color-default-border)",
 					padding: "8px 10px",
 					backgroundColor: "var(--mantine-color-body)",
+					position: "relative",
 				}}
 			>
 				<EditorContent editor={editor} />
+				{hasActiveFormat && (
+					<Group
+						gap={4}
+						style={{
+							position: "absolute",
+							bottom: 4,
+							right: 6,
+							pointerEvents: "none",
+						}}
+					>
+						{activeMarks.bold && (
+							<Text
+								size="xs"
+								fw={700}
+								style={{
+									padding: "1px 5px",
+									borderRadius: 4,
+									background: "var(--mantine-color-blue-light)",
+									color: "var(--mantine-color-blue-7)",
+									fontSize: 10,
+									lineHeight: 1.4,
+								}}
+							>
+								B
+							</Text>
+						)}
+						{activeMarks.italic && (
+							<Text
+								size="xs"
+								fs="italic"
+								style={{
+									padding: "1px 5px",
+									borderRadius: 4,
+									background: "var(--mantine-color-grape-light)",
+									color: "var(--mantine-color-grape-7)",
+									fontSize: 10,
+									lineHeight: 1.4,
+								}}
+							>
+								I
+							</Text>
+						)}
+					</Group>
+				)}
 			</Box>
 		</Box>
 	);

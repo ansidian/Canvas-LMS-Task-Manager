@@ -98,13 +98,8 @@ export default function useEventModalForm({
     if (!opened) return;
 
     const handleKeyDown = (e) => {
-      if (e.key !== "Enter") return;
-
-      const target = e.target;
-      const isInInput =
-        target.tagName === "INPUT" || target.tagName === "TEXTAREA";
-
-      if (isInInput) return;
+      // Require Cmd/Ctrl + Enter
+      if (e.key !== "Enter" || !(e.metaKey || e.ctrlKey)) return;
 
       e.preventDefault();
       handleSubmit();

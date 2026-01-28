@@ -260,19 +260,13 @@ export default function ApprovalModal({
     }
   }, [item, classes]);
 
-  // Handle Enter key to approve/submit
+  // Handle Mod+Enter to approve/submit
   useEffect(() => {
     if (!opened) return;
 
     const handleKeyDown = (e) => {
-      if (e.key !== "Enter") return;
-
-      // Don't submit if typing in an input, textarea, or if DateTimePicker is open
-      const target = e.target;
-      const isInInput =
-        target.tagName === "INPUT" || target.tagName === "TEXTAREA";
-
-      if (isInInput) return;
+      // Require Cmd/Ctrl + Enter
+      if (e.key !== "Enter" || !(e.metaKey || e.ctrlKey)) return;
 
       e.preventDefault();
       handleApproveClick();
