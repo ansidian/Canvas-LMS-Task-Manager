@@ -335,23 +335,42 @@ export default function NotesTextarea({
 	}, [editor, value]);
 
 	useEffect(() => {
-		if (!editor || !onOpenEvent) return;
+		if (!editor) return;
 		const handleMouseDown = () => {
 			wasFocusedOnMouseDownRef.current = editor.isFocused;
 		};
 		const handleClick = (event) => {
-			const target = event.target.closest(
+			// Only handle clicks when editor wasn't focused (prevents accidental navigation while editing)
+			if (wasFocusedOnMouseDownRef.current) return;
+
+			// Check for mention clicks
+			const mentionTarget = event.target.closest(
 				"[data-mention-id], [data-type='mention']",
 			);
-			if (!target) return;
-			event.preventDefault();
-			if (wasFocusedOnMouseDownRef.current) return;
-			const mentionId =
-				target.getAttribute("data-mention-id") ||
-				target.getAttribute("data-id");
-			const match = eventsById.get(String(mentionId));
-			if (match) {
-				onOpenEvent(match);
+			if (mentionTarget && onOpenEvent) {
+				event.preventDefault();
+				const mentionId =
+					mentionTarget.getAttribute("data-mention-id") ||
+					mentionTarget.getAttribute("data-id");
+				const match = eventsById.get(String(mentionId));
+				if (match) {
+					onOpenEvent(match);
+					// Blur editor so subsequent clicks also work
+					editor.commands.blur();
+				}
+				return;
+			}
+
+			// Check for link clicks
+			const linkTarget = event.target.closest("a[href]");
+			if (linkTarget) {
+				event.preventDefault();
+				const href = linkTarget.getAttribute("href");
+				if (href) {
+					window.open(href, "_blank", "noopener,noreferrer");
+					// Blur editor so subsequent link clicks also work
+					editor.commands.blur();
+				}
 			}
 		};
 		const dom = editor.view.dom;
