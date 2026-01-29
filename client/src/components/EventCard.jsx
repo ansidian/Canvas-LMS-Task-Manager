@@ -139,12 +139,15 @@ export default function EventCard({ event, color, onClick, isDragging }) {
   const statusColor = STATUS_COLORS[event.status] || STATUS_COLORS.incomplete;
   const isComplete = event.status === "complete";
 
-  // Check if event has time information
-  const showTime = hasTimeComponent(event.due_date);
-  const timeString = showTime ? extractTime(event.due_date) : null;
+  // Check if event has time information (treat midnight as "all day")
+  const timeString = hasTimeComponent(event.due_date)
+    ? extractTime(event.due_date)
+    : null;
+  const isMidnight = timeString === "00:00";
+  const showTime = timeString && !isMidnight;
 
   // Format time as 12-hour format
-  const formattedTime = timeString ? formatTime(timeString) : null;
+  const formattedTime = showTime ? formatTime(timeString) : null;
 
   // Compute styles based on completion status
   // Completed: nearly grayscale, faded, clearly "done"

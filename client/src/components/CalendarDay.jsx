@@ -218,22 +218,22 @@ export default function CalendarDay({
           )}
           {/* Visible events */}
           <AnimatePresence initial={false}>
-            {visibleEvents.map((event) => (
+            {visibleEvents.map((event, index) => (
               <motion.div
                 key={event.id}
-                layoutId={`event-${event.id}`}
                 layout
-                initial={{ opacity: 0, scale: 0.8, y: -10 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.8, x: -20 }}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
                 transition={{
                   layout: {
                     type: "spring",
-                    stiffness: 350,
-                    damping: 30,
+                    stiffness: 300,
+                    damping: 20,
+                    delay: index * 0.03,
                   },
-                  opacity: { duration: 0.2 },
-                  scale: { duration: 0.2 },
+                  opacity: { duration: 0.15 },
+                  scale: { duration: 0.15 },
                 }}
               >
                 <EventCard
@@ -270,21 +270,13 @@ export default function CalendarDay({
               <Popover.Dropdown>
                 <Stack gap={4}>
                   <AnimatePresence initial={false}>
-                    {hiddenEvents.map((event) => (
+                    {hiddenEvents.map((event, index) => (
                       <motion.div
                         key={event.id}
                         layout
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: 10 }}
-                        transition={{
-                          layout: {
-                            type: "spring",
-                            stiffness: 350,
-                            damping: 30,
-                          },
-                          opacity: { duration: 0.15 },
-                        }}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
                       >
                         <EventCard
                           event={event}

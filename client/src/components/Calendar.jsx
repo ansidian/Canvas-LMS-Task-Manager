@@ -8,7 +8,7 @@ import {
   PointerSensor,
   closestCenter,
 } from "@dnd-kit/core";
-import { LayoutGroup, motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import dayjs from "dayjs";
 import CalendarDay from "./CalendarDay";
 import EventCard from "./EventCard";
@@ -90,6 +90,21 @@ export default function Calendar({
       const dateKey = dayjs(event.due_date).format("YYYY-MM-DD");
       if (!map[dateKey]) map[dateKey] = [];
       map[dateKey].push(event);
+    });
+    // Sort each day's events by time (earliest first, midnight/all-day at bottom)
+    Object.values(map).forEach((dayEvents) => {
+      dayEvents.sort((a, b) => {
+        const timeA = dayjs(a.due_date);
+        const timeB = dayjs(b.due_date);
+        const isMidnightA = timeA.hour() === 0 && timeA.minute() === 0;
+        const isMidnightB = timeB.hour() === 0 && timeB.minute() === 0;
+
+        // Push midnight (all-day) events to the bottom
+        if (isMidnightA && !isMidnightB) return 1;
+        if (!isMidnightA && isMidnightB) return -1;
+
+        return timeA.valueOf() - timeB.valueOf();
+      });
     });
     return map;
   }, [events]);
@@ -175,8 +190,7 @@ export default function Calendar({
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
-      <LayoutGroup>
-        <Box
+      <Box
           style={{
             height: "100%",
             display: "flex",
@@ -228,7 +242,6 @@ export default function Calendar({
             </Box>
           </Stack>
         </Box>
-      </LayoutGroup>
 
       <DragOverlay dropAnimation={null}>
         {activeEvent && (
