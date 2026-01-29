@@ -1,5 +1,6 @@
-import { Box, Modal, useMantineColorScheme } from "@mantine/core";
+import { Box, useMantineColorScheme } from "@mantine/core";
 import { motion } from "framer-motion";
+import BottomSheet from "./BottomSheet";
 import { useAuth } from "@clerk/clerk-react";
 import DescriptionOverlay from "./event-modal/DescriptionOverlay";
 import EventDetailsColumn from "./event-modal/EventDetailsColumn";
@@ -65,7 +66,7 @@ export default function EventModal({
         descriptionHtml={canvas.descriptionHtml}
         layoutId={descriptionLayoutId}
       />
-      <Modal
+      <BottomSheet
         opened={opened}
         onClose={form.handleAttemptClose}
         title="Edit Event"
@@ -163,7 +164,7 @@ export default function EventModal({
             />
           </Box>
         </motion.div>
-      </Modal>
+      </BottomSheet>
     </>
   );
 }

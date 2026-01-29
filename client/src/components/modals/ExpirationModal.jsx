@@ -1,6 +1,7 @@
-import { Modal, Button, Stack, Text, Group, Box } from '@mantine/core';
+import { Button, Stack, Text, Group, Box } from '@mantine/core';
 import { SignInButton } from '@clerk/clerk-react';
 import { IconClockOff } from '@tabler/icons-react';
+import BottomSheet from '../BottomSheet';
 
 /**
  * Modal displayed when a guest session has expired after 30 days of inactivity.
@@ -8,12 +9,11 @@ import { IconClockOff } from '@tabler/icons-react';
  */
 export default function ExpirationModal({ opened, onContinueAsGuest, onClose }) {
   return (
-    <Modal
+    <BottomSheet
       opened={opened}
       onClose={onClose}
       title="Session Expired"
       size="sm"
-      centered
       closeOnClickOutside={false}
       closeOnEscape={false}
       withCloseButton={false}
@@ -53,6 +53,6 @@ export default function ExpirationModal({ opened, onContinueAsGuest, onClose }) 
           </SignInButton>
         </Group>
       </Stack>
-    </Modal>
+    </BottomSheet>
   );
 }

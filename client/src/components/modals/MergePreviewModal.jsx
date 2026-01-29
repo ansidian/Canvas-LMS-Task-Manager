@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
 import {
-  Modal,
   Table,
   Badge,
   Button,
@@ -10,8 +9,9 @@ import {
   Text,
   Box,
   Loader,
-} from '@mantine/core';
+} from "@mantine/core";
 import { IconAlertCircle, IconInfoCircle } from '@tabler/icons-react';
+import BottomSheet from "../BottomSheet";
 import dayjs from 'dayjs';
 
 /**
@@ -162,12 +162,11 @@ export default function MergePreviewModal({
     guestSettings?.canvas_url && guestSettings?.canvas_token;
 
   return (
-    <Modal
+    <BottomSheet
       opened={opened}
       onClose={onClose}
       title="Review Merge"
       size="xl"
-      centered
       closeOnClickOutside={false}
       closeOnEscape={false}
       withCloseButton={false}
@@ -176,8 +175,11 @@ export default function MergePreviewModal({
         {/* Summary */}
         <Box className="modal-info-banner">
           <Group gap={8} wrap="nowrap">
-            <IconInfoCircle size={18} style={{ color: 'var(--ink-blue)', flexShrink: 0 }} />
-            <Text size="sm" style={{ color: 'var(--ink)' }}>
+            <IconInfoCircle
+              size={18}
+              style={{ color: "var(--ink-blue)", flexShrink: 0 }}
+            />
+            <Text size="sm" style={{ color: "var(--ink)" }}>
               <strong>{duplicateCount}</strong> duplicate item
               {duplicateCount !== 1 ? "s" : ""} found,{" "}
               <strong>{uniqueCount + bothItems.count}</strong> new item
@@ -196,10 +198,17 @@ export default function MergePreviewModal({
         {error && (
           <Box className="modal-warning-banner">
             <Group gap={8} wrap="nowrap">
-              <IconAlertCircle size={18} style={{ color: 'var(--overdue)', flexShrink: 0 }} />
+              <IconAlertCircle
+                size={18}
+                style={{ color: "var(--overdue)", flexShrink: 0 }}
+              />
               <div>
-                <Text size="sm" fw={500} style={{ color: 'var(--ink)' }}>Merge Error</Text>
-                <Text size="sm" style={{ color: 'var(--graphite)' }}>{error}</Text>
+                <Text size="sm" fw={500} style={{ color: "var(--ink)" }}>
+                  Merge Error
+                </Text>
+                <Text size="sm" style={{ color: "var(--graphite)" }}>
+                  {error}
+                </Text>
               </div>
             </Group>
           </Box>
@@ -208,31 +217,61 @@ export default function MergePreviewModal({
         {/* Duplicate Items Section */}
         {duplicateCount > 0 && (
           <Stack gap={12}>
-            <Text size="sm" fw={500} style={{ color: 'var(--ink)' }}>
+            <Text size="sm" fw={500} style={{ color: "var(--ink)" }}>
               Duplicate Items
             </Text>
-            <Text size="xs" style={{ color: 'var(--graphite)' }}>
+            <Text size="xs" style={{ color: "var(--graphite)" }}>
               Choose which version to keep for each duplicate item
             </Text>
 
-            <Box style={{
-              border: '1px solid var(--rule)',
-              borderRadius: 8,
-              overflow: 'hidden'
-            }}>
+            <Box
+              style={{
+                border: "1px solid var(--rule)",
+                borderRadius: 8,
+                overflow: "hidden",
+              }}
+            >
               <Table>
                 <Table.Thead>
-                  <Table.Tr style={{ backgroundColor: 'var(--parchment)' }}>
-                    <Table.Th style={{ color: 'var(--graphite)', fontWeight: 500, fontSize: '0.8125rem' }}>Guest Version</Table.Th>
-                    <Table.Th style={{ color: 'var(--graphite)', fontWeight: 500, fontSize: '0.8125rem' }}>Your Version</Table.Th>
-                    <Table.Th style={{ color: 'var(--graphite)', fontWeight: 500, fontSize: '0.8125rem' }}>Keep</Table.Th>
+                  <Table.Tr style={{ backgroundColor: "var(--parchment)" }}>
+                    <Table.Th
+                      style={{
+                        color: "var(--graphite)",
+                        fontWeight: 500,
+                        fontSize: "0.8125rem",
+                      }}
+                    >
+                      Guest Version
+                    </Table.Th>
+                    <Table.Th
+                      style={{
+                        color: "var(--graphite)",
+                        fontWeight: 500,
+                        fontSize: "0.8125rem",
+                      }}
+                    >
+                      Your Version
+                    </Table.Th>
+                    <Table.Th
+                      style={{
+                        color: "var(--graphite)",
+                        fontWeight: 500,
+                        fontSize: "0.8125rem",
+                      }}
+                    >
+                      Keep
+                    </Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
                   {duplicateEvents.map((dup) => (
                     <Table.Tr key={dup.id}>
-                      <Table.Td>{getEventDisplay(dup.guest, guestClasses)}</Table.Td>
-                      <Table.Td>{getEventDisplay(dup.auth, authClasses)}</Table.Td>
+                      <Table.Td>
+                        {getEventDisplay(dup.guest, guestClasses)}
+                      </Table.Td>
+                      <Table.Td>
+                        {getEventDisplay(dup.auth, authClasses)}
+                      </Table.Td>
                       <Table.Td>
                         <Select
                           size="sm"
@@ -280,7 +319,7 @@ export default function MergePreviewModal({
         {/* Items Being Added From Duplicates Section */}
         {bothItems.count > 0 && (
           <Stack gap={12}>
-            <Text size="sm" fw={500} style={{ color: 'var(--ink)' }}>
+            <Text size="sm" fw={500} style={{ color: "var(--ink)" }}>
               Items Being Added From Duplicates
             </Text>
             <Group gap={8}>
@@ -292,9 +331,9 @@ export default function MergePreviewModal({
                     size="lg"
                     variant="light"
                     style={{
-                      backgroundColor: 'rgba(230, 160, 60, 0.12)',
-                      color: 'var(--ink)',
-                      border: '1px solid var(--rule)'
+                      backgroundColor: "rgba(230, 160, 60, 0.12)",
+                      color: "var(--ink)",
+                      border: "1px solid var(--rule)",
                     }}
                   >
                     {event.title} - {formatDate(event.due_date)}
@@ -308,9 +347,9 @@ export default function MergePreviewModal({
                   size="lg"
                   variant="light"
                   style={{
-                    backgroundColor: 'rgba(230, 160, 60, 0.12)',
-                    color: 'var(--ink)',
-                    border: '1px solid var(--rule)'
+                    backgroundColor: "rgba(230, 160, 60, 0.12)",
+                    color: "var(--ink)",
+                    border: "1px solid var(--rule)",
                   }}
                 >
                   {classItem.name}
@@ -323,7 +362,7 @@ export default function MergePreviewModal({
         {/* New Items Section */}
         {uniqueCount > 0 && (
           <Stack gap={12}>
-            <Text size="sm" fw={500} style={{ color: 'var(--ink)' }}>
+            <Text size="sm" fw={500} style={{ color: "var(--ink)" }}>
               New Items to Add
             </Text>
             <Group gap={8}>
@@ -335,9 +374,9 @@ export default function MergePreviewModal({
                     size="lg"
                     variant="light"
                     style={{
-                      backgroundColor: 'var(--complete-light)',
-                      color: 'var(--ink)',
-                      border: '1px solid var(--rule)'
+                      backgroundColor: "var(--complete-light)",
+                      color: "var(--ink)",
+                      border: "1px solid var(--rule)",
                     }}
                   >
                     {event.title} - {formatDate(event.due_date)}
@@ -351,9 +390,9 @@ export default function MergePreviewModal({
                   size="lg"
                   variant="light"
                   style={{
-                    backgroundColor: 'var(--ink-blue-light)',
-                    color: 'var(--ink)',
-                    border: '1px solid var(--rule)'
+                    backgroundColor: "var(--ink-blue-light)",
+                    color: "var(--ink)",
+                    border: "1px solid var(--rule)",
                   }}
                 >
                   {classItem.name}
@@ -365,7 +404,13 @@ export default function MergePreviewModal({
 
         {/* No items to merge */}
         {duplicateCount === 0 && uniqueCount === 0 && (
-          <Text style={{ color: 'var(--pencil)', textAlign: 'center', padding: '24px 0' }}>
+          <Text
+            style={{
+              color: "var(--pencil)",
+              textAlign: "center",
+              padding: "24px 0",
+            }}
+          >
             No items to merge
           </Text>
         )}
@@ -384,6 +429,6 @@ export default function MergePreviewModal({
           </Button>
         </Group>
       </Stack>
-    </Modal>
+    </BottomSheet>
   );
 }

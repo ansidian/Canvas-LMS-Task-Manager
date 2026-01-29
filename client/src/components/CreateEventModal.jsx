@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import {
-  Modal,
   Stack,
   TextInput,
   Select,
@@ -19,6 +18,7 @@ import {
 import dayjs from "dayjs";
 import { toLocalDate, toUTCString } from "../utils/datetime";
 import NotesTextarea from "./NotesTextarea";
+import BottomSheet from "./BottomSheet";
 import { motion, useAnimation } from "framer-motion";
 
 const EVENT_TYPES = [
@@ -187,7 +187,7 @@ export default function CreateEventModal({
   };
 
   return (
-    <Modal
+    <BottomSheet
       opened={opened}
       onClose={handleAttemptClose}
       title="Create Event"
@@ -417,6 +417,6 @@ export default function CreateEventModal({
           </Box>
         </Stack>
       </motion.div>
-    </Modal>
+    </BottomSheet>
   );
 }
