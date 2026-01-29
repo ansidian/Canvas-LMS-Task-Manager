@@ -97,22 +97,86 @@ export function getShuffleMotion(itemIndex, shuffleState) {
  * Calculate initial position for a card entering the visible set.
  * Cards slide in from beyond the edge.
  */
-export function getEnterPosition(position, direction) {
-  // Card entering from the right (position > 2)
+export function getEnterPosition(position) {
   if (position > 0) {
-    return {
-      x: 300, // Off to the right
-      scale: 0.75,
-      opacity: 0,
-      rotate: 8,
-    };
+    return { x: 300, scale: 0.75, opacity: 0, rotate: 8 };
   }
-  // Card entering from the left (position < -2)
+  return { x: -300, scale: 0.75, opacity: 0, rotate: -8 };
+}
+
+/**
+ * Calculate all animation props for a card in the deck.
+ * Consolidates position, peek, exit, and transition calculations.
+ */
+export function getCardAnimationProps({
+  itemIndex,
+  position,
+  targetPosition,
+  shuffleState,
+  exitDirection,
+  isClosing,
+  peekingCard,
+  isShuffling,
+  getShuffleTransition,
+}) {
+  const isActive = targetPosition === 0;
+  const cardTransform = getCardTransform(targetPosition);
+  const { y: arcY, rotateExtra } = getShuffleMotion(itemIndex, shuffleState);
+  const enterFrom = getEnterPosition(position);
+
+  // Exit animation
+  const isExiting = exitDirection && isActive;
+  const exitAnimation = isExiting
+    ? {
+        y: 100,
+        x: exitDirection === "right" ? 400 : -400,
+        opacity: 0,
+        rotate: exitDirection === "right" ? 15 : -15,
+        scale: 0.9,
+        transition: { duration: 0.28, ease: [0.4, 0, 0.2, 1] },
+      }
+    : { ...enterFrom, transition: { duration: 0.2 } };
+
+  // Peek state
+  const isPeeking = peekingCard === itemIndex;
+  const peekY = isPeeking ? 20 : 0;
+  const peekScale = isPeeking ? cardTransform.scale + 0.03 : cardTransform.scale;
+  const peekOpacity = isPeeking
+    ? Math.min(1, cardTransform.opacity + 0.3)
+    : cardTransform.opacity;
+  const peekZIndex = isPeeking ? 100 : cardTransform.zIndex;
+
+  // Transition
+  const springTransition = getShuffleTransition(itemIndex, position);
+  const transition = isClosing
+    ? { duration: 0.2, ease: "easeIn" }
+    : isPeeking || peekingCard === null
+      ? { duration: 0.15, ease: "easeOut" }
+      : springTransition;
+
   return {
-    x: -300,
-    scale: 0.75,
-    opacity: 0,
-    rotate: -8,
+    initial: enterFrom,
+    animate: isClosing
+      ? { y: 150, opacity: 0, scale: 0.95, transition: { duration: 0.2, ease: "easeIn" } }
+      : {
+          y: arcY + peekY,
+          x: cardTransform.x,
+          scale: peekScale,
+          rotate: cardTransform.rotate + rotateExtra,
+          opacity: peekOpacity,
+          zIndex: peekZIndex,
+        },
+    exit: exitAnimation,
+    transition,
+    style: {
+      position: "absolute",
+      width: "100%",
+      maxWidth: "500px",
+      bottom: 0,
+      willChange: isShuffling || isPeeking ? "transform" : "auto",
+    },
+    isActive,
+    isPeeking,
   };
 }
 
