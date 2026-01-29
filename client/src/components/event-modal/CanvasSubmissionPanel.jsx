@@ -171,7 +171,7 @@ export default function CanvasSubmissionPanel({
                       </span>
                     </Tooltip>
                   ) : (
-                    "Canvas has locked the assignment."
+                    "Canvas has locked the assignment (past due).."
                   )}
                 </Text>
               </Group>

@@ -110,7 +110,7 @@ export default function NotesTextarea({
 	currentEventId = null,
 	onOpenEvent,
 	minRows = 3,
-	maxRows = 8,
+	maxRows = 14,
 }) {
 	const [activeMarks, setActiveMarks] = useState({ bold: false, italic: false });
 	const classById = useMemo(() => {
