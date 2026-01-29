@@ -1,12 +1,18 @@
-import { useEffect, useRef, useMemo } from "react";
-import { Stack, Paper } from "@mantine/core";
+import { useEffect, useRef, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import { Stack, Paper, Box, Text } from "@mantine/core";
 import { motion, AnimatePresence, useAnimation } from "framer-motion";
-import dayjs from "dayjs";
 import { parseDueDate, toUTCString } from "../utils/datetime";
 import useApprovalModalState from "../hooks/useApprovalModalState";
+import useCardDeck, {
+  getCardTransform,
+  getShuffleMotion,
+  getEnterPosition,
+} from "../hooks/useCardDeck";
 import {
   ApprovalActionButtons,
   ApprovalCardHeader,
+  ApprovalCardPreview,
   ApprovalClassSelect,
   ApprovalDescriptionPreview,
   ApprovalDueDateField,
@@ -16,11 +22,13 @@ import {
   ApprovalPointsBadge,
   ApprovalUrlField,
 } from "./approval/ApprovalCardParts";
-import {
-  ApprovalDescriptionFullscreen,
-  ApprovalNavigationControls,
-  ApprovalPositionBadge,
-} from "./approval/ApprovalModalShell";
+import { ApprovalDescriptionFullscreen } from "./approval/ApprovalModalShell";
+
+const backdropVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { duration: 0.2 } },
+  exit: { opacity: 0, transition: { duration: 0.25, ease: "easeInOut" } },
+};
 
 const detectEventTypeFromTitle = (title) => {
   if (!title) return null;
@@ -48,33 +56,61 @@ const detectEventTypeFromTitle = (title) => {
   return null;
 };
 
-function Card({
+/**
+ * Full card component - only rendered for the active card.
+ * Contains all interactive form elements.
+ */
+function ActiveCardContent({
   item,
-  config,
+  classes,
+  events,
+  unassignedColor,
   handlers,
   formData,
   setFormData,
-  exitDirection,
   showDescriptionFullscreen,
   setShowDescriptionFullscreen,
   eventTypePulse,
-  shakeSignal,
+  shakeControls,
+  onHeightChange,
 }) {
+  const contentRef = useRef(null);
   const isCanvasLinked = Boolean(item?.canvas_id);
-  const isSyncLocked = isCanvasLinked && !formData.canvas_due_date_override;
-  const shakeControls = useAnimation();
-  const prevShakeSignalRef = useRef(shakeSignal);
+  const isSyncLocked = isCanvasLinked && !formData?.canvas_due_date_override;
 
+  const matchingClass = classes?.find(
+    (c) => c.name.toLowerCase() === item.course_name?.toLowerCase(),
+  );
+  const classColor = matchingClass?.color || null;
+
+  // Report height when content mounts or changes
+  // Use double RAF to ensure layout is complete before measuring
   useEffect(() => {
-    // shake when shakeSignal increases (not on initial mount)
-    if (shakeSignal > 0 && shakeSignal !== prevShakeSignalRef.current) {
-      shakeControls.start({
-        x: [0, -8, 8, -6, 6, 0],
-        transition: { duration: 0.35 },
-      });
-    }
-    prevShakeSignalRef.current = shakeSignal;
-  }, [shakeSignal, shakeControls]);
+    if (!contentRef.current || !onHeightChange) return;
+
+    const measureHeight = () => {
+      if (contentRef.current) {
+        const height = contentRef.current.offsetHeight;
+        if (height > 0) {
+          onHeightChange(height);
+        }
+      }
+    };
+
+    // Double RAF to ensure browser has completed layout
+    const rafId = requestAnimationFrame(() => {
+      requestAnimationFrame(measureHeight);
+    });
+
+    // Set up ResizeObserver for dynamic content changes
+    const resizeObserver = new ResizeObserver(measureHeight);
+    resizeObserver.observe(contentRef.current);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      resizeObserver.disconnect();
+    };
+  }, [onHeightChange]);
 
   const handleSubmit = () => {
     const dueDate = formData.dueDate
@@ -88,95 +124,161 @@ function Card({
   };
 
   return (
-    <motion.div
-      style={{
-        width: "100%",
-        maxWidth: "500px",
-      }}
-      initial={{ scale: 0.8, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      exit={{
-        x:
-          exitDirection === "right" ? 500 : exitDirection === "left" ? -500 : 0,
-        opacity: 0,
-        rotate:
-          exitDirection === "right" ? 25 : exitDirection === "left" ? -25 : 0,
-        transition: { duration: 0.2 },
-      }}
-      transition={{ type: "spring", stiffness: 250, damping: 30 }}
-    >
-      <motion.div animate={shakeControls}>
-        <Paper
-          className="modal-card"
-          p="xl"
-          style={{
-            position: "relative",
-          }}
-        >
-          <Stack gap={16}>
-            <ApprovalCardHeader
-              item={item}
-              onAttemptClose={handlers.onAttemptClose}
-            />
+    <motion.div ref={contentRef} animate={shakeControls}>
+      <Paper
+        className="modal-card"
+        p="xl"
+        style={{
+          position: "relative",
+          overflow: "hidden",
+        }}
+      >
+        {/* Class color accent bar */}
+        {classColor && (
+          <Box
+            style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: 4,
+              backgroundColor: classColor,
+              borderRadius: "12px 0 0 12px",
+            }}
+          />
+        )}
 
-            <ApprovalDueDateField
-              formData={formData}
-              setFormData={setFormData}
-              onUserEdit={handlers.onUserEdit}
-              isCanvasLinked={isCanvasLinked}
-              isSyncLocked={isSyncLocked}
-            />
+        <Stack gap={16}>
+          <ApprovalCardHeader
+            item={item}
+            onAttemptClose={handlers.onAttemptClose}
+          />
 
-            <ApprovalClassSelect
-              classes={config.classes}
-              formData={formData}
-              setFormData={setFormData}
-              onUserEdit={handlers.onUserEdit}
-            />
+          <ApprovalDueDateField
+            formData={formData}
+            setFormData={setFormData}
+            onUserEdit={handlers.onUserEdit}
+            isCanvasLinked={isCanvasLinked}
+            isSyncLocked={isSyncLocked}
+          />
 
-            <ApprovalEventTypeSelect
-              formData={formData}
-              setFormData={setFormData}
-              onUserEdit={handlers.onUserEdit}
-              eventTypePulse={eventTypePulse}
-            />
+          <ApprovalClassSelect
+            classes={classes}
+            formData={formData}
+            setFormData={setFormData}
+            onUserEdit={handlers.onUserEdit}
+          />
 
-            <ApprovalUrlField
-              formData={formData}
-              setFormData={setFormData}
-              onUserEdit={handlers.onUserEdit}
-            />
+          <ApprovalEventTypeSelect
+            formData={formData}
+            setFormData={setFormData}
+            onUserEdit={handlers.onUserEdit}
+            eventTypePulse={eventTypePulse}
+          />
 
-            <ApprovalPointsBadge item={item} />
+          <ApprovalUrlField
+            formData={formData}
+            setFormData={setFormData}
+            onUserEdit={handlers.onUserEdit}
+          />
 
-            <ApprovalLockStatus item={item} />
+          <ApprovalPointsBadge item={item} />
 
-            <ApprovalDescriptionPreview
-              item={item}
-              showDescriptionFullscreen={showDescriptionFullscreen}
-              setShowDescriptionFullscreen={setShowDescriptionFullscreen}
-            />
+          <ApprovalLockStatus item={item} />
 
-            <ApprovalNotesField
-              formData={formData}
-              setFormData={setFormData}
-              onUserEdit={handlers.onUserEdit}
-              events={config.events}
-              classes={config.classes}
-              unassignedColor={config.unassignedColor}
-              onOpenEvent={handlers.onOpenEvent}
-            />
+          <ApprovalDescriptionPreview
+            item={item}
+            showDescriptionFullscreen={showDescriptionFullscreen}
+            setShowDescriptionFullscreen={setShowDescriptionFullscreen}
+          />
 
-            <ApprovalActionButtons
-              item={item}
-              onReject={handlers.onReject}
-              onDiscard={handlers.onDiscard}
-              onApprove={handleSubmit}
-            />
-          </Stack>
-        </Paper>
-      </motion.div>
+          <ApprovalNotesField
+            formData={formData}
+            setFormData={setFormData}
+            onUserEdit={handlers.onUserEdit}
+            events={events}
+            classes={classes}
+            unassignedColor={unassignedColor}
+            onOpenEvent={handlers.onOpenEvent}
+          />
+
+          <ApprovalActionButtons
+            item={item}
+            onReject={handlers.onReject}
+            onDiscard={handlers.onDiscard}
+            onApprove={handleSubmit}
+          />
+        </Stack>
+      </Paper>
     </motion.div>
+  );
+}
+
+/**
+ * Wrapper that renders either full content (active) or lightweight preview (background).
+ * This avoids mounting expensive form components for non-interactive cards.
+ */
+function CardWrapper({
+  item,
+  classes,
+  events,
+  unassignedColor,
+  isActive,
+  isReady,
+  onClick,
+  handlers,
+  formData,
+  setFormData,
+  showDescriptionFullscreen,
+  setShowDescriptionFullscreen,
+  eventTypePulse,
+  shakeControls,
+  position,
+  onPeekStart,
+  onPeekEnd,
+  onHeightChange,
+}) {
+  // Background cards use lightweight preview
+  if (!isActive) {
+    return (
+      <ApprovalCardPreview
+        item={item}
+        classes={classes}
+        onClick={onClick}
+        position={position}
+        onPeekStart={onPeekStart}
+        onPeekEnd={onPeekEnd}
+      />
+    );
+  }
+
+  // Active card during shuffle settle - show preview briefly for smooth transition
+  if (!isReady) {
+    return (
+      <ApprovalCardPreview
+        item={item}
+        classes={classes}
+        style={{ cursor: "default" }}
+      />
+    );
+  }
+
+  // Active card ready - render full interactive content
+  return (
+    <ActiveCardContent
+      item={item}
+      classes={classes}
+      events={events}
+      unassignedColor={unassignedColor}
+      handlers={handlers}
+      formData={formData}
+      setFormData={setFormData}
+      showDescriptionFullscreen={showDescriptionFullscreen}
+      setShowDescriptionFullscreen={setShowDescriptionFullscreen}
+      eventTypePulse={eventTypePulse}
+      shakeControls={shakeControls}
+      onHeightChange={onHeightChange}
+    />
   );
 }
 
@@ -184,6 +286,7 @@ export default function ApprovalModal({
   opened,
   onClose,
   item,
+  items,
   classes,
   events,
   unassignedColor,
@@ -210,6 +313,94 @@ export default function ApprovalModal({
   } = useApprovalModalState();
   const eventTypePulseTimeoutRef = useRef(null);
   const initialFormDataRef = useRef(null);
+  const shakeControls = useAnimation();
+  const prevShakeCountRef = useRef(shakeCount);
+
+  // Physics-based card deck management
+  const {
+    visibleCards,
+    isShuffling,
+    shuffleState,
+    shuffleTo,
+    getShuffleTransition,
+    getTargetPosition,
+    cleanup: cleanupCardDeck,
+  } = useCardDeck({
+    totalCards: pendingCount,
+    currentIndex,
+    onNavigate,
+    shouldBlockNavigation: () => hasUserEdited && isDirtyRef.current,
+    onBlockedAttempt: () => setShakeCount((prev) => prev + 1),
+  });
+
+  // Track isDirty in a ref for the card deck hook
+  const isDirtyRef = useRef(false);
+
+  // Track which card (by itemIndex) is being peeked via edge hover
+  const [peekingCard, setPeekingCard] = useState(null);
+
+  // Deferred mount: active card shows preview during shuffle, then mounts full content
+  // This prevents heavy form components from mounting during animation
+  const [isCardReady, setIsCardReady] = useState(true);
+  const cardReadyTimeoutRef = useRef(null);
+
+  // Track active card height for dynamic title positioning
+  // Height is reported by ActiveCardContent via onHeightChange callback
+  const [activeCardHeight, setActiveCardHeight] = useState(600); // Default to tall to avoid overlap before measurement
+
+  // When shuffle ends, defer full card mount slightly for smooth transition
+  useEffect(() => {
+    if (cardReadyTimeoutRef.current) {
+      clearTimeout(cardReadyTimeoutRef.current);
+    }
+
+    if (isShuffling) {
+      setIsCardReady(false);
+    } else {
+      // Small delay after shuffle settles before mounting heavy content
+      cardReadyTimeoutRef.current = setTimeout(() => {
+        setIsCardReady(true);
+      }, 50);
+    }
+
+    return () => {
+      if (cardReadyTimeoutRef.current) {
+        clearTimeout(cardReadyTimeoutRef.current);
+      }
+    };
+  }, [isShuffling]);
+
+  // Shake animation
+  useEffect(() => {
+    if (shakeCount > 0 && shakeCount !== prevShakeCountRef.current) {
+      shakeControls.start({
+        x: [0, -8, 8, -6, 6, 0],
+        transition: { duration: 0.35 },
+      });
+    }
+    prevShakeCountRef.current = shakeCount;
+  }, [shakeCount, shakeControls]);
+
+  // Keyboard navigation (wraps around)
+  useEffect(() => {
+    if (!opened) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === "ArrowLeft" && pendingCount > 1) {
+        e.preventDefault();
+        handleNavigate(-1);
+      } else if (e.key === "ArrowRight" && pendingCount > 1) {
+        e.preventDefault();
+        handleNavigate(1);
+      } else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        handleApproveClick();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [opened, currentIndex, pendingCount, formData, item]);
 
   useEffect(() => {
     if (eventTypePulseTimeoutRef.current) {
@@ -219,13 +410,10 @@ export default function ApprovalModal({
     setEventTypePulse(false);
 
     if (item) {
-      // Auto-select class if course name matches
       const matchingClass = classes.find(
         (c) => c.name.toLowerCase() === item.course_name?.toLowerCase(),
       );
       const detectedType = detectEventTypeFromTitle(item.title);
-
-      // Parse the due_date (handles both date-only and datetime)
       const { date } = parseDueDate(item.due_date);
 
       const nextFormData = {
@@ -260,22 +448,6 @@ export default function ApprovalModal({
     }
   }, [item, classes]);
 
-  // Handle Mod+Enter to approve/submit
-  useEffect(() => {
-    if (!opened) return;
-
-    const handleKeyDown = (e) => {
-      // Require Cmd/Ctrl + Enter
-      if (e.key !== "Enter" || !(e.metaKey || e.ctrlKey)) return;
-
-      e.preventDefault();
-      handleApproveClick();
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [opened, formData, item]);
-
   const isDirty = useMemo(() => {
     const initial = initialFormDataRef.current;
     if (!initial) return false;
@@ -293,6 +465,10 @@ export default function ApprovalModal({
       !sameDueDate
     );
   }, [formData]);
+
+  // Keep isDirtyRef in sync for the card deck hook
+  isDirtyRef.current = isDirty;
+
   const shouldBlockClose = hasUserEdited && isDirty;
 
   const triggerDirtyShake = () => {
@@ -310,6 +486,7 @@ export default function ApprovalModal({
   const handleDiscard = () => {
     onClose();
   };
+
   const markUserEdited = () => {
     setHasUserEdited(true);
   };
@@ -345,6 +522,14 @@ export default function ApprovalModal({
       onNavigate(direction);
     }, 50);
   };
+
+  const handleCardClick = (targetItemIndex) => {
+    if (targetItemIndex === currentIndex) return;
+    if (isShuffling) return; // Prevent interrupting mid-shuffle
+    // The shuffleTo function handles blocking check internally
+    shuffleTo(targetItemIndex);
+  };
+
   const handleOpenMentionEvent = (eventItem) => {
     if (shouldBlockClose) {
       triggerDirtyShake();
@@ -353,39 +538,23 @@ export default function ApprovalModal({
     onOpenEvent?.(eventItem);
   };
 
-  const canGoPrev = currentIndex > 0;
-  const canGoNext = currentIndex < pendingCount - 1;
+  // Cleanup card deck on unmount
+  useEffect(() => {
+    return () => cleanupCardDeck();
+  }, [cleanupCardDeck]);
 
-  if (!opened) return null;
+  // Lock body scroll when open
+  useEffect(() => {
+    if (opened) {
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = "";
+      };
+    }
+  }, [opened]);
 
-  return (
-    <div
-      className="modal-overlay-custom"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) handleAttemptClose();
-      }}
-    >
-      <style>{`
-				@keyframes eventTypePulse {
-					0% {
-						box-shadow: 0 0 0 0 rgba(34, 139, 230, 0.45);
-						border-color: var(--mantine-color-blue-6);
-					}
-					70% {
-						box-shadow: 0 0 0 8px rgba(34, 139, 230, 0);
-					}
-					100% {
-						box-shadow: 0 0 0 0 rgba(34, 139, 230, 0);
-					}
-				}
-
-				.event-type-pulse {
-					animation: eventTypePulse 1.1s ease-out 1;
-				}
-			`}</style>
-      {/* Position badge */}
-      <ApprovalPositionBadge config={{ currentIndex, pendingCount }} />
-
+  const content = (
+    <>
       <ApprovalDescriptionFullscreen
         config={{ item, showDescriptionFullscreen }}
         handlers={{
@@ -393,49 +562,269 @@ export default function ApprovalModal({
         }}
       />
 
-      {/* Card container */}
-      <div
-        style={{
-          position: "relative",
-          width: "100%",
-          maxWidth: "600px",
-          minHeight: "400px",
-          display: "flex",
-          alignItems: "flex-start",
-          justifyContent: "center",
-        }}
-      >
-        {/* Navigation buttons - positioned relative to card */}
-        <ApprovalNavigationControls
-          config={{ canGoPrev, canGoNext }}
-          handlers={{ onNavigate: handleNavigate }}
-        />
+      <style>{`
+        @keyframes eventTypePulse {
+          0% {
+            box-shadow: 0 0 0 0 rgba(34, 139, 230, 0.45);
+            border-color: var(--mantine-color-blue-6);
+          }
+          70% {
+            box-shadow: 0 0 0 8px rgba(34, 139, 230, 0);
+          }
+          100% {
+            box-shadow: 0 0 0 0 rgba(34, 139, 230, 0);
+          }
+        }
 
-        <AnimatePresence mode="wait">
-          {item && (
-            <Card
-              key={item.canvas_id}
-              item={item}
-              config={{ classes, events, unassignedColor }}
-              handlers={{
-                onUserEdit: markUserEdited,
-                onApprove: handleApproveClick,
-                onReject: handleRejectClick,
-                onAttemptClose: handleAttemptClose,
-                onDiscard: handleDiscard,
-                onOpenEvent: handleOpenMentionEvent,
+        .event-type-pulse {
+          animation: eventTypePulse 1.1s ease-out 1;
+        }
+      `}</style>
+
+      <AnimatePresence>
+        {opened && (
+          <motion.div
+            key="approval-backdrop"
+            variants={backdropVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            style={{
+              position: "fixed",
+              inset: 0,
+              backgroundColor: "rgba(0, 0, 0, 0.6)",
+              display: "flex",
+              alignItems: "flex-end",
+              justifyContent: "center",
+              zIndex: 200,
+            }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) handleAttemptClose();
+            }}
+          >
+            {/* Card stack container */}
+            <Box
+              style={{
+                position: "relative",
+                width: "100%",
+                maxWidth: "500px",
+                display: "flex",
+                alignItems: "flex-end",
+                justifyContent: "center",
+                paddingBottom: 24,
+                height: "100%",
               }}
-              formData={formData}
-              setFormData={setFormData}
-              exitDirection={exitDirection}
-              eventTypePulse={eventTypePulse}
-              showDescriptionFullscreen={showDescriptionFullscreen}
-              setShowDescriptionFullscreen={setShowDescriptionFullscreen}
-              shakeSignal={shakeCount}
-            />
-          )}
-        </AnimatePresence>
-      </div>
-    </div>
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Title with backdrop - positioned above card stack */}
+              {/* Outer wrapper handles centering and vertical position */}
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{
+                  opacity: 1,
+                  y: 0,
+                }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{
+                  opacity: { duration: 0.25, delay: 0.1 },
+                  y: { duration: 0.25, delay: 0.1 },
+                }}
+                style={{
+                  position: "absolute",
+                  bottom: activeCardHeight + 40, // 40px spacing above active card
+                  left: "50%",
+                  marginLeft: -250, // Half of card width (500px) to center
+                  width: 500,
+                  display: "flex",
+                  justifyContent: "center",
+                  zIndex: 210,
+                  transition: "bottom 0.3s ease-out",
+                }}
+              >
+                <div
+                  style={{
+                    paddingTop: 6,
+                    paddingBottom: 6,
+                    paddingLeft: 20,
+                    paddingRight: 20,
+                    position: "relative",
+                  }}
+                >
+                  {/* Backdrop */}
+                  <Box
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      backgroundColor: "rgba(0, 0, 0, 0.35)",
+                      backdropFilter: "blur(12px)",
+                      borderRadius: 12,
+                      border: "1px solid rgba(255, 255, 255, 0.1)",
+                    }}
+                  />
+                  {/* Text */}
+                  <Text
+                    fw={600}
+                    size="sm"
+                    style={{
+                      position: "relative",
+                      background:
+                        "linear-gradient(135deg, #93c5fd 0%, #ddd6fe 100%)",
+                      WebkitBackgroundClip: "text",
+                      WebkitTextFillColor: "transparent",
+                      backgroundClip: "text",
+                      letterSpacing: "0.3px",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Review Assignment ({currentIndex + 1} of {pendingCount})
+                  </Text>
+                </div>
+              </motion.div>
+
+              {/* Card stack */}
+              <Box
+                style={{
+                  position: "relative",
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "flex-end",
+                  justifyContent: "center",
+                }}
+              >
+                <AnimatePresence mode="popLayout">
+                  {visibleCards.map(({ itemIndex, position }) => {
+                    const cardItem =
+                      items?.[itemIndex] ||
+                      (itemIndex === currentIndex ? item : null);
+                    if (!cardItem) return null;
+
+                    // Calculate target position (changes during shuffle)
+                    const targetPosition = getTargetPosition(itemIndex);
+                    const isActive = targetPosition === 0;
+                    const cardTransform = getCardTransform(targetPosition);
+
+                    // Calculate arc motion during shuffle
+                    const { y: arcY, rotateExtra } = getShuffleMotion(
+                      itemIndex,
+                      shuffleState,
+                    );
+
+                    // Initial position for cards entering the visible set
+                    const enterFrom = getEnterPosition(position);
+
+                    // Only use exit animation when card is leaving the visible set entirely
+                    const isExiting = exitDirection && isActive;
+                    const exitAnimation = isExiting
+                      ? {
+                          y: 100,
+                          x: exitDirection === "right" ? 400 : -400,
+                          opacity: 0,
+                          rotate: exitDirection === "right" ? 15 : -15,
+                          scale: 0.9,
+                          transition: {
+                            duration: 0.28,
+                            ease: [0.4, 0, 0.2, 1],
+                          },
+                        }
+                      : {
+                          ...enterFrom, // Exit to where it would enter from
+                          transition: { duration: 0.2 },
+                        };
+
+                    // Spring transition with stagger
+                    const springTransition = getShuffleTransition(
+                      itemIndex,
+                      position,
+                    );
+
+                    // Peek state: lift in place when edge-hovering background cards
+                    const isPeeking = peekingCard === itemIndex;
+                    const peekY = isPeeking ? 20 : 0;
+                    const peekScale = isPeeking
+                      ? cardTransform.scale + 0.03
+                      : cardTransform.scale;
+                    const peekOpacity = isPeeking
+                      ? Math.min(1, cardTransform.opacity + 0.3)
+                      : cardTransform.opacity;
+                    const peekZIndex = isPeeking ? 100 : cardTransform.zIndex;
+
+                    return (
+                      <motion.div
+                        key={cardItem.canvas_id}
+                        layout
+                        style={{
+                          position: "absolute",
+                          width: "100%",
+                          maxWidth: "500px",
+                          bottom: 0,
+                          // GPU acceleration hint during shuffle or peek
+                          willChange:
+                            isShuffling || isPeeking ? "transform" : "auto",
+                        }}
+                        initial={enterFrom}
+                        animate={{
+                          y: arcY + peekY,
+                          x: cardTransform.x,
+                          scale: peekScale,
+                          rotate: cardTransform.rotate + rotateExtra,
+                          opacity: peekOpacity,
+                          zIndex: peekZIndex,
+                        }}
+                        exit={exitAnimation}
+                        transition={
+                          isPeeking || peekingCard === null
+                            ? { duration: 0.15, ease: "easeOut" }
+                            : springTransition
+                        }
+                      >
+                        <CardWrapper
+                          item={cardItem}
+                          classes={classes}
+                          events={events}
+                          unassignedColor={unassignedColor}
+                          isActive={isActive}
+                          isReady={isCardReady}
+                          onClick={() => handleCardClick(itemIndex)}
+                          handlers={{
+                            onUserEdit: markUserEdited,
+                            onApprove: handleApproveClick,
+                            onReject: handleRejectClick,
+                            onAttemptClose: handleAttemptClose,
+                            onDiscard: handleDiscard,
+                            onOpenEvent: handleOpenMentionEvent,
+                          }}
+                          formData={formData}
+                          setFormData={setFormData}
+                          showDescriptionFullscreen={showDescriptionFullscreen}
+                          setShowDescriptionFullscreen={
+                            setShowDescriptionFullscreen
+                          }
+                          eventTypePulse={eventTypePulse}
+                          shakeControls={shakeControls}
+                          position={targetPosition}
+                          onPeekStart={() =>
+                            !isShuffling && setPeekingCard(itemIndex)
+                          }
+                          onPeekEnd={() =>
+                            setPeekingCard((prev) =>
+                              prev === itemIndex ? null : prev,
+                            )
+                          }
+                          onHeightChange={
+                            isActive ? setActiveCardHeight : undefined
+                          }
+                        />
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+              </Box>
+            </Box>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
+
+  return createPortal(content, document.body);
 }

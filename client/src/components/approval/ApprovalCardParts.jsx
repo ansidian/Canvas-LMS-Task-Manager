@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { memo, useLayoutEffect, useRef, useState } from "react";
 import {
   ActionIcon,
   Anchor,
@@ -87,7 +87,7 @@ export function ApprovalCardHeader({ item, onAttemptClose }) {
           {item.title}
         </Text>
         <Text size="sm" c="dimmed">
-          Course: {item.course_name}
+          {item.course_name}
         </Text>
       </Box>
     </>
@@ -400,7 +400,7 @@ export function ApprovalLockStatus({ item }) {
               </span>
             </Tooltip>
           ) : (
-            ""
+            "Canvas has locked the assignment (past due)."
           )}
         </Text>
       </Group>
@@ -552,7 +552,12 @@ export function ApprovalNotesField({
   );
 }
 
-export function ApprovalActionButtons({ item, onReject, onDiscard, onApprove }) {
+export function ApprovalActionButtons({
+  item,
+  onReject,
+  onDiscard,
+  onApprove,
+}) {
   return (
     <Group justify="space-between" className="modal-footer">
       <Button variant="light" color="red" onClick={() => onReject(item)}>
@@ -562,10 +567,184 @@ export function ApprovalActionButtons({ item, onReject, onDiscard, onApprove }) 
         <Button variant="subtle" onClick={onDiscard}>
           Cancel
         </Button>
-        <Button onClick={onApprove}>
-          Add to Calendar
-        </Button>
+        <Button onClick={onApprove}>Add to Calendar</Button>
       </Group>
     </Group>
   );
 }
+
+/**
+ * Ultra-lightweight skeleton preview for background cards.
+ * Uses actual SectionCard structure to match real card heights accurately.
+ * Memoized to prevent re-renders during shuffle.
+ *
+ * Edge-based peek zones: allows for +1 or +2 card peaking on either side independently.
+ */
+export const ApprovalCardPreview = memo(function ApprovalCardPreview({
+  item,
+  classes,
+  onClick,
+  style,
+  position = 0,
+  onPeekStart,
+  onPeekEnd,
+}) {
+  const matchingClass = classes?.find(
+    (c) => c.name.toLowerCase() === item.course_name?.toLowerCase(),
+  );
+  const classColor = matchingClass?.color || null;
+
+  // Determine which edge should trigger peek based on card position
+  // Left cards (position < 0) have peek zone on right edge (toward center)
+  // Right cards (position > 0) have peek zone on left edge (toward center)
+  const peekEdge = position < 0 ? "left" : position > 0 ? "right" : null;
+  const [isEdgeHovered, setIsEdgeHovered] = useState(false);
+
+  const handleEdgeEnter = () => {
+    setIsEdgeHovered(true);
+    onPeekStart?.();
+  };
+
+  const handleEdgeLeave = () => {
+    setIsEdgeHovered(false);
+    onPeekEnd?.();
+  };
+
+  return (
+    <div
+      onClick={onClick}
+      className="modal-card card-preview-skeleton"
+      style={{
+        padding: "20px 24px",
+        cursor: onClick ? "pointer" : "default",
+        userSelect: "none",
+        position: "relative",
+        overflow: "hidden",
+        ...style,
+      }}
+    >
+      {/* Edge-based peek hover zones - only on the inward-facing edge */}
+      {peekEdge === "left" && (
+        <div
+          onMouseEnter={handleEdgeEnter}
+          onMouseLeave={handleEdgeLeave}
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: "20%",
+            zIndex: 20,
+            cursor: "pointer",
+          }}
+        />
+      )}
+      {peekEdge === "right" && (
+        <div
+          onMouseEnter={handleEdgeEnter}
+          onMouseLeave={handleEdgeLeave}
+          style={{
+            position: "absolute",
+            right: 0,
+            top: 0,
+            bottom: 0,
+            width: "20%",
+            zIndex: 20,
+            cursor: "pointer",
+          }}
+        />
+      )}
+
+      {/* Class color accent bar */}
+      {classColor && (
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: 4,
+            backgroundColor: classColor,
+            borderRadius: "12px 0 0 12px",
+          }}
+        />
+      )}
+
+      {/* Overlay to dim - fades out when edge is hovered */}
+      <div
+        className="card-dim-overlay"
+        style={{
+          position: "absolute",
+          inset: 0,
+          backgroundColor: "var(--card)",
+          opacity: isEdgeHovered ? 0 : 0.5,
+          zIndex: 10,
+          borderRadius: 12,
+          pointerEvents: "none",
+          transition: "opacity 0.15s ease-out",
+        }}
+      />
+
+      {/* Content skeleton - uses real SectionCard structure */}
+      <Stack gap={16}>
+        {/* Header - render actual title */}
+        <Box>
+          <Text fw={600} size="lg">
+            {item.title}
+          </Text>
+          <Text size="sm" c="dimmed">
+            {item.course_name}
+          </Text>
+        </Box>
+
+        {/* Skeleton sections - actual SectionCard components with minimal placeholders */}
+        <SectionCard>
+          <div style={{ height: 58 }} /> {/* Due date field */}
+        </SectionCard>
+
+        <SectionCard>
+          <div style={{ height: 58 }} /> {/* Class select */}
+        </SectionCard>
+
+        <SectionCard>
+          <div style={{ height: 58 }} /> {/* Event type select */}
+        </SectionCard>
+
+        <SectionCard>
+          <div style={{ height: 58 }} /> {/* URL field */}
+        </SectionCard>
+
+        {item.points_possible !== null &&
+          item.points_possible !== undefined && (
+            <SectionCard>
+              <div style={{ height: 24 }} /> {/* Points badge */}
+            </SectionCard>
+          )}
+
+        {item.locked_for_user && (
+          <SectionCard>
+            <div style={{ height: 20 }} /> {/* Lock status */}
+          </SectionCard>
+        )}
+
+        {item.description && (
+          <Box>
+            <div style={{ height: 28 }} /> {/* Description preview button */}
+          </Box>
+        )}
+
+        <SectionCard>
+          <div style={{ height: 80 }} /> {/* Notes textarea */}
+        </SectionCard>
+
+        <Group justify="space-between" className="modal-footer">
+          <div style={{ height: 36, width: 80 }} /> {/* Reject button */}
+          <Group gap={12}>
+            <div style={{ height: 36, width: 80 }} /> {/* Cancel button */}
+            <div style={{ height: 36, width: 130 }} /> {/* Approve button */}
+          </Group>
+        </Group>
+      </Stack>
+    </div>
+  );
+});

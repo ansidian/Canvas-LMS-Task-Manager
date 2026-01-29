@@ -38,6 +38,7 @@ export default function AppModals() {
 				opened={controller.approvalIndex >= 0}
 				onClose={() => controller.setApprovalIndex(-1)}
 				item={controller.approvalItem}
+				items={controller.filteredPendingItems}
 				classes={controller.classes}
 				events={controller.events}
 				unassignedColor={controller.unassignedColor}

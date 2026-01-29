@@ -222,10 +222,14 @@ export default function useApprovalFlow({
   };
 
   const navigateApproval = (direction) => {
-    const newIndex = approvalIndex + direction;
-    if (newIndex >= 0 && newIndex < pendingItems.length) {
-      setApprovalIndex(newIndex);
-    }
+    if (pendingItems.length === 0) return;
+
+    // Wrap around for continuous loop
+    let newIndex = (approvalIndex + direction) % pendingItems.length;
+    if (newIndex < 0) newIndex += pendingItems.length;
+
+    setApprovalIndex(newIndex);
+    selectedCanvasIdRef.current = pendingItems[newIndex]?.canvas_id ?? null;
   };
 
   return {
