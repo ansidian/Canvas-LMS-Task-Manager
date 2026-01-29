@@ -22,7 +22,7 @@ import {
   ApprovalPointsBadge,
   ApprovalUrlField,
 } from "./approval/ApprovalCardParts";
-import { ApprovalDescriptionFullscreen } from "./approval/ApprovalModalShell";
+import DescriptionOverlay from "./event-modal/DescriptionOverlay";
 
 const backdropVariants = {
   hidden: { opacity: 0 },
@@ -324,6 +324,7 @@ export default function ApprovalModal({
     shuffleTo,
     getShuffleTransition,
     getTargetPosition,
+    reset: resetCardDeck,
     cleanup: cleanupCardDeck,
   } = useCardDeck({
     totalCards: pendingCount,
@@ -347,6 +348,47 @@ export default function ApprovalModal({
   // Track active card height for dynamic title positioning
   // Height is reported by ActiveCardContent via onHeightChange callback
   const [activeCardHeight, setActiveCardHeight] = useState(600); // Default to tall to avoid overlap before measurement
+
+  // Track closing state for card exit animation
+  const [isClosing, setIsClosing] = useState(false);
+  const closingTimeoutRef = useRef(null);
+
+  // Track which item we're showing to detect external navigation
+  const activeItemIdRef = useRef(null);
+
+  // Reset state when modal opens OR when switching to a different item
+  // This handles the case where user clicks out, then clicks a different pending item
+  // before the close animation finishes
+  useEffect(() => {
+    if (opened && item) {
+      const itemId = item.canvas_id;
+      const isNewItem = activeItemIdRef.current !== itemId;
+      activeItemIdRef.current = itemId;
+
+      if (isNewItem) {
+        // Switching to a new item - cancel any in-progress close and reset state
+        setIsClosing(false);
+        if (closingTimeoutRef.current) {
+          clearTimeout(closingTimeoutRef.current);
+        }
+        resetCardDeck();
+        setPeekingCard(null);
+        setIsCardReady(true);
+        if (cardReadyTimeoutRef.current) {
+          clearTimeout(cardReadyTimeoutRef.current);
+        }
+      }
+    } else if (!opened) {
+      // Modal closed - clear the tracked item so next open is treated as new
+      activeItemIdRef.current = null;
+    }
+
+    return () => {
+      if (closingTimeoutRef.current) {
+        clearTimeout(closingTimeoutRef.current);
+      }
+    };
+  }, [opened, item, resetCardDeck]);
 
   // When shuffle ends, defer full card mount slightly for smooth transition
   useEffect(() => {
@@ -475,16 +517,24 @@ export default function ApprovalModal({
     setShakeCount((prev) => prev + 1);
   };
 
+  const triggerClose = () => {
+    resetCardDeck(); // Cancel any in-progress shuffle before closing
+    setIsClosing(true);
+    closingTimeoutRef.current = setTimeout(() => {
+      onClose();
+    }, 200); // Match card exit animation duration
+  };
+
   const handleAttemptClose = () => {
     if (shouldBlockClose) {
       triggerDirtyShake();
       return;
     }
-    onClose();
+    triggerClose();
   };
 
   const handleDiscard = () => {
-    onClose();
+    triggerClose();
   };
 
   const markUserEdited = () => {
@@ -555,11 +605,12 @@ export default function ApprovalModal({
 
   const content = (
     <>
-      <ApprovalDescriptionFullscreen
-        config={{ item, showDescriptionFullscreen }}
-        handlers={{
-          onClose: () => setShowDescriptionFullscreen(false),
-        }}
+      <DescriptionOverlay
+        opened={showDescriptionFullscreen}
+        onClose={() => setShowDescriptionFullscreen(false)}
+        title={item?.title}
+        descriptionHtml={item?.description}
+        layoutId={item ? `description-${item.canvas_id}` : undefined}
       />
 
       <style>{`
@@ -620,15 +671,18 @@ export default function ApprovalModal({
               {/* Outer wrapper handles centering and vertical position */}
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
-                animate={{
-                  opacity: 1,
-                  y: 0,
-                }}
+                animate={
+                  isClosing ? { opacity: 0, y: -20 } : { opacity: 1, y: 0 }
+                }
                 exit={{ opacity: 0, y: -10 }}
-                transition={{
-                  opacity: { duration: 0.25, delay: 0.1 },
-                  y: { duration: 0.25, delay: 0.1 },
-                }}
+                transition={
+                  isClosing
+                    ? { duration: 0.15, ease: "easeIn" }
+                    : {
+                        opacity: { duration: 0.25, delay: 0.1 },
+                        y: { duration: 0.25, delay: 0.1 },
+                      }
+                }
                 style={{
                   position: "absolute",
                   bottom: activeCardHeight + 40, // 40px spacing above active card
@@ -762,19 +816,30 @@ export default function ApprovalModal({
                             isShuffling || isPeeking ? "transform" : "auto",
                         }}
                         initial={enterFrom}
-                        animate={{
-                          y: arcY + peekY,
-                          x: cardTransform.x,
-                          scale: peekScale,
-                          rotate: cardTransform.rotate + rotateExtra,
-                          opacity: peekOpacity,
-                          zIndex: peekZIndex,
-                        }}
+                        animate={
+                          isClosing
+                            ? {
+                                y: 150,
+                                opacity: 0,
+                                scale: 0.95,
+                                transition: { duration: 0.2, ease: "easeIn" },
+                              }
+                            : {
+                                y: arcY + peekY,
+                                x: cardTransform.x,
+                                scale: peekScale,
+                                rotate: cardTransform.rotate + rotateExtra,
+                                opacity: peekOpacity,
+                                zIndex: peekZIndex,
+                              }
+                        }
                         exit={exitAnimation}
                         transition={
-                          isPeeking || peekingCard === null
-                            ? { duration: 0.15, ease: "easeOut" }
-                            : springTransition
+                          isClosing
+                            ? { duration: 0.2, ease: "easeIn" }
+                            : isPeeking || peekingCard === null
+                              ? { duration: 0.15, ease: "easeOut" }
+                              : springTransition
                         }
                       >
                         <CardWrapper

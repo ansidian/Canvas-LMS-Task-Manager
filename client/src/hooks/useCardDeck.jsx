@@ -329,6 +329,19 @@ export default function useCardDeck({
     [currentIndex, totalCards, shuffleState],
   );
 
+  /**
+   * Reset all shuffle state. Call when modal opens or item changes externally.
+   * Clears any in-progress shuffle animations to prevent stale state.
+   */
+  const reset = useCallback(() => {
+    if (shuffleTimeoutRef.current) {
+      clearTimeout(shuffleTimeoutRef.current);
+      shuffleTimeoutRef.current = null;
+    }
+    setIsShuffling(false);
+    setShuffleState(null);
+  }, []);
+
   // Cleanup on unmount
   const cleanup = useCallback(() => {
     if (shuffleTimeoutRef.current) {
@@ -343,6 +356,7 @@ export default function useCardDeck({
     shuffleTo,
     getShuffleTransition,
     getTargetPosition,
+    reset,
     cleanup,
   };
 }

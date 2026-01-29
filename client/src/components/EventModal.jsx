@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Box, useMantineColorScheme } from "@mantine/core";
 import { motion } from "framer-motion";
 import BottomSheet from "./BottomSheet";
@@ -26,10 +27,21 @@ export default function EventModal({
   const { colorScheme } = useMantineColorScheme();
   const { getToken } = useAuth();
 
-  const canvas = useEventModalCanvas({ event, api, onUpdate });
+  // Preserve event data during exit animation
+  const [preservedEvent, setPreservedEvent] = useState(event);
+  useEffect(() => {
+    if (event) {
+      setPreservedEvent(event);
+    }
+  }, [event]);
+
+  // Use preserved event for rendering during exit animation
+  const displayEvent = event || preservedEvent;
+
+  const canvas = useEventModalCanvas({ event: displayEvent, api, onUpdate });
 
   const form = useEventModalForm({
-    event,
+    event: displayEvent,
     opened,
     onUpdate,
     onDelete,
@@ -40,7 +52,7 @@ export default function EventModal({
   });
 
   const submission = useEventModalSubmission({
-    event,
+    event: displayEvent,
     canvasIds: canvas.canvasIds,
     assignmentInfo: canvas.assignmentInfo,
     submissionInfo: canvas.submissionInfo,
@@ -52,9 +64,9 @@ export default function EventModal({
     isGuest,
   });
 
-  if (!event) return null;
+  if (!displayEvent) return null;
 
-  const descriptionLayoutId = `description-${event.id}`;
+  const descriptionLayoutId = `description-${displayEvent.id}`;
   const hasDescription = Boolean(canvas.descriptionHtml);
 
   return (
@@ -62,7 +74,7 @@ export default function EventModal({
       <DescriptionOverlay
         opened={form.showDescriptionFullscreen}
         onClose={() => form.setShowDescriptionFullscreen(false)}
-        title={event.title}
+        title={displayEvent.title}
         descriptionHtml={canvas.descriptionHtml}
         layoutId={descriptionLayoutId}
       />
@@ -93,7 +105,7 @@ export default function EventModal({
                 formData={form.formData}
                 setFormData={form.setFormData}
                 classes={classes}
-                event={event}
+                event={displayEvent}
                 unassignedColor={unassignedColor}
                 colorScheme={colorScheme}
                 showSegmented={form.showSegmented}
@@ -111,7 +123,7 @@ export default function EventModal({
 
               <EventDetailsColumn
                 canvasIds={canvas.canvasIds}
-                canvasUrl={event.url}
+                canvasUrl={displayEvent.url}
                 assignmentInfo={canvas.assignmentInfo}
                 assignmentLoading={canvas.assignmentLoading}
                 assignmentError={canvas.assignmentError}
@@ -150,7 +162,7 @@ export default function EventModal({
                 events={events}
                 classes={classes}
                 unassignedColor={unassignedColor}
-                currentEventId={event.id}
+                currentEventId={displayEvent.id}
                 onOpenEvent={form.handleOpenMentionEvent}
               />
             </Box>

@@ -171,7 +171,7 @@ export default function CanvasSubmissionPanel({
                       </span>
                     </Tooltip>
                   ) : (
-                    "Canvas has locked the assignment (past due).."
+                    "Canvas has locked the assignment, due date passed"
                   )}
                 </Text>
               </Group>
@@ -308,8 +308,7 @@ export default function CanvasSubmissionPanel({
             submissionOptions.length === 0 && (
               <SubmissionSection>
                 <Text size="sm" c="dimmed">
-                  This assignment cannot be submitted in CTM. Use{" "}
-                  {openInCanvasLink}
+                  This assignment cannot be submitted in CTM.
                 </Text>
               </SubmissionSection>
             )}
