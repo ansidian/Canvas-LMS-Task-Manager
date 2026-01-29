@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef, useLayoutEffect } from "react";
 import { SimpleGrid, Text, Stack, Box } from "@mantine/core";
 import {
   DndContext,
@@ -8,7 +8,7 @@ import {
   PointerSensor,
   closestCenter,
 } from "@dnd-kit/core";
-import { LayoutGroup } from "framer-motion";
+import { LayoutGroup, motion, AnimatePresence } from "framer-motion";
 import dayjs from "dayjs";
 import CalendarDay from "./CalendarDay";
 import EventCard from "./EventCard";
@@ -27,6 +27,8 @@ export default function Calendar({
   const [activeEvent, setActiveEvent] = useState(null);
   const [slideDirection, setSlideDirection] = useState("");
   const [prevDate, setPrevDate] = useState(currentDate);
+  const [ghostAnimation, setGhostAnimation] = useState(null);
+  const sourceRectRef = useRef(null);
 
   // Detect month change direction for slide animation
   useEffect(() => {
@@ -49,7 +51,7 @@ export default function Calendar({
       activationConstraint: {
         distance: 10,
       },
-    })
+    }),
   );
 
   const calendarDays = useMemo(() => {
@@ -95,20 +97,69 @@ export default function Calendar({
   const handleDragStart = (event) => {
     const eventData = events.find((e) => e.id === event.active.id);
     setActiveEvent(eventData);
+
+    // Capture source position for ghost animation
+    const element = document.querySelector(
+      `[data-event-id="${event.active.id}"]`,
+    );
+    if (element) {
+      sourceRectRef.current = element.getBoundingClientRect();
+    }
   };
 
   const handleDragEnd = (event) => {
     const { active, over } = event;
-    setActiveEvent(null);
 
-    if (over && active.id !== over.id) {
-      const newDate = over.id; // over.id is the date string
+    if (over && active.id !== over.id && sourceRectRef.current) {
+      const eventData = events.find((e) => e.id === active.id);
+      const newDate = over.id;
+
+      // Start ghost animation
+      setGhostAnimation({
+        sourceRect: sourceRectRef.current,
+        event: eventData,
+        color: getClassColor(eventData?.class_id),
+        targetDate: newDate,
+        destinationRect: null,
+      });
+
+      // Trigger the actual state update
       onEventDrop(active.id, newDate);
     }
+
+    setActiveEvent(null);
+    sourceRectRef.current = null;
   };
 
   const handleDragCancel = () => {
     setActiveEvent(null);
+    sourceRectRef.current = null;
+  };
+
+  // Capture destination rect after the event moves to new position
+  useLayoutEffect(() => {
+    if (ghostAnimation && !ghostAnimation.destinationRect) {
+      // Wait a frame for the new card to render in its new position
+      requestAnimationFrame(() => {
+        const element = document.querySelector(
+          `[data-event-id="${ghostAnimation.event?.id}"]`,
+        );
+        if (element) {
+          const destRect = element.getBoundingClientRect();
+          setGhostAnimation((prev) => ({
+            ...prev,
+            destinationRect: destRect,
+          }));
+        } else {
+          // Card not visible (e.g., moved to different month), skip animation
+          setGhostAnimation(null);
+        }
+      });
+    }
+  }, [ghostAnimation, events]);
+
+  const handleGhostAnimationComplete = () => {
+    setGhostAnimation(null);
   };
 
   const getClassColor = (classId) => {
@@ -188,6 +239,49 @@ export default function Calendar({
           />
         )}
       </DragOverlay>
+
+      {/* Ghost trail animation for rescheduling */}
+      <AnimatePresence>
+        {ghostAnimation?.destinationRect && (
+          <motion.div
+            key="ghost-card"
+            initial={{
+              left: ghostAnimation.sourceRect.left,
+              top: ghostAnimation.sourceRect.top,
+              width: ghostAnimation.sourceRect.width,
+              height: ghostAnimation.sourceRect.height,
+              opacity: 1,
+              scale: 1.05,
+            }}
+            animate={{
+              left: ghostAnimation.destinationRect.left,
+              top: ghostAnimation.destinationRect.top,
+              width: ghostAnimation.destinationRect.width,
+              height: ghostAnimation.destinationRect.height,
+              opacity: [1, 1, 0],
+              scale: [1.05, 1.02, 1],
+            }}
+            transition={{
+              duration: 0.35,
+              ease: [0.25, 0.1, 0.25, 1],
+              opacity: { times: [0, 0.7, 1] },
+              scale: { times: [0, 0.7, 1] },
+            }}
+            onAnimationComplete={handleGhostAnimationComplete}
+            style={{
+              position: "fixed",
+              zIndex: 1000,
+              pointerEvents: "none",
+              filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.3))",
+            }}
+          >
+            <EventCard
+              event={ghostAnimation.event}
+              color={ghostAnimation.color}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </DndContext>
   );
 }

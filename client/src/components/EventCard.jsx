@@ -9,6 +9,11 @@ import {
   IconFlask,
   IconSchool,
   IconClock,
+  IconCheck,
+  IconSquareCheckFilled,
+  IconSquareRoundedCheckFilled,
+  IconProgressCheck,
+  IconCircleCheckFilled,
 } from "@tabler/icons-react";
 import { hasTimeComponent, extractTime } from "../utils/datetime";
 
@@ -156,8 +161,9 @@ export default function EventCard({ event, color, onClick, isDragging }) {
   };
   const glowColor = hexToRgba(statusColor, 0.5);
 
-  // Status indicator dot - only for incomplete and in_progress
-  const showStatusDot = !isComplete;
+  // Status indicator - glow for incomplete/in_progress, hatch overlay for in_progress
+  const showStatusGlow = !isComplete;
+  const showHatchPattern = event.status === "in_progress";
 
   // When being dragged, hide the original (DragOverlay shows the preview)
   if (isBeingDragged) {
@@ -194,11 +200,12 @@ export default function EventCard({ event, color, onClick, isDragging }) {
   return (
     <motion.div
       ref={cardRef}
+      data-event-id={event.id}
       style={{
-        rotateX,
-        rotateY,
-        x: translateX,
-        y: translateY,
+        rotateX: isDragging ? 0 : rotateX,
+        rotateY: isDragging ? 0 : rotateY,
+        x: isDragging ? 0 : translateX,
+        y: isDragging ? 0 : translateY,
         transformStyle: "preserve-3d",
         perspective: 1000,
       }}
@@ -217,7 +224,7 @@ export default function EventCard({ event, color, onClick, isDragging }) {
           opacity: cardOpacity,
           boxShadow: isDragging
             ? "0 4px 12px rgba(0,0,0,0.25)"
-            : showStatusDot
+            : showStatusGlow
               ? `0 0 10px 2px ${glowColor}`
               : undefined,
           transform: isDragging ? "scale(1.02)" : undefined,
@@ -225,28 +232,52 @@ export default function EventCard({ event, color, onClick, isDragging }) {
           transition:
             "box-shadow 0.15s ease, background 0.2s ease, opacity 0.2s ease",
           position: "relative",
+          overflow: "hidden",
         }}
         onClick={(e) => {
           e.stopPropagation();
           if (onClick) onClick();
         }}
       >
-        {/* Status indicator corner triangle */}
-        {showStatusDot && (
+        {/* Hatch pattern overlay for in_progress status */}
+        {showHatchPattern && (
           <Box
             style={{
               position: "absolute",
-              top: 0,
-              right: 0,
-              width: 0,
-              height: 0,
-              borderStyle: "solid",
-              borderWidth: "0 14px 14px 0",
-              borderColor: `transparent ${statusColor} transparent transparent`,
+              inset: 0,
+              borderRadius: "inherit",
+              pointerEvents: "none",
+              background: `repeating-linear-gradient(
+                -45deg,
+                transparent 0px,
+                transparent 3px,
+                ${statusColor}75 3px,
+                ${statusColor}75 6px
+              )`,
             }}
           />
         )}
-        <Stack gap={2}>
+        {/* Checkmark stamp for completed status */}
+        {isComplete && (
+          <Box
+            style={{
+              position: "absolute",
+              inset: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              pointerEvents: "none",
+              zIndex: 2,
+            }}
+          >
+            <IconCircleCheckFilled
+              size={36}
+              color="white"
+              style={{ opacity: 1 }}
+            />
+          </Box>
+        )}
+        <Stack gap={2} style={{ position: "relative", zIndex: 1 }}>
           <Group gap={4} wrap="nowrap">
             <Icon size={12} color={textColor} />
             <Text
