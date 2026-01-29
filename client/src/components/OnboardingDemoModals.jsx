@@ -16,16 +16,9 @@ import {
 } from "@mantine/core";
 import { DateTimePicker } from "@mantine/dates";
 import { OnboardingTour } from "@gfazioli/mantine-onboarding-tour";
-import { IconX } from "@tabler/icons-react";
+import { IconX, IconFileText } from "@tabler/icons-react";
 import dayjs from "dayjs";
-
-const EVENT_TYPES = [
-  { value: "assignment", label: "Assignment" },
-  { value: "quiz", label: "Quiz" },
-  { value: "exam", label: "Exam" },
-  { value: "homework", label: "Homework" },
-  { value: "lab", label: "Lab" },
-];
+import { EVENT_TYPES, EVENT_TYPE_ICONS } from "./event-modal/constants";
 
 const STATUS_COLORS = {
   incomplete: "#78716C",   // pencil - muted neutral
@@ -210,19 +203,20 @@ export function DemoApprovalModal({ onClose, visible = true }) {
                     <Select
                       placeholder="Select a class"
                       data={[
+                        { value: "", label: "Unassigned" },
                         {
                           value: "demo",
                           label: "Computer Science Recapitulation (CS4963)",
                         },
                       ]}
-                      value={formData.classId}
+                      value={formData.classId || ""}
                       onChange={(v) =>
                         setFormData((f) => ({
                           ...f,
-                          classId: v,
+                          classId: v || null,
                         }))
                       }
-                      clearable
+                      searchable
                     />
                   </Box>
                 </Popover.Target>
@@ -261,6 +255,27 @@ export function DemoApprovalModal({ onClose, visible = true }) {
                           eventType: v,
                         }))
                       }
+                      searchable
+                      allowDeselect={false}
+                      selectFirstOptionOnChange
+                      renderOption={({ option }) => {
+                        const Icon =
+                          EVENT_TYPE_ICONS[option.value] || IconFileText;
+                        return (
+                          <Group gap="xs" wrap="nowrap">
+                            <Icon
+                              size={16}
+                              style={{ opacity: 0.7, flexShrink: 0 }}
+                            />
+                            <Text size="sm">{option.label}</Text>
+                          </Group>
+                        );
+                      }}
+                      leftSection={(() => {
+                        const Icon =
+                          EVENT_TYPE_ICONS[formData.eventType] || IconFileText;
+                        return <Icon size={16} style={{ opacity: 0.7 }} />;
+                      })()}
                     />
                   </Box>
                 </Popover.Target>
@@ -584,14 +599,17 @@ export function DemoEventModal({ onClose, visible = true }) {
               label="Class"
               placeholder="Select a class"
               data={[
+                { value: "", label: "Unassigned" },
                 {
                   value: "demo",
                   label: "Computer Science Recapitulation (CS4963)",
                 },
               ]}
-              value={formData.class_id}
-              onChange={(v) => setFormData((f) => ({ ...f, class_id: v }))}
-              clearable
+              value={formData.class_id || ""}
+              onChange={(v) =>
+                setFormData((f) => ({ ...f, class_id: v || null }))
+              }
+              searchable
             />
 
             <Box>
@@ -618,6 +636,26 @@ export function DemoEventModal({ onClose, visible = true }) {
                           event_type: v,
                         }))
                       }
+                      searchable
+                      selectFirstOptionOnChange
+                      renderOption={({ option }) => {
+                        const Icon =
+                          EVENT_TYPE_ICONS[option.value] || IconFileText;
+                        return (
+                          <Group gap="xs" wrap="nowrap">
+                            <Icon
+                              size={16}
+                              style={{ opacity: 0.7, flexShrink: 0 }}
+                            />
+                            <Text size="sm">{option.label}</Text>
+                          </Group>
+                        );
+                      }}
+                      leftSection={(() => {
+                        const Icon =
+                          EVENT_TYPE_ICONS[formData.event_type] || IconFileText;
+                        return <Icon size={16} style={{ opacity: 0.7 }} />;
+                      })()}
                     />
                   </Box>
                 </Popover.Target>

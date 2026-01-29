@@ -1,3 +1,19 @@
+import {
+  IconCertificate,
+  IconClipboard,
+  IconFlask,
+  IconHome,
+  IconQuestionMark,
+} from "@tabler/icons-react";
+
+export const EVENT_TYPE_ICONS = {
+  assignment: IconClipboard,
+  quiz: IconQuestionMark,
+  exam: IconCertificate,
+  homework: IconHome,
+  lab: IconFlask,
+};
+
 export const EVENT_TYPES = [
   { value: "assignment", label: "Assignment" },
   { value: "quiz", label: "Quiz" },

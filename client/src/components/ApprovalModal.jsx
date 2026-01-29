@@ -128,6 +128,7 @@ function ActiveCardContent({
             formData={formData}
             setFormData={setFormData}
             onUserEdit={handlers.onUserEdit}
+            unassignedColor={unassignedColor}
           />
 
           <ApprovalEventTypeSelect

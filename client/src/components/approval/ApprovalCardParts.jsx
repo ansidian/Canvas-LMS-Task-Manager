@@ -28,14 +28,7 @@ import {
 import dayjs from "dayjs";
 import NotesTextarea from "../NotesTextarea";
 import { formatRelativeTime, toLocalDate } from "../../utils/datetime";
-
-const EVENT_TYPES = [
-  { value: "assignment", label: "Assignment" },
-  { value: "quiz", label: "Quiz" },
-  { value: "exam", label: "Exam" },
-  { value: "homework", label: "Homework" },
-  { value: "lab", label: "Lab" },
-];
+import { EVENT_TYPES, EVENT_TYPE_ICONS } from "../event-modal/constants";
 
 // Subtle section card for visual grouping
 function SectionCard({ children, accent = null }) {
@@ -224,17 +217,21 @@ export function ApprovalClassSelect({
   formData,
   setFormData,
   onUserEdit,
+  unassignedColor,
 }) {
-  const classOptions = classes
-    .filter((c) => !c.canvas_course_id || c.is_synced)
-    .map((c) => ({
-      value: String(c.id),
-      label: c.name,
-    }));
+  const classOptions = [
+    { value: "", label: "Unassigned" },
+    ...classes
+      .filter((c) => !c.canvas_course_id || c.is_synced)
+      .map((c) => ({
+        value: String(c.id),
+        label: c.name,
+      })),
+  ];
 
   const currentClassColor = formData.classId
     ? classes.find((c) => String(c.id) === formData.classId)?.color
-    : null;
+    : unassignedColor;
 
   return (
     <SectionCard accent={currentClassColor}>
@@ -249,12 +246,14 @@ export function ApprovalClassSelect({
         }
         placeholder="Select a class"
         data={classOptions}
-        value={formData.classId}
+        value={formData.classId || ""}
         onChange={(v) => {
-          setFormData((f) => ({ ...f, classId: v }));
+          setFormData((f) => ({ ...f, classId: v || null }));
           onUserEdit();
         }}
-        clearable
+        searchable
+        allowDeselect={false}
+        selectFirstOptionOnChange
         renderOption={({ option }) => {
           const cls = classes.find((c) => String(c.id) === option.value);
           return (
@@ -263,7 +262,7 @@ export function ApprovalClassSelect({
                 style={{
                   width: 10,
                   height: 10,
-                  backgroundColor: cls?.color || "#a78b71",
+                  backgroundColor: cls?.color || unassignedColor,
                   borderRadius: 2,
                   flexShrink: 0,
                 }}
@@ -273,17 +272,15 @@ export function ApprovalClassSelect({
           );
         }}
         leftSection={
-          formData.classId ? (
-            <Box
-              style={{
-                width: 10,
-                height: 10,
-                backgroundColor: currentClassColor || "#a78b71",
-                borderRadius: 2,
-                flexShrink: 0,
-              }}
-            />
-          ) : null
+          <Box
+            style={{
+              width: 10,
+              height: 10,
+              backgroundColor: currentClassColor,
+              borderRadius: 2,
+              flexShrink: 0,
+            }}
+          />
         }
       />
     </SectionCard>
@@ -296,6 +293,8 @@ export function ApprovalEventTypeSelect({
   onUserEdit,
   eventTypePulse,
 }) {
+  const CurrentIcon = EVENT_TYPE_ICONS[formData.eventType] || IconFileText;
+
   return (
     <SectionCard>
       <Select
@@ -313,6 +312,19 @@ export function ApprovalEventTypeSelect({
           setFormData((f) => ({ ...f, eventType: v }));
           onUserEdit();
         }}
+        searchable
+        allowDeselect={false}
+        selectFirstOptionOnChange
+        renderOption={({ option }) => {
+          const Icon = EVENT_TYPE_ICONS[option.value] || IconFileText;
+          return (
+            <Group gap="xs" wrap="nowrap">
+              <Icon size={16} style={{ opacity: 0.7, flexShrink: 0 }} />
+              <Text size="sm">{option.label}</Text>
+            </Group>
+          );
+        }}
+        leftSection={<CurrentIcon size={16} style={{ opacity: 0.7 }} />}
         classNames={{
           input: eventTypePulse ? "event-type-pulse" : undefined,
         }}
