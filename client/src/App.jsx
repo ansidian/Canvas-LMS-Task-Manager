@@ -56,11 +56,14 @@ function AppContentBody({ api, isGuest }) {
     !controller.loading &&
     !controller.initialLoading;
 
+  // Approval modal has its own arrow key handlers, so disable calendar navigation when it's open
+  const isApprovalModalOpen = controller.approvalIndex >= 0;
+
   useHotkeys([
-    ["n", controller.nextMonth],
-    ["ArrowRight", controller.nextMonth],
-    ["p", controller.prevMonth],
-    ["ArrowLeft", controller.prevMonth],
+    ["n", () => !isApprovalModalOpen && controller.nextMonth()],
+    ["ArrowRight", () => !isApprovalModalOpen && controller.nextMonth()],
+    ["p", () => !isApprovalModalOpen && controller.prevMonth()],
+    ["ArrowLeft", () => !isApprovalModalOpen && controller.prevMonth()],
     ["t", controller.goToToday],
     ["mod+j", () => toggleColorScheme()],
     ["mod+k", () => spotlight.open()],
