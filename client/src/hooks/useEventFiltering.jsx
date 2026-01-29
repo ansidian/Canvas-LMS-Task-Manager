@@ -70,7 +70,14 @@ export default function useEventFiltering({
 	}, [pendingItems, classes]);
 
 	const spotlightActions = useMemo(() => {
-		return events.map((event) => {
+		// do not search events from unsynced classes
+		const syncedEvents = events.filter((event) => {
+			if (!event.class_id) return true;
+			const cls = classesById.get(event.class_id);
+			return !cls || cls.is_synced !== false;
+		});
+
+		return syncedEvents.map((event) => {
 			const cls = classesById.get(event.class_id);
 			const color = cls?.color || unassignedColor;
 			const StatusIcon =
