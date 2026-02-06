@@ -6,6 +6,8 @@ const db = createClient({
 });
 
 const WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
+const DISCORD_USER_ID = process.env.DISCORD_USER_ID;
+const CLERK_USER_ID = process.env.CLERK_USER_ID;
 
 // Ensure notification_log table exists
 await db.execute(`
@@ -18,28 +20,33 @@ await db.execute(`
   )
 `);
 
+// Normalize due_date from ISO 8601 (2026-02-06T23:30:00Z) to SQLite format (2026-02-06 23:30:00)
+// so BETWEEN comparisons work against datetime('now', ...)
+const NORM = "replace(replace(e.due_date, 'T', ' '), 'Z', '')";
+
 // Find events due in ~6h or ~1h that haven't been notified yet
 const result = await db.execute(`
   SELECT e.id, e.title, e.due_date, e.canvas_url, e.status,
          c.name as class_name, c.color as class_color,
          CASE
-           WHEN e.due_date BETWEEN datetime('now', '+330 minutes') AND datetime('now', '+390 minutes')
+           WHEN ${NORM} BETWEEN datetime('now', '+330 minutes') AND datetime('now', '+390 minutes')
                 AND NOT EXISTS (SELECT 1 FROM notification_log nl WHERE nl.event_id = e.id AND nl.notification_type = '6h')
              THEN '6h'
-           WHEN e.due_date BETWEEN datetime('now', '+30 minutes') AND datetime('now', '+90 minutes')
+           WHEN ${NORM} BETWEEN datetime('now', '+30 minutes') AND datetime('now', '+90 minutes')
                 AND NOT EXISTS (SELECT 1 FROM notification_log nl WHERE nl.event_id = e.id AND nl.notification_type = '1h')
              THEN '1h'
          END as notification_type
   FROM events e
   LEFT JOIN classes c ON e.class_id = c.id AND c.user_id = e.user_id
-  WHERE e.due_date LIKE '%T%'
+  WHERE e.user_id = '${CLERK_USER_ID}'
+    AND e.due_date LIKE '%T%'
     AND e.status != 'complete'
-    AND e.due_date > datetime('now')
+    AND ${NORM} > datetime('now')
     AND (
-      (e.due_date BETWEEN datetime('now', '+330 minutes') AND datetime('now', '+390 minutes')
+      (${NORM} BETWEEN datetime('now', '+330 minutes') AND datetime('now', '+390 minutes')
        AND NOT EXISTS (SELECT 1 FROM notification_log nl WHERE nl.event_id = e.id AND nl.notification_type = '6h'))
       OR
-      (e.due_date BETWEEN datetime('now', '+30 minutes') AND datetime('now', '+90 minutes')
+      (${NORM} BETWEEN datetime('now', '+30 minutes') AND datetime('now', '+90 minutes')
        AND NOT EXISTS (SELECT 1 FROM notification_log nl WHERE nl.event_id = e.id AND nl.notification_type = '1h'))
     )
 `);
@@ -96,7 +103,9 @@ for (const event of events) {
   };
 
   const body = {
-    content: isUrgent ? "Deadline approaching soon!" : "",
+    content: DISCORD_USER_ID
+      ? `<@${DISCORD_USER_ID}> ${isUrgent ? "Deadline approaching soon!" : ""}`
+      : isUrgent ? "Deadline approaching soon!" : "",
     embeds: [embed],
   };
 
