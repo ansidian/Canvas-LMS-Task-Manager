@@ -2,10 +2,9 @@ name: Deadline Notifications
 
 on:
   schedule:
-    # Year-round Pacific coverage (7 AM – 11 PM)
-    # PST = UTC-8, PDT = UTC-7, so we use a wide UTC window
-    - cron: "*/30 0-7 * * *" # midnight–7:30 AM UTC
-    - cron: "*/30 14-23 * * *" # 2 PM–11:30 PM UTC
+    # Noon – 11:30 PM Pacific (covers both PST UTC-8 and PDT UTC-7)
+    - cron: "*/30 0-8 * * *"   # midnight–8 AM UTC  (4 PM PST / 5 PM PDT – 12 AM PST / 1 AM PDT)
+    - cron: "*/30 19-23 * * *" # 7 PM–11:30 PM UTC  (11 AM PST / 12 PM PDT – 3:30 PM PST / 4:30 PM PDT)
   workflow_dispatch: # Allow manual trigger for testing
 
 jobs:

@@ -24,17 +24,18 @@ await db.execute(`
 // so BETWEEN comparisons work against datetime('now', ...)
 const NORM = "replace(replace(e.due_date, 'T', ' '), 'Z', '')";
 
-// Find events due in ~6h or ~1h that haven't been notified yet
+// Find events due within 6h or 1h that haven't been notified yet.
+// Wide windows — notification_log prevents duplicates, so the first run
+// that sees an event in range sends the notification and all later runs skip it.
 const result = await db.execute(`
   SELECT e.id, e.title, e.due_date, e.canvas_url, e.status,
          c.name as class_name, c.color as class_color,
          CASE
-           WHEN ${NORM} BETWEEN datetime('now', '+330 minutes') AND datetime('now', '+390 minutes')
-                AND NOT EXISTS (SELECT 1 FROM notification_log nl WHERE nl.event_id = e.id AND nl.notification_type = '6h')
-             THEN '6h'
-           WHEN ${NORM} BETWEEN datetime('now', '+30 minutes') AND datetime('now', '+90 minutes')
+           WHEN ${NORM} <= datetime('now', '+360 minutes')
                 AND NOT EXISTS (SELECT 1 FROM notification_log nl WHERE nl.event_id = e.id AND nl.notification_type = '1h')
              THEN '1h'
+           WHEN NOT EXISTS (SELECT 1 FROM notification_log nl WHERE nl.event_id = e.id AND nl.notification_type = '6h')
+             THEN '6h'
          END as notification_type
   FROM events e
   LEFT JOIN classes c ON e.class_id = c.id AND c.user_id = e.user_id
@@ -42,11 +43,11 @@ const result = await db.execute(`
     AND e.due_date LIKE '%T%'
     AND e.status != 'complete'
     AND ${NORM} > datetime('now')
+    AND ${NORM} <= datetime('now', '+360 minutes')
     AND (
-      (${NORM} BETWEEN datetime('now', '+330 minutes') AND datetime('now', '+390 minutes')
-       AND NOT EXISTS (SELECT 1 FROM notification_log nl WHERE nl.event_id = e.id AND nl.notification_type = '6h'))
+      NOT EXISTS (SELECT 1 FROM notification_log nl WHERE nl.event_id = e.id AND nl.notification_type = '6h')
       OR
-      (${NORM} BETWEEN datetime('now', '+30 minutes') AND datetime('now', '+90 minutes')
+      (${NORM} <= datetime('now', '+60 minutes')
        AND NOT EXISTS (SELECT 1 FROM notification_log nl WHERE nl.event_id = e.id AND nl.notification_type = '1h'))
     )
 `);
