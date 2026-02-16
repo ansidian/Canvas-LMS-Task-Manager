@@ -18,6 +18,8 @@ import {
   IconTag,
   IconChecklist,
   IconFlag,
+  IconSparkles,
+  IconX,
 } from "@tabler/icons-react";
 import dayjs from "dayjs";
 import { toLocalDate, toUTCString } from "../utils/datetime";
@@ -83,6 +85,9 @@ export default function CreateEventModal({
   const [todoistSubmitting, setTodoistSubmitting] = useState(false);
   const [todoistPriority, setTodoistPriority] = useState("1");
   const [nlpResult, setNlpResult] = useState(null);
+  const [appliedNlp, setAppliedNlp] = useState(null);
+  const nlpAppliedRef = useRef(false);
+  const nlpDismissedRef = useRef(false);
   const [formData, setFormData] = useState({
     title: "",
     dueDate: null,
@@ -118,24 +123,43 @@ export default function CreateEventModal({
     }
   }, [opened]);
 
-  // NLP parsing for Todoist mode
+  // NLP parsing for both Todoist mode and normal mode
   useEffect(() => {
-    if (!isTodoistMode) {
+    if (!formData.title.trim()) {
       setNlpResult(null);
       return;
     }
     const timer = setTimeout(() => {
-      setNlpResult(parseNLPInput(formData.title, formData.dueDate || new Date()));
+      const result = parseNLPInput(formData.title, formData.dueDate || new Date());
+      setNlpResult(result);
+
+      // Auto-apply in normal mode (skip if already applied or dismissed)
+      if (!isTodoistMode && result.date && result.dateText && !nlpDismissedRef.current && !nlpAppliedRef.current) {
+        nlpAppliedRef.current = true;
+        setAppliedNlp({
+          originalDueDate: formData.dueDate,
+          dateText: result.dateText,
+          appliedDate: result.date,
+          hasTime: result.hasTime,
+        });
+        setFormData((f) => ({
+          ...f,
+          dueDate: result.date,
+        }));
+      }
     }, 300);
     return () => clearTimeout(timer);
   }, [formData.title, formData.dueDate, isTodoistMode]);
 
-  // Reset Todoist state when modal closes
+  // Reset state when modal closes
   useEffect(() => {
     if (!opened) {
       setTodoistPriority("1");
       setTodoistSubmitting(false);
       setNlpResult(null);
+      setAppliedNlp(null);
+      nlpAppliedRef.current = false;
+      nlpDismissedRef.current = false;
     }
   }, [opened]);
 
@@ -284,6 +308,16 @@ export default function CreateEventModal({
     setHasUserEdited(true);
   };
 
+  const handleDismissNlpDate = () => {
+    if (!appliedNlp) return;
+    setFormData((f) => ({
+      ...f,
+      dueDate: appliedNlp.originalDueDate,
+    }));
+    nlpDismissedRef.current = true;
+    setAppliedNlp(null);
+  };
+
   const todoistSubmitDisabled =
     isTodoistMode && (!nlpResult?.title || todoistSubmitting);
 
@@ -319,6 +353,9 @@ export default function CreateEventModal({
             }
             value={formData.title}
             onChange={(e) => {
+              nlpDismissedRef.current = false;
+              nlpAppliedRef.current = false;
+              setAppliedNlp(null);
               setFormData((f) => ({ ...f, title: e.target.value }));
               markUserEdited();
             }}
@@ -468,6 +505,39 @@ export default function CreateEventModal({
                         })(),
                       }))}
                     />
+                    <AnimatePresence>
+                      {appliedNlp && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.15 }}
+                        >
+                          <Group
+                            gap={6}
+                            mt={8}
+                            style={{ cursor: "pointer" }}
+                            onClick={handleDismissNlpDate}
+                          >
+                            <IconSparkles size={14} color="var(--mantine-color-violet-5)" />
+                            <Text size="xs" c="dimmed">
+                              <Text span c="violet" fw={500}>
+                                &ldquo;{appliedNlp.dateText}&rdquo;
+                              </Text>
+                              {" → "}
+                              <Text span fw={500}>
+                                {dayjs(appliedNlp.appliedDate).format(
+                                  appliedNlp.hasTime
+                                    ? "ddd, MMM D [at] h:mm A"
+                                    : "ddd, MMM D, YYYY",
+                                )}
+                              </Text>
+                            </Text>
+                            <IconX size={14} color="var(--mantine-color-dimmed)" />
+                          </Group>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </SectionCard>
 
                   {/* Classification Section */}
