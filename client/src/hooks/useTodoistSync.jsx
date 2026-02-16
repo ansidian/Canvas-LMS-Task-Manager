@@ -105,23 +105,64 @@ export default function useTodoistSync({
             // Existing task — reconcile with Todoist as source of truth
             const local = existingMap[taskIdStr];
 
-            const titleChanged = local.title !== task.title;
-            const dateChanged =
-              new Date(local.due_date).getTime() !==
-              new Date(task.due_date).getTime();
-            // Recurring tasks: if Todoist still has it active but local is
-            // complete, the task advanced to its next occurrence — reset it
-            const needsReopen =
-              local.status === "complete";
+            // Recurring tasks: if local is complete but Todoist still has
+            // it active, the task advanced to its next occurrence.
+            // Detach the completed event and create a fresh one.
+            if (local.status === "complete") {
+              // Detach completed instance so it stays as history
+              updateEvent(local.id, { todoist_id: null });
 
-            if (titleChanged || dateChanged || needsReopen) {
-              const updates = {};
-              if (titleChanged) updates.title = task.title;
-              if (dateChanged) updates.due_date = task.due_date;
-              if (needsReopen) updates.status = "incomplete";
+              // Create new event for the next occurrence
+              const tempId = `temp-todoist-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+              const optimisticEvent = {
+                id: tempId,
+                title: task.title,
+                due_date: task.due_date,
+                class_id: todoistClassId,
+                event_type: "assignment",
+                status: "incomplete",
+                notes: "",
+                url: task.url,
+                todoist_id: taskIdStr,
+              };
 
-              updateEvent(local.id, updates);
-              updatedCount++;
+              addEvent(optimisticEvent);
+
+              createPromises.push(
+                api("/events", {
+                  method: "POST",
+                  body: JSON.stringify({
+                    title: task.title,
+                    due_date: task.due_date,
+                    class_id: todoistClassId,
+                    event_type: "assignment",
+                    status: "incomplete",
+                    url: task.url,
+                    todoist_id: taskIdStr,
+                  }),
+                })
+                  .then((newEvent) => replaceEvent(tempId, newEvent))
+                  .catch((err) =>
+                    console.error("Failed to create recurring Todoist event:", err),
+                  ),
+              );
+
+              addedCount++;
+            } else {
+              // Still active locally — just reconcile title/date changes
+              const titleChanged = local.title !== task.title;
+              const dateChanged =
+                new Date(local.due_date).getTime() !==
+                new Date(task.due_date).getTime();
+
+              if (titleChanged || dateChanged) {
+                const updates = {};
+                if (titleChanged) updates.title = task.title;
+                if (dateChanged) updates.due_date = task.due_date;
+
+                updateEvent(local.id, updates);
+                updatedCount++;
+              }
             }
           }
         }
