@@ -87,6 +87,7 @@ function formatTime(time24) {
 }
 
 export default function EventCard({ event, color, onClick, isDragging }) {
+  const isGhost = event.isGhost;
   const {
     attributes,
     listeners,
@@ -94,6 +95,7 @@ export default function EventCard({ event, color, onClick, isDragging }) {
     isDragging: isBeingDragged,
   } = useDraggable({
     id: event.id,
+    disabled: isGhost,
   });
 
   const cardRef = useRef(null);
@@ -167,6 +169,47 @@ export default function EventCard({ event, color, onClick, isDragging }) {
   // Status indicator - glow for incomplete/in_progress, hatch overlay for in_progress
   const showStatusGlow = !isComplete;
   const showHatchPattern = event.status === "in_progress";
+
+  // Ghost preview for event being created
+  if (isGhost) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        transition={{ duration: 0.15 }}
+        layout
+      >
+        <Paper
+          p={4}
+          radius="sm"
+          style={{
+            background: cardBackground,
+            opacity: 0.45,
+            border: "1.5px dashed rgba(255,255,255,0.5)",
+            pointerEvents: "none",
+          }}
+        >
+          <Stack gap={2}>
+            <Group gap={4} wrap="nowrap">
+              <Icon size={12} color={textColor} />
+              <Text size="xs" c={textColor} truncate fw={500}>
+                {event.title || "New event"}
+              </Text>
+            </Group>
+            {showTime && (
+              <Group gap={4} wrap="nowrap" ml={16}>
+                <IconClock size={10} color={textColor} opacity={0.8} />
+                <Text size="10px" c={textColor} opacity={0.8}>
+                  {formattedTime}
+                </Text>
+              </Group>
+            )}
+          </Stack>
+        </Paper>
+      </motion.div>
+    );
+  }
 
   // When being dragged, hide the original (DragOverlay shows the preview)
   if (isBeingDragged) {

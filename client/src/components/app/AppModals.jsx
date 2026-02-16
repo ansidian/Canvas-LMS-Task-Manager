@@ -66,13 +66,17 @@ export default function AppModals() {
 
 			<CreateEventModal
 				opened={!!controller.createEventDate}
-				onClose={() => controller.setCreateEventDate(null)}
+				onClose={() => {
+					controller.setGhostEvent(null);
+					controller.setCreateEventDate(null);
+				}}
 				date={controller.createEventDate}
 				classes={controller.classes}
 				events={controller.events}
 				unassignedColor={controller.unassignedColor}
 				onCreate={controller.handleCreateEvent}
 				onOpenEvent={controller.handleOpenEvent}
+				onGhostUpdate={controller.setGhostEvent}
 				api={controller.api}
 			/>
 		</>

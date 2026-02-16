@@ -26,6 +26,7 @@ export default function AppMain() {
 					onEventDrop={controller.handleEventDrop}
 					onDayDoubleClick={controller.handleDayDoubleClick}
 					unassignedColor={controller.unassignedColor}
+					ghostEvent={controller.ghostEvent}
 				/>
 			)}
 		</AppShell.Main>

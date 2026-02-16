@@ -42,6 +42,7 @@ export default function useAppController({
 		approvalIndex,
 		selectedEvent,
 		createEventDate,
+		ghostEvent,
 		loading,
 		initialLoading,
 		highlightCredentials,
@@ -50,6 +51,7 @@ export default function useAppController({
 		setApprovalIndex,
 		setSelectedEvent,
 		setCreateEventDate,
+		setGhostEvent,
 		setLoading,
 		setInitialLoading,
 		setHighlightCredentials,
@@ -212,6 +214,7 @@ export default function useAppController({
 	};
 
 	const handleCreateEvent = async (eventData) => {
+		setGhostEvent(null);
 		const newEvent = await createEventRecord(eventData);
 		if (newEvent) {
 			setCreateEventDate(null);
@@ -245,6 +248,7 @@ export default function useAppController({
 		approvalIndex,
 		selectedEvent,
 		createEventDate,
+		ghostEvent,
 		loading,
 		initialLoading,
 		highlightCredentials,
@@ -268,6 +272,7 @@ export default function useAppController({
 		setApprovalIndex,
 		setSelectedEvent,
 		setCreateEventDate,
+		setGhostEvent,
 		setHighlightCredentials,
 		loadEvents,
 		loadClasses: canvas.loadClasses,

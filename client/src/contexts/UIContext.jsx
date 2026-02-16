@@ -9,6 +9,7 @@ const initialState = {
 	approvalIndex: -1,
 	selectedEvent: null,
 	createEventDate: null,
+	ghostEvent: null,
 	loading: false,
 	initialLoading: true,
 	highlightCredentials: false,
@@ -48,6 +49,11 @@ function uiReducer(state, action) {
 					state.createEventDate,
 				),
 			};
+		case "SET_GHOST_EVENT":
+			return {
+				...state,
+				ghostEvent: resolveNext(action.value, state.ghostEvent),
+			};
 		case "SET_LOADING":
 			return {
 				...state,
@@ -81,6 +87,7 @@ export function UIProvider({ children }) {
 			approvalIndex: state.approvalIndex,
 			selectedEvent: state.selectedEvent,
 			createEventDate: state.createEventDate,
+			ghostEvent: state.ghostEvent,
 			loading: state.loading,
 			initialLoading: state.initialLoading,
 			highlightCredentials: state.highlightCredentials,
@@ -94,6 +101,8 @@ export function UIProvider({ children }) {
 				dispatch({ type: "SET_SELECTED_EVENT", value: next }),
 			setCreateEventDate: (next) =>
 				dispatch({ type: "SET_CREATE_EVENT_DATE", value: next }),
+			setGhostEvent: (next) =>
+				dispatch({ type: "SET_GHOST_EVENT", value: next }),
 			setLoading: (next) =>
 				dispatch({ type: "SET_LOADING", value: next }),
 			setInitialLoading: (next) =>
@@ -107,6 +116,7 @@ export function UIProvider({ children }) {
 			state.approvalIndex,
 			state.selectedEvent,
 			state.createEventDate,
+			state.ghostEvent,
 			state.loading,
 			state.initialLoading,
 			state.highlightCredentials,

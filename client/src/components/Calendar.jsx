@@ -23,6 +23,7 @@ export default function Calendar({
   onEventDrop,
   onDayDoubleClick,
   unassignedColor = "#a78b71",
+  ghostEvent = null,
 }) {
   const [activeEvent, setActiveEvent] = useState(null);
   const [slideDirection, setSlideDirection] = useState("");
@@ -91,9 +92,18 @@ export default function Calendar({
       if (!map[dateKey]) map[dateKey] = [];
       map[dateKey].push(event);
     });
+    // Inject ghost event
+    if (ghostEvent?.due_date) {
+      const ghostKey = dayjs(ghostEvent.due_date).format("YYYY-MM-DD");
+      if (!map[ghostKey]) map[ghostKey] = [];
+      map[ghostKey].push(ghostEvent);
+    }
     // Sort each day's events by time (earliest first, midnight/all-day at bottom)
     Object.values(map).forEach((dayEvents) => {
       dayEvents.sort((a, b) => {
+        // Ghost always last
+        if (a.isGhost) return 1;
+        if (b.isGhost) return -1;
         const timeA = dayjs(a.due_date);
         const timeB = dayjs(b.due_date);
         const isMidnightA = timeA.hour() === 0 && timeA.minute() === 0;
@@ -107,7 +117,7 @@ export default function Calendar({
       });
     });
     return map;
-  }, [events]);
+  }, [events, ghostEvent]);
 
   const handleDragStart = (event) => {
     const eventData = events.find((e) => e.id === event.active.id);

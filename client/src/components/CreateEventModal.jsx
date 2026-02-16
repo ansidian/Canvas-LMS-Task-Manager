@@ -76,6 +76,7 @@ export default function CreateEventModal({
   unassignedColor,
   onCreate,
   onOpenEvent,
+  onGhostUpdate,
   api,
 }) {
   const titleRef = useRef(null);
@@ -163,6 +164,27 @@ export default function CreateEventModal({
     }
   }, [opened]);
 
+  // Sync ghost event to calendar preview
+  useEffect(() => {
+    if (!onGhostUpdate || !opened) return;
+    if (!formData.title.trim() || isTodoistMode) {
+      onGhostUpdate(null);
+      return;
+    }
+    const cls = classes.find((c) => String(c.id) === formData.classId);
+    onGhostUpdate({
+      id: "__ghost__",
+      title: (appliedNlp ? nlpResult?.title || formData.title : formData.title).trim(),
+      due_date: toUTCString(formData.dueDate),
+      status: "incomplete",
+      event_type: formData.eventType,
+      class_id: formData.classId || null,
+      class_name: cls?.name || null,
+      class_color: cls?.color || null,
+      isGhost: true,
+    });
+  }, [opened, formData.title, formData.dueDate, formData.classId, formData.eventType, isTodoistMode]);
+
   // Handle Mod+Enter to submit
   useEffect(() => {
     if (!opened) return;
@@ -190,8 +212,11 @@ export default function CreateEventModal({
       return;
     }
 
+    // Use NLP-cleaned title if a date was applied, otherwise raw title
+    const cleanTitle = appliedNlp ? (nlpResult?.title || formData.title).trim() : formData.title.trim();
+
     onCreate({
-      title: formData.title.trim(),
+      title: cleanTitle,
       due_date: toUTCString(formData.dueDate),
       class_id: formData.classId || null,
       event_type: formData.eventType,
