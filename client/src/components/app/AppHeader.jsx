@@ -74,7 +74,10 @@ export default function AppHeader({ isGuest }) {
             <Tooltip label={controller.getFetchTooltip()}>
               <ActionIcon
                 variant="subtle"
-                onClick={() => controller.fetchCanvasAssignments()}
+                onClick={() => {
+                  controller.fetchCanvasAssignments();
+                  controller.fetchTodoistTasks();
+                }}
                 loading={controller.loading}
                 size="lg"
               >

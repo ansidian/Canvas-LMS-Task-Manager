@@ -34,4 +34,9 @@ export const STATUS_OPTIONS = [
   { value: "complete", label: "Complete" },
 ];
 
+export const TODOIST_STATUS_OPTIONS = [
+  { value: "incomplete", label: "Incomplete" },
+  { value: "complete", label: "Complete" },
+];
+
 export const PREVIEW_SIZE = { width: 280, height: 140, contentWidth: 640 };

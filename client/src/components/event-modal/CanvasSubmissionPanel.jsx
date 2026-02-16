@@ -83,7 +83,7 @@ export default function CanvasSubmissionPanel({
       rel="noopener noreferrer"
       size="sm"
     >
-      Open in Canvas
+      {canvasUrl.startsWith("https://app.todoist.com/") ? "Open in Todoist" : "Open in Canvas"}
     </Anchor>
   ) : (
     "Open in Canvas"

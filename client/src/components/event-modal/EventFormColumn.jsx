@@ -32,6 +32,7 @@ import {
   PREVIEW_SIZE,
   STATUS_COLORS,
   STATUS_OPTIONS,
+  TODOIST_STATUS_OPTIONS,
 } from "./constants";
 
 // Subtle section card for visual grouping
@@ -84,6 +85,7 @@ export default function EventFormColumn({
   markUserEdited,
 }) {
   const isCanvasLinked = Boolean(event?.canvas_id);
+  const isTodoistLinked = Boolean(event?.todoist_id);
   const isSyncLocked = isCanvasLinked && !formData.canvas_due_date_override;
   const toggleSyncLock = () => {
     const nextValue = isSyncLocked ? 1 : 0;
@@ -232,7 +234,7 @@ export default function EventFormColumn({
                   }}
                   color={STATUS_COLORS[formData.status]}
                   autoContrast
-                  data={STATUS_OPTIONS}
+                  data={isTodoistLinked ? TODOIST_STATUS_OPTIONS : STATUS_OPTIONS}
                   styles={{
                     root: {
                       backgroundColor: "var(--card)",
@@ -500,7 +502,7 @@ export default function EventFormColumn({
                 mt={4}
                 style={{ display: "inline-block" }}
               >
-                Open in Canvas →
+                {formData.url.startsWith("https://app.todoist.com/") ? "Open in Todoist" : "Open in Canvas"} →
               </Anchor>
             )}
           </Box>

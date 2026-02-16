@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import useSettingsModalState from "../hooks/useSettingsModalState";
 import { Modal, Tabs } from "@mantine/core";
 import SettingsCanvasTab from "./settings/SettingsCanvasTab";
+import SettingsTodoistTab from "./settings/SettingsTodoistTab";
 import SettingsClassesTab from "./settings/SettingsClassesTab";
 import SettingsHelpTab from "./settings/SettingsHelpTab";
 import useSettingsApi from "../hooks/useSettingsApi";
@@ -31,6 +32,8 @@ export default function SettingsModal({
     setCanvasUrl,
     canvasToken,
     setCanvasToken,
+    todoistToken,
+    setTodoistToken,
     newClassName,
     setNewClassName,
     newClassColor,
@@ -43,6 +46,8 @@ export default function SettingsModal({
     setEditColor,
     saveSuccess,
     setSaveSuccess,
+    todoistSaveSuccess,
+    setTodoistSaveSuccess,
     editingUnassigned,
     setEditingUnassigned,
     editUnassignedColor,
@@ -93,6 +98,9 @@ export default function SettingsModal({
     unassignedColor,
     canvasUrl,
     canvasToken,
+    todoistToken,
+    todoistSaveSuccess,
+    setTodoistSaveSuccess,
     resetOnboarding,
   });
 
@@ -104,6 +112,7 @@ export default function SettingsModal({
         if (cancelled) return;
         setCanvasUrl(data.canvas_url || "");
         setCanvasToken(data.canvas_token || "");
+        setTodoistToken(data.todoist_token || "");
       })
       .catch((err) => {
         console.error("Failed to load Canvas settings:", err);
@@ -112,13 +121,14 @@ export default function SettingsModal({
     return () => {
       cancelled = true;
     };
-  }, [api, opened, setCanvasToken, setCanvasUrl]);
+  }, [api, opened, setCanvasToken, setCanvasUrl, setTodoistToken]);
 
   return (
     <Modal opened={opened} onClose={onClose} title="Settings" size="lg">
       <Tabs defaultValue="canvas">
         <Tabs.List style={{ borderBottom: '1px solid var(--rule)' }}>
           <Tabs.Tab value="canvas">Canvas API</Tabs.Tab>
+          <Tabs.Tab value="todoist">Todoist</Tabs.Tab>
           <Tabs.Tab value="classes">Classes</Tabs.Tab>
           <Tabs.Tab value="help">Help</Tabs.Tab>
         </Tabs.List>
@@ -137,6 +147,19 @@ export default function SettingsModal({
               setCanvasToken,
               saveCanvasSettings: settingsApi.saveCanvasSettings,
               onCanvasAuthErrorClear,
+            }}
+          />
+        </Tabs.Panel>
+
+        <Tabs.Panel value="todoist" pt={16}>
+          <SettingsTodoistTab
+            config={{
+              todoistToken,
+              saveSuccess: todoistSaveSuccess,
+            }}
+            handlers={{
+              setTodoistToken,
+              saveTodoistSettings: settingsApi.saveTodoistSettings,
             }}
           />
         </Tabs.Panel>

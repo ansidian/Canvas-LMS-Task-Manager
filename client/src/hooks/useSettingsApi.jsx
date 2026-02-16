@@ -25,6 +25,9 @@ export default function useSettingsApi({
   unassignedColor,
   canvasUrl,
   canvasToken,
+  todoistToken,
+  todoistSaveSuccess,
+  setTodoistSaveSuccess,
   resetOnboarding,
 }) {
   const handleResetData = async () => {
@@ -82,6 +85,22 @@ export default function useSettingsApi({
     } catch (err) {
       console.error("Failed to save Canvas settings:", err);
       notifyError(err.message || "Failed to save Canvas settings.");
+    }
+  };
+
+  const saveTodoistSettings = async () => {
+    try {
+      const trimmed = todoistToken?.trim() || "";
+      await api("/settings", {
+        method: "PATCH",
+        body: JSON.stringify({ todoist_token: trimmed }),
+      });
+      setTodoistSaveSuccess(true);
+      notifySuccess(trimmed ? "Todoist settings saved." : "Todoist disconnected.");
+      setTimeout(() => setTodoistSaveSuccess(false), 1500);
+    } catch (err) {
+      console.error("Failed to save Todoist settings:", err);
+      notifyError(err.message || "Failed to save Todoist settings.");
     }
   };
 
@@ -198,6 +217,7 @@ export default function useSettingsApi({
     resetOnboarding,
     handleResetData,
     saveCanvasSettings,
+    saveTodoistSettings,
     addClass,
     deleteClass,
     startEditing,

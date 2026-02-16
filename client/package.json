@@ -28,6 +28,7 @@
     "@tiptap/react": "^3.4.2",
     "@tiptap/starter-kit": "^3.4.2",
     "canvas-confetti": "^1.9.4",
+    "chrono-node": "^2.9.0",
     "dayjs": "^1.11.19",
     "framer-motion": "^12.26.2",
     "react": "^19.2.3",

@@ -364,7 +364,7 @@ export function ApprovalUrlField({ formData, setFormData, onUserEdit }) {
             size="xs"
             style={{ display: "inline-block" }}
           >
-            Open in Canvas
+            {formData.url.startsWith("https://app.todoist.com/") ? "Open in Todoist" : "Open in Canvas"}
           </Anchor>
         )}
       </Stack>

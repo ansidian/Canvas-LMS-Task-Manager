@@ -7,12 +7,14 @@ export default function useSettingsModalState({
 }) {
 	const [canvasUrl, setCanvasUrl] = useState("");
 	const [canvasToken, setCanvasToken] = useState("");
+	const [todoistToken, setTodoistToken] = useState("");
 	const [newClassName, setNewClassName] = useState("");
 	const [newClassColor, setNewClassColor] = useState("#228be6");
 	const [editingClassId, setEditingClassId] = useState(null);
 	const [editName, setEditName] = useState("");
 	const [editColor, setEditColor] = useState("");
 	const [saveSuccess, setSaveSuccess] = useState(false);
+	const [todoistSaveSuccess, setTodoistSaveSuccess] = useState(false);
 	const [editingUnassigned, setEditingUnassigned] = useState(false);
 	const [editUnassignedColor, setEditUnassignedColor] = useState("");
 	const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -34,6 +36,8 @@ export default function useSettingsModalState({
 		setCanvasUrl,
 		canvasToken,
 		setCanvasToken,
+		todoistToken,
+		setTodoistToken,
 		newClassName,
 		setNewClassName,
 		newClassColor,
@@ -46,6 +50,8 @@ export default function useSettingsModalState({
 		setEditColor,
 		saveSuccess,
 		setSaveSuccess,
+		todoistSaveSuccess,
+		setTodoistSaveSuccess,
 		editingUnassigned,
 		setEditingUnassigned,
 		editUnassignedColor,

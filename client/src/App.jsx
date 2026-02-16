@@ -67,7 +67,7 @@ function AppContentBody({ api, isGuest }) {
     ["t", controller.goToToday],
     ["mod+j", () => toggleColorScheme()],
     ["mod+k", () => spotlight.open()],
-    ["r", () => controller.fetchCanvasAssignments()],
+    ["r", () => { controller.fetchCanvasAssignments(); controller.fetchTodoistTasks(); }],
     ["mod+,", () => controller.setSettingsOpen(true)],
   ]);
 

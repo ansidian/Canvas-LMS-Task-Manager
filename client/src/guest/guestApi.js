@@ -76,6 +76,29 @@ const updateEvents = (updater) => {
   return sortEvents(next);
 };
 
+const buildTodoistHeaders = (options = {}) => {
+  const { todoist_token: todoistToken } = getGuestSettings();
+  return {
+    "Content-Type": "application/json",
+    "X-Todoist-Token": todoistToken || "",
+    ...(options.headers || {}),
+  };
+};
+
+const requestGuestTodoist = async (endpoint, options = {}) => {
+  const res = await fetch(`/api/guest/todoist${endpoint}`, {
+    ...options,
+    headers: buildTodoistHeaders(options),
+  });
+  if (!res.ok) {
+    const error = await res
+      .json()
+      .catch(() => ({ message: "Request failed" }));
+    throw new Error(error.message || "Request failed");
+  }
+  return res.json();
+};
+
 const buildCanvasHeaders = (options = {}) => {
   const { canvas_url: canvasUrl, canvas_token: canvasToken } = getGuestSettings();
   return {
@@ -129,6 +152,7 @@ export default async function guestApi(endpoint, options = {}) {
         notes: body.notes ?? null,
         url: body.url ?? null,
         canvas_id: body.canvas_id ?? null,
+        todoist_id: body.todoist_id ?? null,
         points_possible: body.points_possible ?? null,
         canvas_due_date_override: body.canvas_due_date_override ?? 0,
         created_at: now,
@@ -361,6 +385,60 @@ export default async function guestApi(endpoint, options = {}) {
       setGuestPendingItems([]);
       setGuestLastFetchTimestamp(null);
       return { success: true };
+    }
+  }
+
+  if (segments[0] === "todoist") {
+    const todoistPath = "/" + segments.slice(1).join("/");
+
+    // GET /todoist/tasks
+    if (segments.length === 2 && segments[1] === "tasks" && method === "GET") {
+      const data = await requestGuestTodoist("/tasks");
+      // Build existingMap from local guest events (no DB in guest mode)
+      const existingMap = {};
+      for (const event of getGuestEvents()) {
+        if (event.todoist_id) {
+          existingMap[event.todoist_id] = event;
+        }
+      }
+      return { tasks: data.tasks, existingMap };
+    }
+
+    // POST /todoist/tasks
+    if (segments.length === 2 && segments[1] === "tasks" && method === "POST") {
+      return requestGuestTodoist("/tasks", {
+        method: "POST",
+        body: options.body,
+      });
+    }
+
+    // POST /todoist/tasks/:id/close
+    if (segments.length === 4 && segments[1] === "tasks" && segments[3] === "close" && method === "POST") {
+      return requestGuestTodoist(`/tasks/${segments[2]}/close`, {
+        method: "POST",
+      });
+    }
+
+    // POST /todoist/tasks/:id/reopen
+    if (segments.length === 4 && segments[1] === "tasks" && segments[3] === "reopen" && method === "POST") {
+      return requestGuestTodoist(`/tasks/${segments[2]}/reopen`, {
+        method: "POST",
+      });
+    }
+
+    // DELETE /todoist/tasks/:id
+    if (segments.length === 3 && segments[1] === "tasks" && method === "DELETE") {
+      return requestGuestTodoist(`/tasks/${segments[2]}`, {
+        method: "DELETE",
+      });
+    }
+
+    // PATCH /todoist/tasks/:id
+    if (segments.length === 3 && segments[1] === "tasks" && method === "PATCH") {
+      return requestGuestTodoist(`/tasks/${segments[2]}`, {
+        method: "PATCH",
+        body: options.body,
+      });
     }
   }
 

@@ -40,14 +40,15 @@ router.post("/", async (req, res) => {
     notes,
     url,
     canvas_id,
+    todoist_id,
     points_possible,
     canvas_due_date_override,
     canvas_status_override,
   } = req.body;
   try {
     const result = await db.execute({
-      sql: `INSERT INTO events (user_id, title, description, due_date, class_id, event_type, status, notes, url, canvas_id, points_possible, canvas_due_date_override, canvas_status_override)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      sql: `INSERT INTO events (user_id, title, description, due_date, class_id, event_type, status, notes, url, canvas_id, todoist_id, points_possible, canvas_due_date_override, canvas_status_override)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
         userId,
         title,
@@ -59,6 +60,7 @@ router.post("/", async (req, res) => {
         notes ?? null,
         url ?? null,
         canvas_id ?? null,
+        todoist_id ?? null,
         points_possible ?? null,
         canvas_due_date_override ?? 0,
         canvas_status_override ?? 0,
@@ -91,6 +93,7 @@ router.patch("/:id", async (req, res) => {
     status,
     notes,
     url,
+    todoist_id,
     points_possible,
     canvas_due_date_override,
     canvas_status_override,
@@ -132,6 +135,10 @@ router.patch("/:id", async (req, res) => {
     if (url !== undefined) {
       updates.push("url = ?");
       args.push(url);
+    }
+    if (todoist_id !== undefined) {
+      updates.push("todoist_id = ?");
+      args.push(todoist_id);
     }
     if (points_possible !== undefined) {
       updates.push("points_possible = ?");

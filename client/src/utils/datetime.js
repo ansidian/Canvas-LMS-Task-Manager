@@ -23,9 +23,17 @@ export function parseDueDate(dueDateString) {
   const hasTime = dueDateString.includes('T') || dueDateString.includes(':');
 
   if (hasTime) {
-    // Parse as UTC timestamp and convert to local time
-    const date = dayjs.utc(dueDateString).local().toDate();
-    return { date, hasTime: true };
+    // Check if the string has an explicit UTC/timezone indicator
+    const isUTC = /Z$|[+-]\d{2}:\d{2}$/.test(dueDateString);
+    if (isUTC) {
+      // UTC timestamp (e.g. Canvas dates) — convert to local time
+      const date = dayjs.utc(dueDateString).local().toDate();
+      return { date, hasTime: true };
+    } else {
+      // Floating/local datetime (e.g. Todoist dates) — interpret as local time
+      const date = dayjs(dueDateString).toDate();
+      return { date, hasTime: true };
+    }
   } else {
     // Date-only string - parse at midnight local time to prevent timezone shifts
     const date = new Date(dueDateString + 'T00:00:00');

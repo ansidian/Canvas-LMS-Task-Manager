@@ -73,6 +73,7 @@ export default function AppModals() {
 				unassignedColor={controller.unassignedColor}
 				onCreate={controller.handleCreateEvent}
 				onOpenEvent={controller.handleOpenEvent}
+				api={controller.api}
 			/>
 		</>
 	);

@@ -9,6 +9,7 @@ import useCanvasSync from "./useCanvasSync";
 import useClassFiltersSync from "./useClassFiltersSync";
 import useEventFiltering from "./useEventFiltering";
 import useOnboardingTour from "./useOnboardingTour";
+import useTodoistSync from "./useTodoistSync";
 
 export default function useAppController({
 	api,
@@ -72,6 +73,14 @@ export default function useAppController({
 		updateEvent: updateEventRecord,
 	});
 
+	const todoist = useTodoistSync({
+		api,
+		addEvent,
+		replaceEvent,
+		updateEvent: updateEventRecord,
+		loadClasses: canvas.loadClasses,
+	});
+
 	useClassFiltersSync({
 		classes: canvas.classes,
 		setClassFilters,
@@ -105,6 +114,7 @@ export default function useAppController({
 		loadSettings: canvas.loadSettings,
 		loadCachedPendingItems: canvas.loadCachedPendingItems,
 		fetchCanvasAssignments: canvas.fetchCanvasAssignments,
+		fetchTodoistIfStale: todoist.fetchTodoistIfStale,
 		setInitialLoading,
 		setShowOnboarding,
 	});
@@ -120,6 +130,58 @@ export default function useAppController({
 	const handleEventUpdate = async (eventId, updates, options = {}) => {
 		const updated = await updateEventRecord(eventId, updates);
 		if (!updated) return;
+
+		// Convert to Todoist: event assigned to Todoist class without existing link
+		if (!updated.todoist_id && updates.class_id != null) {
+			const todoistClass = canvas.classes.find(
+				(c) => c.canvas_course_id === "todoist",
+			);
+			if (todoistClass && String(updates.class_id) === String(todoistClass.id)) {
+				try {
+					const dueDate = updated.due_date;
+					const hasTime = dueDate && dueDate.includes("T");
+					const todoistTask = await api("/todoist/tasks", {
+						method: "POST",
+						body: JSON.stringify({
+							content: updated.title,
+							...(hasTime
+								? { due_datetime: dueDate }
+								: { due_date: dueDate }),
+						}),
+					});
+					// Link the local event to the new Todoist task
+					const linkUpdates = {
+						todoist_id: String(todoistTask.id),
+						url: `https://app.todoist.com/app/task/${todoistTask.id}`,
+					};
+					// Todoist only supports incomplete/complete
+					if (updated.status === "in_progress") {
+						linkUpdates.status = "incomplete";
+					}
+					await updateEventRecord(eventId, linkUpdates);
+				} catch (err) {
+					console.error("Failed to create Todoist task for converted event:", err);
+				}
+			}
+		}
+
+		// 2-way Todoist sync
+		if (updated.todoist_id) {
+			if (updates.status === "complete") {
+				api(`/todoist/tasks/${updated.todoist_id}/close`, { method: "POST" })
+					.catch((err) => console.error("Failed to close Todoist task:", err));
+			} else if (updates.status === "incomplete") {
+				api(`/todoist/tasks/${updated.todoist_id}/reopen`, { method: "POST" })
+					.catch((err) => console.error("Failed to reopen Todoist task:", err));
+			}
+			if (updates.title) {
+				api(`/todoist/tasks/${updated.todoist_id}`, {
+					method: "PATCH",
+					body: JSON.stringify({ content: updates.title }),
+				}).catch((err) => console.error("Failed to update Todoist task:", err));
+			}
+		}
+
 		if (options.keepOpen) {
 			if (options.closeDelayMs) {
 				setTimeout(() => {
@@ -132,6 +194,13 @@ export default function useAppController({
 	};
 
 	const handleEventDelete = async (eventId) => {
+		// Delete on Todoist before deleting locally
+		const eventToDelete = events.find((e) => String(e.id) === String(eventId));
+		if (eventToDelete?.todoist_id) {
+			api(`/todoist/tasks/${eventToDelete.todoist_id}`, { method: "DELETE" })
+				.catch((err) => console.error("Failed to delete Todoist task:", err));
+		}
+
 		const deleted = await deleteEventRecord(eventId);
 		if (deleted) {
 			setSelectedEvent(null);
@@ -203,6 +272,7 @@ export default function useAppController({
 		loadEvents,
 		loadClasses: canvas.loadClasses,
 		fetchCanvasAssignments: canvas.fetchCanvasAssignments,
+		fetchTodoistTasks: todoist.fetchTodoistTasks,
 		handleApprove: approvalFlow.handleApprove,
 		handleReject: approvalFlow.handleReject,
 		handleEventUpdate,

@@ -10,6 +10,7 @@ export default function useAppInitialization({
 	loadSettings,
 	loadCachedPendingItems,
 	fetchCanvasAssignments,
+	fetchTodoistIfStale,
 	setInitialLoading,
 	setShowOnboarding,
 }) {
@@ -32,6 +33,8 @@ export default function useAppInitialization({
 			if (isStale) {
 				fetchCanvasAssignments({ silent: true });
 			}
+			// Todoist has its own staleness check
+			fetchTodoistIfStale();
 		};
 		loadInitialData();
 	}, [
@@ -41,6 +44,7 @@ export default function useAppInitialization({
 		loadCachedPendingItems,
 		setInitialLoading,
 		fetchCanvasAssignments,
+		fetchTodoistIfStale,
 	]);
 
 	useEffect(() => {
