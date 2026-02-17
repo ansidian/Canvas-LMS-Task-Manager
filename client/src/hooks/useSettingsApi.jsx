@@ -133,6 +133,7 @@ export default function useSettingsApi({
     } catch (err) {
       console.error("Failed to delete class:", err);
       notifyError(err.message || "Failed to delete class.");
+    } finally {
       setDeleting(false);
     }
   };

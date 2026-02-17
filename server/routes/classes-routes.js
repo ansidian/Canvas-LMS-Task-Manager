@@ -33,6 +33,17 @@ router.post("/", async (req, res) => {
     const maxSortOrder = maxSortOrderResult.rows[0]?.max_sort_order ?? -1;
     const nextSortOrder = Number(maxSortOrder) + 1;
 
+    // If this is a Canvas-linked class, check for existing duplicate
+    if (canvas_course_id) {
+      const existing = await db.execute({
+        sql: "SELECT * FROM classes WHERE user_id = ? AND canvas_course_id = ?",
+        args: [userId, canvas_course_id],
+      });
+      if (existing.rows.length > 0) {
+        return res.status(200).json(existing.rows[0]);
+      }
+    }
+
     const result = await db.execute({
       sql: "INSERT INTO classes (user_id, name, color, canvas_course_id, sort_order) VALUES (?, ?, ?, ?, ?)",
       args: [
