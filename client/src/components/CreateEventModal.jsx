@@ -226,14 +226,17 @@ export default function CreateEventModal({
   };
 
   const handleTodoistSubmit = async () => {
-    if (!nlpResult?.title) return;
+    if (!formData.title.trim()) return;
     if (!api) return;
+
+    // Parse fresh from current title to avoid stale debounced nlpResult
+    const freshParse = parseNLPInput(formData.title, formData.dueDate || new Date());
 
     setTodoistSubmitting(true);
     try {
       // Resolve the due date: NLP-parsed date > calendar date
-      const resolvedDate = nlpResult.date || formData.dueDate;
-      const hasTime = nlpResult.hasTime;
+      const resolvedDate = freshParse.date || formData.dueDate;
+      const hasTime = freshParse.hasTime;
 
       // Build Todoist due fields — send resolved date directly
       // instead of due_string to avoid Todoist re-interpreting relative dates
@@ -250,7 +253,7 @@ export default function CreateEventModal({
       const todoistTask = await api("/todoist/tasks", {
         method: "POST",
         body: JSON.stringify({
-          content: nlpResult.title,
+          content: freshParse.title,
           ...todoistDue,
           priority: parseInt(todoistPriority, 10),
         }),
@@ -268,7 +271,7 @@ export default function CreateEventModal({
 
       // Create local event linked to Todoist
       onCreate({
-        title: nlpResult.title,
+        title: freshParse.title,
         due_date: dueDate,
         class_id: todoistClass?.id || null,
         event_type: "assignment",
@@ -276,7 +279,7 @@ export default function CreateEventModal({
         url: `https://app.todoist.com/app/task/${todoistTask.id}`,
       });
 
-      notifySuccess(`Todoist task "${nlpResult.title}" created`);
+      notifySuccess(`Todoist task "${freshParse.title}" created`);
     } catch (err) {
       console.error("Failed to create Todoist task:", err);
       notifyError(err.message || "Failed to create Todoist task.");
@@ -344,7 +347,7 @@ export default function CreateEventModal({
   };
 
   const todoistSubmitDisabled =
-    isTodoistMode && (!nlpResult?.title || todoistSubmitting);
+    isTodoistMode && (!formData.title.trim() || todoistSubmitting);
 
   return (
     <BottomSheet
