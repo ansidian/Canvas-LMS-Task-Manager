@@ -117,16 +117,21 @@ router.delete(
   },
 );
 
-// Update a Todoist task (title, etc.)
+// Update a Todoist task (title, date, etc.)
 router.patch(
   "/tasks/:id",
   validateTodoistCredentials(),
   async (req, res) => {
     try {
-      const { content } = req.body;
-      const result = await updateTodoistTask(req.todoistToken, req.params.id, {
-        content,
-      });
+      const { content, due_date, due_datetime } = req.body;
+      const fields = {};
+      if (content !== undefined) fields.content = content;
+      if (due_datetime !== undefined) {
+        fields.due_datetime = due_datetime;
+      } else if (due_date !== undefined) {
+        fields.due_date = due_date;
+      }
+      const result = await updateTodoistTask(req.todoistToken, req.params.id, fields);
       res.json(result);
     } catch (err) {
       console.error("Error updating Todoist task:", err);

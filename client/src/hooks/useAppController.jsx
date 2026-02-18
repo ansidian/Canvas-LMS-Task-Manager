@@ -182,6 +182,17 @@ export default function useAppController({
 					body: JSON.stringify({ content: updates.title }),
 				}).catch((err) => console.error("Failed to update Todoist task:", err));
 			}
+			if (updates.due_date) {
+				const hasTime = updates.due_date.includes("T");
+				api(`/todoist/tasks/${updated.todoist_id}`, {
+					method: "PATCH",
+					body: JSON.stringify(
+						hasTime
+							? { due_datetime: updates.due_date }
+							: { due_date: updates.due_date },
+					),
+				}).catch((err) => console.error("Failed to sync date to Todoist:", err));
+			}
 		}
 
 		if (options.keepOpen) {
@@ -210,7 +221,18 @@ export default function useAppController({
 	};
 
 	const handleEventDrop = async (eventId, newDate) => {
-		await moveEventRecord(eventId, newDate);
+		const updated = await moveEventRecord(eventId, newDate);
+		if (updated?.todoist_id && updated.due_date) {
+			const hasTime = updated.due_date.includes("T");
+			api(`/todoist/tasks/${updated.todoist_id}`, {
+				method: "PATCH",
+				body: JSON.stringify(
+					hasTime
+						? { due_datetime: updated.due_date }
+						: { due_date: updated.due_date },
+				),
+			}).catch((err) => console.error("Failed to sync date to Todoist:", err));
+		}
 	};
 
 	const handleCreateEvent = async (eventData) => {
