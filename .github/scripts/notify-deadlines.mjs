@@ -8,6 +8,7 @@ const db = createClient({
 const WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
 const DISCORD_USER_ID = process.env.DISCORD_USER_ID;
 const CLERK_USER_ID = process.env.CLERK_USER_ID;
+const USER_TIMEZONE = "America/Los_Angeles";
 
 // Ensure notification_log table exists
 await db.execute(`
@@ -20,39 +21,80 @@ await db.execute(`
   )
 `);
 
-// Normalize due_date from ISO 8601 (2026-02-06T23:30:00Z) to SQLite format (2026-02-06 23:30:00)
-// so BETWEEN comparisons work against datetime('now', ...)
+/**
+ * Parse a due_date string into a proper UTC Date object.
+ * Canvas dates have a Z suffix and are already UTC.
+ * Todoist dates are floating local time (no timezone) — interpret as Pacific.
+ */
+function parseDueDateToUTC(dueDateStr) {
+  if (!dueDateStr) return null;
+
+  // Already has explicit timezone info — parse directly
+  if (/Z$|[+-]\d{2}:\d{2}$/.test(dueDateStr)) {
+    return new Date(dueDateStr);
+  }
+
+  // Floating local time (e.g. Todoist "2026-02-19T08:00:00") — interpret as Pacific.
+  // On GitHub Actions (UTC), new Date() without Z treats it as UTC, which is wrong.
+  // Fix: parse as UTC, then use Intl to find the actual Pacific→UTC offset.
+  const asUTC = new Date(
+    dueDateStr.includes("T") ? dueDateStr + "Z" : dueDateStr + "T00:00:00Z"
+  );
+  const pacificTimeStr = asUTC.toLocaleString("en-US", {
+    timeZone: USER_TIMEZONE,
+  });
+  const pacificAsLocal = new Date(pacificTimeStr);
+  const offsetMs = asUTC.getTime() - pacificAsLocal.getTime();
+
+  return new Date(asUTC.getTime() + offsetMs);
+}
+
+// Fetch candidate events with a wide SQL window (14h) to account for timezone
+// offsets on floating dates. Precise filtering happens in JavaScript below.
 const NORM = "replace(replace(e.due_date, 'T', ' '), 'Z', '')";
 
-// Find events due within 6h or 1h that haven't been notified yet.
-// Wide windows — notification_log prevents duplicates, so the first run
-// that sees an event in range sends the notification and all later runs skip it.
 const result = await db.execute(`
   SELECT e.id, e.title, e.due_date, e.canvas_url, e.status,
          c.name as class_name, c.color as class_color,
-         CASE
-           WHEN ${NORM} <= datetime('now', '+360 minutes')
-                AND NOT EXISTS (SELECT 1 FROM notification_log nl WHERE nl.event_id = e.id AND nl.notification_type = '1h')
-             THEN '1h'
-           WHEN NOT EXISTS (SELECT 1 FROM notification_log nl WHERE nl.event_id = e.id AND nl.notification_type = '6h')
-             THEN '6h'
-         END as notification_type
+         (SELECT 1 FROM notification_log nl WHERE nl.event_id = e.id AND nl.notification_type = '6h') as has_6h,
+         (SELECT 1 FROM notification_log nl WHERE nl.event_id = e.id AND nl.notification_type = '1h') as has_1h
   FROM events e
   LEFT JOIN classes c ON e.class_id = c.id AND c.user_id = e.user_id
   WHERE e.user_id = '${CLERK_USER_ID}'
     AND e.due_date LIKE '%T%'
     AND e.status != 'complete'
-    AND ${NORM} > datetime('now')
-    AND ${NORM} <= datetime('now', '+360 minutes')
+    AND ${NORM} > datetime('now', '-480 minutes')
+    AND ${NORM} <= datetime('now', '+840 minutes')
     AND (
       NOT EXISTS (SELECT 1 FROM notification_log nl WHERE nl.event_id = e.id AND nl.notification_type = '6h')
-      OR
-      (${NORM} <= datetime('now', '+60 minutes')
-       AND NOT EXISTS (SELECT 1 FROM notification_log nl WHERE nl.event_id = e.id AND nl.notification_type = '1h'))
+      OR NOT EXISTS (SELECT 1 FROM notification_log nl WHERE nl.event_id = e.id AND nl.notification_type = '1h')
     )
 `);
 
-const events = result.rows;
+// Filter with proper timezone handling
+const now = Date.now();
+const events = [];
+
+for (const row of result.rows) {
+  const dueUTC = parseDueDateToUTC(row.due_date);
+  if (!dueUTC) continue;
+
+  const diffMinutes = (dueUTC.getTime() - now) / 60000;
+
+  // Must be in the future and within 6 hours
+  if (diffMinutes <= 0 || diffMinutes > 360) continue;
+
+  let notification_type = null;
+  if (diffMinutes <= 60 && !row.has_1h) {
+    notification_type = "1h";
+  } else if (!row.has_6h) {
+    notification_type = "6h";
+  }
+
+  if (!notification_type) continue;
+
+  events.push({ ...row, notification_type, _dueUTC: dueUTC });
+}
 
 if (events.length === 0) {
   console.log("No upcoming deadlines to notify about.");
@@ -62,9 +104,8 @@ if (events.length === 0) {
 console.log(`Found ${events.length} event(s) to notify about.`);
 
 for (const event of events) {
-  const dueDate = new Date(event.due_date);
-  const nowMs = Date.now();
-  const diffMs = dueDate.getTime() - nowMs;
+  const dueDate = event._dueUTC;
+  const diffMs = dueDate.getTime() - now;
   const diffMinutes = Math.round(diffMs / 60000);
   const hours = Math.floor(diffMinutes / 60);
   const minutes = diffMinutes % 60;
@@ -74,7 +115,7 @@ for (const event of events) {
 
   // Format due time in Pacific
   const pacificTime = dueDate.toLocaleString("en-US", {
-    timeZone: "America/Los_Angeles",
+    timeZone: USER_TIMEZONE,
     weekday: "short",
     month: "short",
     day: "numeric",
@@ -95,10 +136,9 @@ for (const event of events) {
         ? [{ name: "Class", value: event.class_name, inline: true }]
         : []),
       { name: "Due", value: pacificTime, inline: true },
-      { name: "Time Remaining", value: timeRemaining, inline: true },
     ],
     footer: {
-      text: isUrgent ? "1 hour warning" : "6 hour warning",
+      text: `Due in ${timeRemaining}`,
     },
     ...(event.canvas_url ? { url: event.canvas_url } : {}),
   };
