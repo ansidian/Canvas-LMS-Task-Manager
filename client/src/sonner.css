@@ -18,7 +18,7 @@
   --normal-text: var(--sonner-text);
   --normal-bg-hover: var(--card-hover);
   --normal-border-hover: var(--rule-strong);
-  --success-bg: var(--complete-light);
+  --success-bg: #1E2E24;
   --success-border: rgba(74, 222, 128, 0.3);
   --success-text: var(--sonner-success);
   --info-bg: var(--ink-blue-light);
@@ -52,7 +52,7 @@
   --normal-text: var(--sonner-text);
   --normal-bg-hover: var(--card-hover);
   --normal-border-hover: var(--rule-strong);
-  --success-bg: var(--complete-light);
+  --success-bg: #E8F2EB;
   --success-border: rgba(46, 125, 74, 0.28);
   --success-text: var(--sonner-success);
   --info-bg: var(--ink-blue-light);
@@ -231,17 +231,33 @@
 }
 
 .sonner-custom-toast[data-type="success"] {
-  background: var(--complete-light);
+  background: #E8F2EB;
   border-color: rgba(46, 125, 74, 0.3);
   color: var(--complete);
 }
 
 [data-mantine-color-scheme="dark"] .sonner-custom-toast[data-type="success"] {
-  background: var(--complete-light);
+  background: #1E2E24;
   border-color: rgba(74, 222, 128, 0.3);
   color: var(--complete);
 }
 
 .sonner-custom-toast[data-type="error"] {
   border-color: var(--overdue);
+}
+
+/* Mobile toast overrides */
+@media (max-width: 768px), (max-height: 500px) and (pointer: coarse) {
+  .sonner-custom-toast {
+    width: calc(100vw - 32px);
+  }
+
+  /* Disable hover transforms on touch */
+  .sonner-custom-toast:hover {
+    transform: none;
+  }
+
+  [data-sonner-toast][data-styled="true"]:hover {
+    transform: none;
+  }
 }

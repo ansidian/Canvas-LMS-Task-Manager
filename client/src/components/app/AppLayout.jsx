@@ -5,6 +5,7 @@ import { useAppControllerContext } from "../../contexts/AppControllerContext";
 import useEvents from "../../contexts/useEvents";
 import useUpgradePrompt from "../../hooks/useUpgradePrompt";
 import useExpirationWarning from "../../hooks/useExpirationWarning";
+import useIsMobile from "../../hooks/useIsMobile";
 import AppHeader from "./AppHeader";
 import AppMain from "./AppMain";
 import AppModals from "./AppModals";
@@ -13,10 +14,12 @@ import AppSidebar from "./AppSidebar";
 import GuestBanner from "./GuestBanner";
 import UpgradeBanner from "../upgrade/UpgradeBanner";
 import ExpirationWarningBanner from "../upgrade/ExpirationWarningBanner";
+import MobileBottomNav from "../mobile/MobileBottomNav";
 
 export default function AppLayout() {
 	const controller = useAppControllerContext();
 	const { events } = useEvents();
+	const isMobile = useIsMobile();
 	const pendingCount = controller.filteredPendingItems.length;
 
 	// Check if guest user has created events to show upgrade banner
@@ -58,12 +61,12 @@ export default function AppLayout() {
 
       <AppShell
         header={{ height: headerHeight }}
-        aside={{
+        aside={isMobile ? undefined : {
           width: 320,
           breakpoint: "sm",
           collapsed: { mobile: pendingCount === 0 },
         }}
-        padding="md"
+        padding={isMobile ? 0 : "md"}
       >
         <AppShell.Header>
           <Box h="100%" style={{ display: "flex", flexDirection: "column" }}>
@@ -86,11 +89,12 @@ export default function AppLayout() {
             </Box>
           </Box>
         </AppShell.Header>
-        <AppMain />
-        <AppSidebar />
+        <AppMain isMobile={isMobile} />
+        {!isMobile && <AppSidebar />}
         <AppModals />
-        <AppOnboardingDemos />
+        {!isMobile && <AppOnboardingDemos />}
       </AppShell>
+      {isMobile && <MobileBottomNav />}
     </>
   );
 }

@@ -5,12 +5,12 @@
 }
 
 html, body {
-  height: 100vh;
+  height: 100dvh;
   overflow: hidden;
 }
 
 #root {
-  height: 100vh;
+  height: 100dvh;
   overflow: hidden;
 }
 
@@ -608,4 +608,87 @@ body {
 
 .event-type-pulse {
   animation: eventTypePulse 1.1s ease-out 1;
+}
+
+/* =============================================================================
+   Mobile Responsive (max-width: 768px)
+   ============================================================================= */
+
+@media (max-width: 768px), (max-height: 500px) and (pointer: coarse) {
+  /* Full-width modals on mobile */
+  .mantine-Modal-content {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    margin: 0 !important;
+    border-radius: 12px 12px 0 0 !important;
+  }
+
+  .mantine-Modal-inner {
+    padding: 0 !important;
+    align-items: flex-end !important;
+  }
+
+  /* Constrain date picker popover on mobile */
+  .mantine-Popover-dropdown:has(.mantine-DateTimePicker-calendarHeader) {
+    min-width: unset !important;
+    width: calc(100vw - 32px) !important;
+    max-width: 360px !important;
+    overflow-x: hidden !important;
+  }
+
+  /* Stack presets above calendar instead of side-by-side */
+  .mantine-DateTimePicker-datePickerRoot {
+    flex-direction: column !important;
+  }
+
+  /* Presets as a horizontal scrollable row */
+  .mantine-DateTimePicker-presetsList {
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    gap: 6px !important;
+    padding-bottom: 8px !important;
+    border-bottom: 1px solid var(--rule-soft) !important;
+    border-right: none !important;
+    margin-bottom: 4px !important;
+  }
+
+  .mantine-DateTimePicker-presetButton {
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Full-screen approval overlay on mobile */
+  .modal-overlay-custom {
+    padding: 0;
+  }
+
+  .modal-overlay-custom .modal-card {
+    border-radius: 0;
+    min-height: 100dvh;
+  }
+
+  /* Spotlight full-width on mobile */
+  .mantine-Spotlight-content {
+    max-width: 100vw !important;
+    border-radius: 0 0 16px 16px !important;
+  }
+
+  /* Disable hover transforms on touch devices */
+  .calendar-day:hover {
+    transform: none !important;
+    box-shadow: none !important;
+  }
+
+  .pending-item-card:hover {
+    transform: none !important;
+    box-shadow: none !important;
+  }
+
+  .mantine-Button-root:hover:not(:disabled),
+  .mantine-ActionIcon-root:hover:not(:disabled) {
+    transform: none !important;
+    box-shadow: none !important;
+  }
 }

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useSyncExternalStore } from "react";
 import ReactDOM from "react-dom/client";
 import {
   MantineProvider,
@@ -103,9 +103,26 @@ function ThemedClerkProvider({ children }) {
   );
 }
 
+const mobileQuery = "(max-width: 768px), (max-height: 500px) and (pointer: coarse)";
+const mobileMediaQuery = window.matchMedia(mobileQuery);
+const subscribeMobileQuery = (cb) => {
+  mobileMediaQuery.addEventListener("change", cb);
+  return () => mobileMediaQuery.removeEventListener("change", cb);
+};
+const getMobileSnapshot = () => mobileMediaQuery.matches;
+
 function ThemedToaster() {
   const { colorScheme } = useMantineColorScheme();
-  return <Toaster position="top-center" theme={colorScheme} richColors />;
+  const isMobile = useSyncExternalStore(subscribeMobileQuery, getMobileSnapshot);
+  return (
+    <Toaster
+      position="top-center"
+      theme={colorScheme}
+      richColors
+      offset={isMobile ? 8 : undefined}
+      style={isMobile ? { zIndex: 200 } : undefined}
+    />
+  );
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(

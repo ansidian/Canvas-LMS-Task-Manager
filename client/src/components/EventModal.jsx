@@ -10,6 +10,7 @@ import EventModalFooter from "./event-modal/EventModalFooter";
 import useEventModalCanvas from "../hooks/useEventModalCanvas";
 import useEventModalForm from "../hooks/useEventModalForm";
 import useEventModalSubmission from "../hooks/useEventModalSubmission";
+import useIsMobile from "../hooks/useIsMobile";
 
 export default function EventModal({
   opened,
@@ -26,6 +27,7 @@ export default function EventModal({
 }) {
   const { colorScheme } = useMantineColorScheme();
   const { getToken } = useAuth();
+  const isMobile = useIsMobile();
 
   // Preserve event data during exit animation
   const [preservedEvent, setPreservedEvent] = useState(event);
@@ -89,7 +91,7 @@ export default function EventModal({
             style={{
               display: "flex",
               flexDirection: "column",
-              minHeight: "400px",
+              minHeight: isMobile ? undefined : "400px",
               maxHeight: "80vh",
             }}
           >
@@ -97,7 +99,8 @@ export default function EventModal({
               style={{
                 flex: 1,
                 display: "flex",
-                gap: 24,
+                flexDirection: isMobile ? "column" : "row",
+                gap: isMobile ? 16 : 24,
                 marginBottom: 0,
               }}
             >

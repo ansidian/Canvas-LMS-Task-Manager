@@ -20,15 +20,72 @@ import {
 } from "@tabler/icons-react";
 import { UserButton, useClerk } from "@clerk/clerk-react";
 import { spotlight } from "@mantine/spotlight";
+import { motion } from "framer-motion";
 import { useAppControllerContext } from "../../contexts/AppControllerContext";
+import useIsMobile from "../../hooks/useIsMobile";
+
+const tapSpring = { type: "spring", stiffness: 500, damping: 25 };
 
 const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
 const modKey = isMac ? "⌘" : "Ctrl";
 
 export default function AppHeader({ isGuest }) {
+  const isMobile = useIsMobile();
   const controller = useAppControllerContext();
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
   const { openSignIn } = useClerk();
+
+  if (isMobile) {
+    return (
+      <Group h="100%" px="xs" style={{ width: "100%" }} wrap="nowrap">
+        <Group style={{ flex: 1 }} justify="center" gap="xs">
+          <motion.div whileTap={{ scale: 0.8 }} transition={tapSpring}>
+            <ActionIcon variant="subtle" onClick={controller.prevMonth} size="md">
+              <IconChevronLeft size={18} />
+            </ActionIcon>
+          </motion.div>
+          <Text
+            fw={500}
+            size="md"
+            ta="center"
+            style={{ cursor: "pointer", minWidth: 130 }}
+            onClick={controller.goToToday}
+          >
+            {controller.currentDate.format("MMMM YYYY")}
+          </Text>
+          <motion.div whileTap={{ scale: 0.8 }} transition={tapSpring}>
+            <ActionIcon variant="subtle" onClick={controller.nextMonth} size="md">
+              <IconChevronRight size={18} />
+            </ActionIcon>
+          </motion.div>
+        </Group>
+        <Group gap="xs" wrap="nowrap">
+          <motion.div whileTap={{ scale: 0.8 }} transition={tapSpring}>
+            <ActionIcon
+              variant="subtle"
+              onClick={() => {
+                controller.loadEvents();
+                controller.loadClasses();
+                controller.fetchCanvasAssignments();
+                controller.fetchTodoistTasks();
+              }}
+              loading={controller.loading}
+              size="md"
+            >
+              <IconRefresh size={18} />
+            </ActionIcon>
+          </motion.div>
+          {isGuest ? (
+            <Button size="xs" variant="filled" onClick={() => openSignIn()}>
+              Sign In
+            </Button>
+          ) : (
+            <UserButton />
+          )}
+        </Group>
+      </Group>
+    );
+  }
 
   return (
     <Group h="100%" px="md" style={{ width: "100%" }} wrap="nowrap">

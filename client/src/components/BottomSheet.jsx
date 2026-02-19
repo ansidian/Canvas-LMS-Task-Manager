@@ -2,6 +2,7 @@ import { useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Box, Text, CloseButton, Group } from "@mantine/core";
+import useIsMobile from "../hooks/useIsMobile";
 
 const backdropVariants = {
   hidden: { opacity: 0 },
@@ -41,6 +42,7 @@ export default function BottomSheet({
   withCloseButton = false,
 }) {
   const sheetRef = useRef(null);
+  const isMobile = useIsMobile();
 
   // Lock body scroll when open
   useEffect(() => {
@@ -62,14 +64,18 @@ export default function BottomSheet({
     return () => window.removeEventListener("keydown", handleEscape);
   }, [opened, onClose, closeOnEscape]);
 
-  const maxWidth =
-    size === "xl"
+  const maxWidth = isMobile
+    ? "100%"
+    : size === "xl"
       ? "900px"
       : size === "lg"
         ? "700px"
         : size === "md"
           ? "560px"
           : "400px";
+
+  const contentPadding = isMobile ? "0 16px 16px 16px" : "0 24px 24px 24px";
+  const headerPadding = isMobile ? "4px 16px 16px 16px" : "4px 24px 16px 24px";
 
   const content = (
     <AnimatePresence>
@@ -148,7 +154,7 @@ export default function BottomSheet({
             {title && (
               <Box
                 style={{
-                  padding: "4px 24px 16px 24px",
+                  padding: headerPadding,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
@@ -173,7 +179,7 @@ export default function BottomSheet({
             {/* Content */}
             <Box
               style={{
-                padding: "0 24px 24px 24px",
+                padding: contentPadding,
                 overflowY: "auto",
                 maxHeight: title ? "calc(90vh - 80px)" : "calc(90vh - 40px)",
               }}

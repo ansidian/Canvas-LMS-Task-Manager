@@ -1,22 +1,36 @@
 import { AppShell } from "@mantine/core";
 import Calendar from "../Calendar";
+import MobileAgendaView from "../mobile/MobileAgendaView";
 import { CalendarSkeleton } from "../SkeletonLoaders";
 import { useAppControllerContext } from "../../contexts/AppControllerContext";
 
-export default function AppMain() {
+export default function AppMain({ isMobile }) {
 	const controller = useAppControllerContext();
 
 	return (
 		<AppShell.Main
 			style={{
-				overflow: "hidden",
+				overflow: isMobile ? "auto" : "hidden",
 				display: "flex",
 				flexDirection: "column",
-				height: "calc(100vh - 60px)",
+				height: isMobile
+					? "calc(100dvh - 60px - 56px)"
+					: "calc(100vh - 60px)",
 			}}
 		>
 			{controller.initialLoading ? (
 				<CalendarSkeleton />
+			) : isMobile ? (
+				<MobileAgendaView
+					currentDate={controller.currentDate}
+					events={controller.filteredEvents}
+					classes={controller.classes}
+					onEventClick={controller.setSelectedEvent}
+					onDayAdd={controller.handleDayDoubleClick}
+					unassignedColor={controller.unassignedColor}
+					onSwipeLeft={controller.nextMonth}
+					onSwipeRight={controller.prevMonth}
+				/>
 			) : (
 				<Calendar
 					currentDate={controller.currentDate}
