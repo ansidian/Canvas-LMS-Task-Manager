@@ -86,7 +86,7 @@ function formatTime(time24) {
   return `${hours12}:${minutes.toString().padStart(2, "0")} ${period}`;
 }
 
-export default function EventCard({ event, color, onClick, isDragging }) {
+export default function EventCard({ event, color, onClick, onContextMenu, isDragging }) {
   const isGhost = event.isGhost;
   const {
     attributes,
@@ -283,6 +283,10 @@ export default function EventCard({ event, color, onClick, isDragging }) {
         onClick={(e) => {
           e.stopPropagation();
           if (onClick) onClick();
+        }}
+        onContextMenu={(e) => {
+          e.stopPropagation();
+          if (onContextMenu) onContextMenu(e);
         }}
       >
         {/* Hatch pattern overlay for in_progress status */}

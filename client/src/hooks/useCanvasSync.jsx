@@ -19,6 +19,7 @@ const initialState = {
 	lastFetchTime: null,
 	unassignedColor: "#a78b71",
 	canvasAuthError: "",
+	hasTodoistToken: false,
 	tooltipTick: 0,
 };
 
@@ -63,6 +64,11 @@ function canvasReducer(state, action) {
 					action.value,
 					state.canvasAuthError,
 				),
+			};
+		case "SET_HAS_TODOIST_TOKEN":
+			return {
+				...state,
+				hasTodoistToken: resolveNext(action.value, state.hasTodoistToken),
 			};
 		case "BUMP_TOOLTIP_TICK":
 			return {
@@ -158,6 +164,7 @@ export default function useCanvasSync({
 			if (data.unassigned_color) {
 				setUnassignedColor(data.unassigned_color);
 			}
+			dispatch({ type: "SET_HAS_TODOIST_TOKEN", value: !!data.todoist_token });
 		} catch (err) {
 			console.error("Failed to load settings:", err);
 		}
@@ -225,6 +232,7 @@ export default function useCanvasSync({
 		loadSettings,
 		fetchCanvasAssignments,
 		handleClassesReorder,
+		hasTodoistToken: state.hasTodoistToken,
 		canvasAuthError: state.canvasAuthError,
 		clearCanvasAuthError: () => {
 			setCanvasAuthError("");

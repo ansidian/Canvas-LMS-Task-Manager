@@ -1,5 +1,14 @@
-import { useMemo, useState, useEffect, useRef, useLayoutEffect } from "react";
-import { SimpleGrid, Text, Stack, Box } from "@mantine/core";
+import { useMemo, useState, useEffect, useRef, useLayoutEffect, useCallback } from "react";
+import { SimpleGrid, Text, Stack, Box, Menu } from "@mantine/core";
+import {
+  IconPencil,
+  IconTrash,
+  IconCircleDot,
+  IconProgress,
+  IconCircleCheckFilled,
+  IconPlus,
+  IconChecklist,
+} from "@tabler/icons-react";
 import {
   DndContext,
   DragOverlay,
@@ -15,6 +24,12 @@ import EventCard from "./EventCard";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+const STATUS_MENU_ITEMS = [
+  { value: "incomplete", label: "Incomplete", icon: IconCircleDot },
+  { value: "in_progress", label: "In Progress", icon: IconProgress },
+  { value: "complete", label: "Complete", icon: IconCircleCheckFilled },
+];
+
 export default function Calendar({
   currentDate,
   events,
@@ -22,6 +37,10 @@ export default function Calendar({
   onEventClick,
   onEventDrop,
   onDayDoubleClick,
+  onEventDelete,
+  onEventStatusChange,
+  onCreateTodoistTask,
+  hasTodoistToken = false,
   unassignedColor = "#a78b71",
   ghostEvent = null,
 }) {
@@ -30,6 +49,62 @@ export default function Calendar({
   const [prevDate, setPrevDate] = useState(currentDate);
   const [ghostAnimation, setGhostAnimation] = useState(null);
   const sourceRectRef = useRef(null);
+
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState(null);
+  const contextMenuAnchorRef = useRef(null);
+  const lastContextEventRef = useRef(null);
+
+  // Keep a stable reference to the last right-clicked event so menu content
+  // doesn't flash during the close animation when contextMenu becomes null
+  if (contextMenu?.event) {
+    lastContextEventRef.current = contextMenu.event;
+  }
+  const contextEvent = contextMenu?.event ?? lastContextEventRef.current;
+
+  const handleEventContextMenu = useCallback((event, mouseEvent) => {
+    mouseEvent.preventDefault();
+    if (activeEvent) return; // suppress during drag
+    setContextMenu({ event, x: mouseEvent.clientX, y: mouseEvent.clientY });
+  }, [activeEvent]);
+
+  const handleContextMenuEdit = useCallback(() => {
+    if (!contextMenu) return;
+    onEventClick(contextMenu.event);
+    setContextMenu(null);
+  }, [contextMenu, onEventClick]);
+
+  const handleContextMenuDelete = useCallback(() => {
+    if (!contextMenu) return;
+    onEventDelete(contextMenu.event.id);
+    setContextMenu(null);
+  }, [contextMenu, onEventDelete]);
+
+  const handleContextMenuStatus = useCallback((status) => {
+    if (!contextMenu) return;
+    onEventStatusChange(contextMenu.event.id, status);
+    setContextMenu(null);
+  }, [contextMenu, onEventStatusChange]);
+
+  // Day (empty space) context menu state
+  const [dayContextMenu, setDayContextMenu] = useState(null);
+
+  const handleDayContextMenu = useCallback((dateKey, mouseEvent) => {
+    if (activeEvent) return;
+    setDayContextMenu({ dateKey, x: mouseEvent.clientX, y: mouseEvent.clientY });
+  }, [activeEvent]);
+
+  const handleDayAddEvent = useCallback(() => {
+    if (!dayContextMenu) return;
+    onDayDoubleClick(dayContextMenu.dateKey);
+    setDayContextMenu(null);
+  }, [dayContextMenu, onDayDoubleClick]);
+
+  const handleDayAddTodoistTask = useCallback(() => {
+    if (!dayContextMenu) return;
+    onCreateTodoistTask(dayContextMenu.dateKey);
+    setDayContextMenu(null);
+  }, [dayContextMenu, onCreateTodoistTask]);
 
   // Detect month change direction for slide animation
   useEffect(() => {
@@ -122,6 +197,8 @@ export default function Calendar({
   const handleDragStart = (event) => {
     const eventData = events.find((e) => e.id === event.active.id);
     setActiveEvent(eventData);
+    setContextMenu(null);
+    setDayContextMenu(null);
 
     // Capture source position for ghost animation
     const element = document.querySelector(
@@ -244,6 +321,8 @@ export default function Calendar({
                     events={dayEvents}
                     classes={classes}
                     onEventClick={onEventClick}
+                    onEventContextMenu={handleEventContextMenu}
+                    onDayContextMenu={handleDayContextMenu}
                     onDoubleClick={() => onDayDoubleClick(dateKey)}
                     unassignedColor={unassignedColor}
                   />
@@ -305,6 +384,94 @@ export default function Calendar({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Right-click context menu for event cards */}
+      <Menu
+        opened={contextMenu !== null}
+        onChange={(opened) => { if (!opened) setContextMenu(null); }}
+        position="bottom-start"
+        withinPortal
+        transitionProps={{ duration: 0 }}
+      >
+        <Menu.Target>
+          <div
+            ref={contextMenuAnchorRef}
+            style={{
+              position: "fixed",
+              left: contextMenu?.x ?? 0,
+              top: contextMenu?.y ?? 0,
+              width: 0,
+              height: 0,
+              pointerEvents: "none",
+            }}
+          />
+        </Menu.Target>
+        <Menu.Dropdown>
+          <Menu.Item
+            leftSection={<IconPencil size={14} />}
+            onClick={handleContextMenuEdit}
+          >
+            Edit
+          </Menu.Item>
+          <Menu.Item
+            color="red"
+            leftSection={<IconTrash size={14} />}
+            onClick={handleContextMenuDelete}
+          >
+            Delete
+          </Menu.Item>
+          <Menu.Divider />
+          <Menu.Label>Status</Menu.Label>
+          {STATUS_MENU_ITEMS.map(({ value, label, icon: Icon }) => (
+            <Menu.Item
+              key={value}
+              leftSection={<Icon size={14} />}
+              disabled={contextEvent?.status === value}
+              onClick={() => handleContextMenuStatus(value)}
+            >
+              {label}
+            </Menu.Item>
+          ))}
+        </Menu.Dropdown>
+      </Menu>
+
+      {/* Right-click context menu for empty day space */}
+      <Menu
+        opened={dayContextMenu !== null}
+        onChange={(opened) => { if (!opened) setDayContextMenu(null); }}
+        position="bottom-start"
+        withinPortal
+        transitionProps={{ duration: 0 }}
+      >
+        <Menu.Target>
+          <div
+            style={{
+              position: "fixed",
+              left: dayContextMenu?.x ?? 0,
+              top: dayContextMenu?.y ?? 0,
+              width: 0,
+              height: 0,
+              pointerEvents: "none",
+            }}
+          />
+        </Menu.Target>
+        <Menu.Dropdown>
+          <Menu.Item
+            leftSection={<IconPlus size={14} />}
+            onClick={handleDayAddEvent}
+          >
+            Add Event
+          </Menu.Item>
+          {hasTodoistToken && (
+            <Menu.Item
+              leftSection={<IconChecklist size={14} color="#e44332" />}
+              onClick={handleDayAddTodoistTask}
+            >
+              Add Todoist Task
+            </Menu.Item>
+          )}
+        </Menu.Dropdown>
+      </Menu>
     </DndContext>
   );
 }

@@ -16,6 +16,8 @@ export default function CalendarDay({
   classes,
   onEventClick,
   onDoubleClick,
+  onEventContextMenu,
+  onDayContextMenu,
   unassignedColor = "#a78b71",
 }) {
   const { setNodeRef, isOver } = useDroppable({
@@ -121,6 +123,10 @@ export default function CalendarDay({
       p="xs"
       withBorder
       onDoubleClick={onDoubleClick}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        onDayContextMenu?.(dateKey, e);
+      }}
       onMouseMove={handleMouseMove}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
@@ -240,6 +246,7 @@ export default function CalendarDay({
                   event={event}
                   color={getClassColor(event.class_id)}
                   onClick={() => onEventClick(event)}
+                  onContextMenu={(e) => onEventContextMenu?.(event, e)}
                 />
               </motion.div>
             ))}
@@ -284,6 +291,10 @@ export default function CalendarDay({
                           onClick={() => {
                             setPopoverOpened(false);
                             onEventClick(event);
+                          }}
+                          onContextMenu={(e) => {
+                            setPopoverOpened(false);
+                            onEventContextMenu?.(event, e);
                           }}
                         />
                       </motion.div>

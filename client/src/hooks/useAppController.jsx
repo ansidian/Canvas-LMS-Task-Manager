@@ -42,6 +42,7 @@ export default function useAppController({
 		approvalIndex,
 		selectedEvent,
 		createEventDate,
+		createEventPrefix,
 		ghostEvent,
 		loading,
 		initialLoading,
@@ -51,6 +52,7 @@ export default function useAppController({
 		setApprovalIndex,
 		setSelectedEvent,
 		setCreateEventDate,
+		setCreateEventPrefix,
 		setGhostEvent,
 		setLoading,
 		setInitialLoading,
@@ -247,6 +249,11 @@ export default function useAppController({
 		setCreateEventDate(date);
 	};
 
+	const handleCreateTodoistTask = (date) => {
+		setCreateEventPrefix("!");
+		setCreateEventDate(date);
+	};
+
 	const handleOpenEvent = (eventItem) => {
 		if (!eventItem) return;
 		setSelectedEvent(eventItem);
@@ -262,6 +269,7 @@ export default function useAppController({
 		resetGuestSession,
 		modKey,
 		classes: canvas.classes,
+		hasTodoistToken: canvas.hasTodoistToken,
 		pendingItems: canvas.pendingItems,
 		lastFetchTime: canvas.lastFetchTime,
 		unassignedColor: canvas.unassignedColor,
@@ -294,6 +302,8 @@ export default function useAppController({
 		setApprovalIndex,
 		setSelectedEvent,
 		setCreateEventDate,
+		createEventPrefix: createEventPrefix || "",
+		setCreateEventPrefix,
 		setGhostEvent,
 		setHighlightCredentials,
 		loadEvents,
@@ -308,6 +318,7 @@ export default function useAppController({
 		handleClassesReorder: canvas.handleClassesReorder,
 		handleCreateEvent,
 		handleDayDoubleClick,
+		handleCreateTodoistTask,
 		handleOpenEvent,
 		openApprovalModal: approvalFlow.openApprovalModal,
 		navigateApproval: approvalFlow.navigateApproval,

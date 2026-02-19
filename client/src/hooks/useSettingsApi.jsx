@@ -65,22 +65,27 @@ export default function useSettingsApi({
 
   const saveCanvasSettings = async () => {
     try {
-      if (!canvasUrl?.trim() || !canvasToken?.trim()) {
-        notifyError("Canvas URL and token are required.");
+      const trimmedUrl = canvasUrl?.trim() || "";
+      const trimmedToken = canvasToken?.trim() || "";
+      const bothEmpty = !trimmedUrl && !trimmedToken;
+      const bothFilled = trimmedUrl && trimmedToken;
+
+      if (!bothEmpty && !bothFilled) {
+        notifyError("Provide both Canvas URL and token, or clear both to disconnect.");
         return;
       }
+
       await api("/settings", {
         method: "PATCH",
         body: JSON.stringify({
-          canvas_url: canvasUrl.trim(),
-          canvas_token: canvasToken.trim(),
+          canvas_url: trimmedUrl,
+          canvas_token: trimmedToken,
         }),
       });
       onCanvasAuthErrorClear?.();
 
-      // Show success feedback
       setSaveSuccess(true);
-      notifySuccess("Canvas settings saved.");
+      notifySuccess(bothEmpty ? "Canvas disconnected." : "Canvas settings saved.");
       setTimeout(() => setSaveSuccess(false), 1500);
     } catch (err) {
       console.error("Failed to save Canvas settings:", err);

@@ -25,6 +25,12 @@ export default function AppMain() {
 					onEventClick={controller.setSelectedEvent}
 					onEventDrop={controller.handleEventDrop}
 					onDayDoubleClick={controller.handleDayDoubleClick}
+					onEventDelete={controller.handleEventDelete}
+					onEventStatusChange={(id, status) =>
+						controller.handleEventUpdate(id, { status })
+					}
+					onCreateTodoistTask={controller.handleCreateTodoistTask}
+					hasTodoistToken={controller.hasTodoistToken}
 					unassignedColor={controller.unassignedColor}
 					ghostEvent={controller.ghostEvent}
 				/>

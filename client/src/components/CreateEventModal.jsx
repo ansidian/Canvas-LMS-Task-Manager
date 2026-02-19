@@ -71,6 +71,7 @@ export default function CreateEventModal({
   opened,
   onClose,
   date,
+  initialPrefix = "",
   classes,
   events,
   unassignedColor,
@@ -103,7 +104,7 @@ export default function CreateEventModal({
   useEffect(() => {
     if (!opened) return;
     const nextFormData = {
-      title: "",
+      title: initialPrefix || "",
       dueDate: toLocalDate(date),
       classId: null,
       eventType: "assignment",
@@ -113,7 +114,7 @@ export default function CreateEventModal({
     setFormData(nextFormData);
     initialFormDataRef.current = nextFormData;
     setHasUserEdited(false);
-  }, [date, opened]);
+  }, [date, opened, initialPrefix]);
 
   // Focus title input when modal opens
   useEffect(() => {

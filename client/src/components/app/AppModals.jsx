@@ -69,8 +69,10 @@ export default function AppModals() {
 				onClose={() => {
 					controller.setGhostEvent(null);
 					controller.setCreateEventDate(null);
+					controller.setCreateEventPrefix("");
 				}}
 				date={controller.createEventDate}
+				initialPrefix={controller.createEventPrefix}
 				classes={controller.classes}
 				events={controller.events}
 				unassignedColor={controller.unassignedColor}
