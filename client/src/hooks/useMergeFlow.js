@@ -132,8 +132,16 @@ export default function useMergeFlow(getToken, isSignedIn) {
     setShowMergeModal(false);
   };
 
+  const handleDeclineMerge = useCallback(() => {
+    clearGuestData();
+    setMergedSessionId(guestSessionId);
+    clearGuestSession();
+    setShowMergeModal(false);
+    setMergeData(null);
+  }, [guestSessionId, clearGuestSession, setMergedSessionId, setShowMergeModal]);
+
   const confirmMerge = useCallback(
-    async (resolutions) => {
+    async (resolutions, removedEventIds = new Set(), removedClassIds = new Set()) => {
       if (!guestSessionId) {
         setError("Guest session ID is required for merge");
         return;
@@ -144,10 +152,19 @@ export default function useMergeFlow(getToken, isSignedIn) {
 
       try {
         const token = await getToken();
+
+        // Filter out items the user explicitly removed from the merge
+        const filteredEvents = (mergeData?.guestEvents || []).filter(
+          e => !removedEventIds.has(e.id)
+        );
+        const filteredClasses = (mergeData?.guestClasses || []).filter(
+          c => !removedClassIds.has(c.id)
+        );
+
         const payload = {
           guestSessionId,
-          guestClasses: mergeData?.guestClasses || [],
-          guestEvents: mergeData?.guestEvents || [],
+          guestClasses: filteredClasses,
+          guestEvents: filteredEvents,
           guestSettings: mergeData?.guestSettings || {},
           resolutions: resolutions || {},
         };
@@ -203,6 +220,7 @@ export default function useMergeFlow(getToken, isSignedIn) {
     ? {
         opened: showMergeModal,
         onClose: handleMergeClose,
+        onDeclineMerge: handleDeclineMerge,
         duplicateEvents,
         duplicateClasses,
         uniqueGuestEvents,

@@ -10,7 +10,7 @@ import {
   Box,
   Loader,
 } from "@mantine/core";
-import { IconAlertCircle, IconInfoCircle } from '@tabler/icons-react';
+import { IconAlertCircle, IconInfoCircle, IconX } from '@tabler/icons-react';
 import BottomSheet from "../BottomSheet";
 import dayjs from 'dayjs';
 
@@ -94,6 +94,7 @@ export default function MergePreviewModal({
   guestSettings = {},
   authClasses = [],
   confirmMerge,
+  onDeclineMerge,
   isLoading = false,
   error = null,
 }) {
@@ -101,6 +102,10 @@ export default function MergePreviewModal({
   // Track resolution choices for duplicates
   // Format: { 'event-{id}': 'auth' | 'guest' | 'both', 'class-{id}': ... }
   const [resolutions, setResolutions] = useState({});
+
+  // Track which unique items the user has removed from the merge
+  const [removedEventIds, setRemovedEventIds] = useState(new Set());
+  const [removedClassIds, setRemovedClassIds] = useState(new Set());
 
   // Initialize default resolutions to 'auth' (keep your version)
   const defaultResolutions = useMemo(() => {
@@ -152,11 +157,15 @@ export default function MergePreviewModal({
   }, [duplicateEvents, duplicateClasses, finalResolutions]);
 
   const handleConfirmClick = () => {
-    confirmMerge(finalResolutions);
+    confirmMerge(finalResolutions, removedEventIds, removedClassIds);
   };
 
+  // Filter unique items by what the user hasn't removed
+  const filteredUniqueEvents = uniqueGuestEvents.filter(e => !removedEventIds.has(e.id));
+  const filteredUniqueClasses = uniqueGuestClasses.filter(c => !removedClassIds.has(c.id));
+
   const duplicateCount = duplicateEvents.length + duplicateClasses.length;
-  const uniqueCount = uniqueGuestEvents.length + uniqueGuestClasses.length;
+  const uniqueCount = filteredUniqueEvents.length + filteredUniqueClasses.length;
 
   const hasCanvasCredentials =
     guestSettings?.canvas_url && guestSettings?.canvas_token;
@@ -366,7 +375,7 @@ export default function MergePreviewModal({
               New Items to Add
             </Text>
             <Group gap={8}>
-              {uniqueGuestEvents.map((event) => {
+              {filteredUniqueEvents.map((event) => {
                 const className = getClassName(event, guestClasses);
                 return (
                   <Badge
@@ -378,13 +387,20 @@ export default function MergePreviewModal({
                       color: "var(--ink)",
                       border: "1px solid var(--rule)",
                     }}
+                    rightSection={
+                      <IconX
+                        size={14}
+                        style={{ cursor: "pointer", opacity: 0.6 }}
+                        onClick={() => setRemovedEventIds(prev => new Set([...prev, event.id]))}
+                      />
+                    }
                   >
                     {event.title} - {formatDate(event.due_date)}
                     {className && ` (${className})`}
                   </Badge>
                 );
               })}
-              {uniqueGuestClasses.map((classItem) => (
+              {filteredUniqueClasses.map((classItem) => (
                 <Badge
                   key={classItem.id}
                   size="lg"
@@ -394,6 +410,13 @@ export default function MergePreviewModal({
                     color: "var(--ink)",
                     border: "1px solid var(--rule)",
                   }}
+                  rightSection={
+                    <IconX
+                      size={14}
+                      style={{ cursor: "pointer", opacity: 0.6 }}
+                      onClick={() => setRemovedClassIds(prev => new Set([...prev, classItem.id]))}
+                    />
+                  }
                 >
                   {classItem.name}
                 </Badge>
@@ -417,8 +440,8 @@ export default function MergePreviewModal({
 
         {/* Action Buttons */}
         <Group justify="flex-end" className="modal-footer">
-          <Button variant="subtle" onClick={onClose} disabled={isLoading}>
-            Cancel
+          <Button variant="subtle" onClick={onDeclineMerge} disabled={isLoading}>
+            Do Not Merge
           </Button>
           <Button
             onClick={handleConfirmClick}
