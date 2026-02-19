@@ -63,6 +63,7 @@ const result = await db.execute(`
   WHERE e.user_id = '${CLERK_USER_ID}'
     AND e.due_date LIKE '%T%'
     AND e.status != 'complete'
+    AND (e.todoist_id IS NULL OR e.todoist_id = '')
     AND ${NORM} > datetime('now', '-480 minutes')
     AND ${NORM} <= datetime('now', '+840 minutes')
     AND (
