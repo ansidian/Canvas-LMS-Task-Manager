@@ -75,6 +75,8 @@ export default function AppHeader({ isGuest }) {
               <ActionIcon
                 variant="subtle"
                 onClick={() => {
+                  controller.loadEvents();
+                  controller.loadClasses();
                   controller.fetchCanvasAssignments();
                   controller.fetchTodoistTasks();
                 }}
