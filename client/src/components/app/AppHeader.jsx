@@ -37,8 +37,17 @@ export default function AppHeader({ isGuest }) {
 
   if (isMobile) {
     return (
-      <Group h="100%" px="xs" style={{ width: "100%" }} wrap="nowrap">
-        <Group style={{ flex: 1 }} justify="center" gap="xs">
+      <Group h="100%" px="xs" style={{ width: "100%", position: "relative" }} wrap="nowrap">
+        {/* Absolutely centered month/arrows — not affected by sibling widths */}
+        <Group
+          gap="xs"
+          wrap="nowrap"
+          style={{
+            position: "absolute",
+            left: "50%",
+            transform: "translateX(-50%)",
+          }}
+        >
           <motion.div whileTap={{ scale: 0.8 }} transition={tapSpring}>
             <ActionIcon variant="subtle" onClick={controller.prevMonth} size="md">
               <IconChevronLeft size={18} />
@@ -59,7 +68,8 @@ export default function AppHeader({ isGuest }) {
             </ActionIcon>
           </motion.div>
         </Group>
-        <Group gap="xs" wrap="nowrap">
+        {/* Right-aligned controls */}
+        <Group gap="xs" wrap="nowrap" style={{ marginLeft: "auto" }}>
           <motion.div whileTap={{ scale: 0.8 }} transition={tapSpring}>
             <ActionIcon
               variant="subtle"
