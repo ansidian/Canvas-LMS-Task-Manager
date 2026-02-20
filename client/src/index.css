@@ -659,14 +659,9 @@ body {
     flex-shrink: 0 !important;
   }
 
-  /* Full-screen approval overlay on mobile */
-  .modal-overlay-custom {
-    padding: 0;
-  }
-
-  .modal-overlay-custom .modal-card {
-    border-radius: 0;
-    min-height: 100dvh;
+  /* Approval card on mobile — let it scroll within its wrapper */
+  .modal-card {
+    border-radius: 10px;
   }
 
   /* Spotlight full-width on mobile */

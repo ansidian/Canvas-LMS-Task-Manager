@@ -30,7 +30,7 @@ export default function MobileBottomNav({ activeTab = "calendar", onTabChange })
     } else if (key === "settings") {
       controller.setSettingsOpen(true);
     } else if (key === "calendar") {
-      onTabChange?.("calendar");
+      controller.goToToday();
     }
   };
 

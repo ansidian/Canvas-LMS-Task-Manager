@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Stack, Paper, Box, Text } from "@mantine/core";
 import { motion, AnimatePresence, useAnimation } from "framer-motion";
+import useIsMobile from "../hooks/useIsMobile";
 import useApprovalModalState from "../hooks/useApprovalModalState";
 import useFormInitialization from "../hooks/useFormInitialization";
 import useApprovalHandlers from "../hooks/useApprovalHandlers";
@@ -45,6 +46,7 @@ function ActiveCardContent({
   eventTypePulse,
   shakeControls,
   onHeightChange,
+  isMobile,
 }) {
   const contentRef = useRef(null);
   const isCanvasLinked = Boolean(item?.canvas_id);
@@ -85,10 +87,14 @@ function ActiveCardContent({
   }, [onHeightChange]);
 
   return (
-    <motion.div ref={contentRef} animate={shakeControls}>
+    <motion.div
+      ref={contentRef}
+      animate={shakeControls}
+      style={isMobile ? { maxHeight: "80dvh", overflowY: "auto", WebkitOverflowScrolling: "touch", borderRadius: 10 } : undefined}
+    >
       <Paper
         className="modal-card"
-        p="xl"
+        p={isMobile ? "md" : "xl"}
         style={{
           position: "relative",
           overflow: "hidden",
@@ -199,6 +205,7 @@ function CardWrapper({
   onPeekStart,
   onPeekEnd,
   onHeightChange,
+  isMobile,
 }) {
   // Background cards use lightweight preview
   if (!isActive) {
@@ -240,6 +247,7 @@ function CardWrapper({
       eventTypePulse={eventTypePulse}
       shakeControls={shakeControls}
       onHeightChange={onHeightChange}
+      isMobile={isMobile}
     />
   );
 }
@@ -259,6 +267,7 @@ export default function ApprovalModal({
   onNavigate,
   onOpenEvent,
 }) {
+  const isMobile = useIsMobile();
   const {
     formData,
     setFormData,
@@ -427,11 +436,13 @@ export default function ApprovalModal({
               style={{
                 position: "relative",
                 width: "100%",
-                maxWidth: "500px",
+                maxWidth: isMobile ? "100%" : "500px",
                 display: "flex",
                 alignItems: "flex-end",
                 justifyContent: "center",
-                paddingBottom: 24,
+                paddingBottom: isMobile ? 8 : 24,
+                paddingLeft: isMobile ? 8 : 0,
+                paddingRight: isMobile ? 8 : 0,
                 height: "100%",
               }}
               onClick={(e) => e.stopPropagation()}
@@ -454,10 +465,10 @@ export default function ApprovalModal({
                 }
                 style={{
                   position: "absolute",
-                  bottom: activeCardHeight + 40, // 40px spacing above active card
-                  left: "50%",
-                  marginLeft: -250, // Half of card width (500px) to center
-                  width: 500,
+                  bottom: activeCardHeight + (isMobile ? 20 : 40),
+                  ...(isMobile
+                    ? { left: 0, right: 0, width: "100%" }
+                    : { left: "50%", marginLeft: -250, width: 500 }),
                   display: "flex",
                   justifyContent: "center",
                   zIndex: 210,
@@ -515,7 +526,7 @@ export default function ApprovalModal({
                 }}
               >
                 <AnimatePresence mode="popLayout">
-                  {visibleCards.map(({ itemIndex, position }) => {
+                  {(isMobile ? visibleCards.filter(c => c.itemIndex === currentIndex) : visibleCards).map(({ itemIndex, position }) => {
                     const cardItem =
                       items?.[itemIndex] ||
                       (itemIndex === currentIndex ? item : null);
@@ -574,6 +585,7 @@ export default function ApprovalModal({
                           onHeightChange={
                             animProps.isActive ? setActiveCardHeight : undefined
                           }
+                          isMobile={isMobile}
                         />
                       </motion.div>
                     );

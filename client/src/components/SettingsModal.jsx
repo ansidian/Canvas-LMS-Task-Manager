@@ -1,6 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import useSettingsModalState from "../hooks/useSettingsModalState";
 import { Modal, Tabs } from "@mantine/core";
+import { motion, AnimatePresence } from "framer-motion";
 import SettingsCanvasTab from "./settings/SettingsCanvasTab";
 import SettingsTodoistTab from "./settings/SettingsTodoistTab";
 import SettingsClassesTab from "./settings/SettingsClassesTab";
@@ -123,96 +124,111 @@ export default function SettingsModal({
     };
   }, [api, opened, setCanvasToken, setCanvasUrl, setTodoistToken]);
 
+  const [activeTab, setActiveTab] = useState("canvas");
+
+  const panelContent = {
+    canvas: (
+      <SettingsCanvasTab
+        config={{
+          canvasUrl,
+          canvasToken,
+          highlightCredentials,
+          canvasAuthError,
+          saveSuccess,
+        }}
+        handlers={{
+          setCanvasUrl,
+          setCanvasToken,
+          saveCanvasSettings: settingsApi.saveCanvasSettings,
+          onCanvasAuthErrorClear,
+        }}
+      />
+    ),
+    todoist: (
+      <SettingsTodoistTab
+        config={{
+          todoistToken,
+          saveSuccess: todoistSaveSuccess,
+        }}
+        handlers={{
+          setTodoistToken,
+          saveTodoistSettings: settingsApi.saveTodoistSettings,
+        }}
+      />
+    ),
+    classes: (
+      <SettingsClassesTab
+        config={{
+          classes,
+          newClassName,
+          newClassColor,
+          editingClassId,
+          editName,
+          editColor,
+          editingUnassigned,
+          editUnassignedColor,
+          deleteClassId,
+          deleting,
+          unassignedColor,
+        }}
+        handlers={{
+          setNewClassName,
+          setNewClassColor,
+          addClass: () => settingsApi.addClass(newClassName, newClassColor),
+          startEditing: settingsApi.startEditing,
+          cancelEditing: settingsApi.cancelEditing,
+          saveEdit: () =>
+            settingsApi.saveEdit(editingClassId, editName, editColor),
+          setEditName,
+          setEditColor,
+          toggleSync: settingsApi.toggleSync,
+          setDeleteClassId,
+          deleteClass: settingsApi.deleteClass,
+          startEditingUnassigned: settingsApi.startEditingUnassigned,
+          cancelEditingUnassigned: settingsApi.cancelEditingUnassigned,
+          setEditUnassignedColor,
+          saveUnassignedColor: () =>
+            settingsApi.saveUnassignedColor(editUnassignedColor),
+          onClassesReorder,
+        }}
+      />
+    ),
+    help: (
+      <SettingsHelpTab
+        config={{ showResetConfirm, resetting, isGuest }}
+        handlers={{
+          resetOnboarding: settingsApi.resetOnboarding,
+          handleResetData: settingsApi.handleResetData,
+          setShowResetConfirm,
+        }}
+      />
+    ),
+  };
+
   return (
     <Modal opened={opened} onClose={onClose} title="Settings" size="lg">
-      <Tabs defaultValue="canvas">
+      <Tabs value={activeTab} onChange={setActiveTab}>
         <Tabs.List style={{ borderBottom: '1px solid var(--rule)' }}>
           <Tabs.Tab value="canvas">Canvas API</Tabs.Tab>
           <Tabs.Tab value="todoist">Todoist</Tabs.Tab>
           <Tabs.Tab value="classes">Classes</Tabs.Tab>
           <Tabs.Tab value="help">Help</Tabs.Tab>
         </Tabs.List>
-
-        <Tabs.Panel value="canvas" pt={16}>
-          <SettingsCanvasTab
-            config={{
-              canvasUrl,
-              canvasToken,
-              highlightCredentials,
-              canvasAuthError,
-              saveSuccess,
-            }}
-            handlers={{
-              setCanvasUrl,
-              setCanvasToken,
-              saveCanvasSettings: settingsApi.saveCanvasSettings,
-              onCanvasAuthErrorClear,
-            }}
-          />
-        </Tabs.Panel>
-
-        <Tabs.Panel value="todoist" pt={16}>
-          <SettingsTodoistTab
-            config={{
-              todoistToken,
-              saveSuccess: todoistSaveSuccess,
-            }}
-            handlers={{
-              setTodoistToken,
-              saveTodoistSettings: settingsApi.saveTodoistSettings,
-            }}
-          />
-        </Tabs.Panel>
-
-        <Tabs.Panel value="classes" pt={16}>
-          <SettingsClassesTab
-            config={{
-              classes,
-              newClassName,
-              newClassColor,
-              editingClassId,
-              editName,
-              editColor,
-              editingUnassigned,
-              editUnassignedColor,
-              deleteClassId,
-              deleting,
-              unassignedColor,
-            }}
-            handlers={{
-              setNewClassName,
-              setNewClassColor,
-              addClass: () => settingsApi.addClass(newClassName, newClassColor),
-              startEditing: settingsApi.startEditing,
-              cancelEditing: settingsApi.cancelEditing,
-              saveEdit: () =>
-                settingsApi.saveEdit(editingClassId, editName, editColor),
-              setEditName,
-              setEditColor,
-              toggleSync: settingsApi.toggleSync,
-              setDeleteClassId,
-              deleteClass: settingsApi.deleteClass,
-              startEditingUnassigned: settingsApi.startEditingUnassigned,
-              cancelEditingUnassigned: settingsApi.cancelEditingUnassigned,
-              setEditUnassignedColor,
-              saveUnassignedColor: () =>
-                settingsApi.saveUnassignedColor(editUnassignedColor),
-              onClassesReorder,
-            }}
-          />
-        </Tabs.Panel>
-
-        <Tabs.Panel value="help" pt={16}>
-          <SettingsHelpTab
-            config={{ showResetConfirm, resetting, isGuest }}
-            handlers={{
-              resetOnboarding: settingsApi.resetOnboarding,
-              handleResetData: settingsApi.handleResetData,
-              setShowResetConfirm,
-            }}
-          />
-        </Tabs.Panel>
       </Tabs>
+      <div style={{ minHeight: 320 }}>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.12 }}
+            style={{ paddingTop: 16 }}
+          >
+            {panelContent[activeTab]}
+          </motion.div>
+        </AnimatePresence>
+      </div>
     </Modal>
   );
 }
