@@ -21,6 +21,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import dayjs from "dayjs";
 import CalendarDay from "./CalendarDay";
 import EventCard from "./EventCard";
+import { expandRecurrence } from "../utils/expand-recurrence";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -167,8 +168,17 @@ export default function Calendar({
       if (!map[dateKey]) map[dateKey] = [];
       map[dateKey].push(event);
     });
-    // Inject ghost event
-    if (ghostEvent?.due_date) {
+    // Inject ghost event(s)
+    if (ghostEvent?.recurrence && calendarDays.length) {
+      // Recurring ghost: expand into all matching dates in the visible grid
+      const rangeStart = calendarDays[0].date.format("YYYY-MM-DD");
+      const rangeEnd = calendarDays[calendarDays.length - 1].date.format("YYYY-MM-DD");
+      expandRecurrence(ghostEvent.recurrence, rangeStart, rangeEnd).forEach((dateStr) => {
+        const dateKey = dateStr.slice(0, 10); // "YYYY-MM-DD" portion
+        if (!map[dateKey]) map[dateKey] = [];
+        map[dateKey].push({ ...ghostEvent, id: `__ghost__${dateKey}`, due_date: dateStr });
+      });
+    } else if (ghostEvent?.due_date) {
       const ghostKey = dayjs(ghostEvent.due_date).format("YYYY-MM-DD");
       if (!map[ghostKey]) map[ghostKey] = [];
       map[ghostKey].push(ghostEvent);
@@ -192,7 +202,7 @@ export default function Calendar({
       });
     });
     return map;
-  }, [events, ghostEvent]);
+  }, [events, ghostEvent, calendarDays]);
 
   const handleDragStart = (event) => {
     const eventData = events.find((e) => e.id === event.active.id);

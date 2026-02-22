@@ -168,23 +168,54 @@ export default function CreateEventModal({
   // Sync ghost event to calendar preview
   useEffect(() => {
     if (!onGhostUpdate || !opened) return;
-    if (!formData.title.trim() || isTodoistMode) {
+    if (!formData.title.trim()) {
       onGhostUpdate(null);
       return;
     }
-    const cls = classes.find((c) => String(c.id) === formData.classId);
-    onGhostUpdate({
-      id: "__ghost__",
-      title: (appliedNlp ? nlpResult?.title || formData.title : formData.title).trim(),
-      due_date: toUTCString(formData.dueDate),
-      status: "incomplete",
-      event_type: formData.eventType,
-      class_id: formData.classId || null,
-      class_name: cls?.name || null,
-      class_color: cls?.color || null,
-      isGhost: true,
-    });
-  }, [opened, formData.title, formData.dueDate, formData.classId, formData.eventType, isTodoistMode]);
+
+    if (isTodoistMode) {
+      // Todoist ghost: use NLP-parsed title/date, Todoist class
+      const resolvedDate = nlpResult?.date || formData.dueDate;
+      const todoistClass = classes.find((c) => c.canvas_course_id === "todoist");
+      const baseGhost = {
+        id: "__ghost__",
+        title: (nlpResult?.title || formData.title.slice(1)).trim(),
+        status: "incomplete",
+        event_type: "assignment",
+        class_id: todoistClass?.id || null,
+        class_name: todoistClass?.name || null,
+        class_color: todoistClass?.color || null,
+        isGhost: true,
+      };
+
+      if (nlpResult?.recurrence) {
+        // Recurring: pass recurrence string, Calendar will expand into multiple ghosts
+        onGhostUpdate({ ...baseGhost, due_date: null, recurrence: nlpResult.recurrence });
+      } else if (resolvedDate) {
+        onGhostUpdate({
+          ...baseGhost,
+          due_date: nlpResult?.hasTime
+            ? dayjs(resolvedDate).format("YYYY-MM-DDTHH:mm:ss")
+            : toUTCString(resolvedDate),
+        });
+      } else {
+        onGhostUpdate(null);
+      }
+    } else {
+      const cls = classes.find((c) => String(c.id) === formData.classId);
+      onGhostUpdate({
+        id: "__ghost__",
+        title: (appliedNlp ? nlpResult?.title || formData.title : formData.title).trim(),
+        due_date: toUTCString(formData.dueDate),
+        status: "incomplete",
+        event_type: formData.eventType,
+        class_id: formData.classId || null,
+        class_name: cls?.name || null,
+        class_color: cls?.color || null,
+        isGhost: true,
+      });
+    }
+  }, [opened, formData.title, formData.dueDate, formData.classId, formData.eventType, isTodoistMode, nlpResult]);
 
   // Handle Mod+Enter to submit
   useEffect(() => {
@@ -238,11 +269,16 @@ export default function CreateEventModal({
       // Resolve the due date: NLP-parsed date > calendar date
       const resolvedDate = freshParse.date || formData.dueDate;
       const hasTime = freshParse.hasTime;
+      const isRecurring = !!freshParse.recurrence;
 
-      // Build Todoist due fields — send resolved date directly
-      // instead of due_string to avoid Todoist re-interpreting relative dates
+      // Build Todoist due fields
       const todoistDue = {};
-      if (resolvedDate) {
+      if (isRecurring) {
+        // Recurring tasks: send the natural language string so Todoist
+        // handles "every tuesday and thursday at 8am" natively
+        todoistDue.due_string = freshParse.recurrence;
+      } else if (resolvedDate) {
+        // One-off tasks: send resolved date directly
         if (hasTime) {
           todoistDue.due_datetime = dayjs(resolvedDate).format("YYYY-MM-DDTHH:mm:ss");
         } else {
@@ -265,10 +301,12 @@ export default function CreateEventModal({
         (c) => c.canvas_course_id === "todoist",
       );
 
-      // Use resolved date for local event, fall back to Todoist response
-      const dueDate = resolvedDate
-        ? (hasTime ? dayjs(resolvedDate).format("YYYY-MM-DDTHH:mm:ss") : dayjs(resolvedDate).format("YYYY-MM-DD"))
-        : todoistTask.due?.date || toUTCString(date);
+      // Use Todoist's resolved date for recurring tasks, local date for one-off
+      const dueDate = isRecurring
+        ? todoistTask.due?.date || toUTCString(date)
+        : resolvedDate
+          ? (hasTime ? dayjs(resolvedDate).format("YYYY-MM-DDTHH:mm:ss") : dayjs(resolvedDate).format("YYYY-MM-DD"))
+          : todoistTask.due?.date || toUTCString(date);
 
       // Create local event linked to Todoist
       onCreate({
@@ -429,7 +467,11 @@ export default function CreateEventModal({
                       </Group>
                       <Group gap="xs" align="baseline">
                         <Text size="sm" c="dimmed" w={40}>Due</Text>
-                        {nlpResult?.date ? (
+                        {nlpResult?.recurrence ? (
+                          <Text size="sm" fw={500} c="orange">
+                            {nlpResult.dateText}
+                          </Text>
+                        ) : nlpResult?.date ? (
                           <Text size="sm" fw={500} c="green">
                             {dayjs(nlpResult.date).format(
                               nlpResult.hasTime
