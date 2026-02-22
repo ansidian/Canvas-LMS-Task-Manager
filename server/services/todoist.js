@@ -38,7 +38,47 @@ export async function fetchTodoistTasks(token) {
     }));
 }
 
-export async function createTodoistTask(token, { content, due_string, due_date, due_datetime, priority }) {
+export async function fetchTodoistProjects(token) {
+  const data = await todoistFetch("/projects", token);
+  const projects = data.results || data;
+  return projects.map((p) => ({
+    id: p.id,
+    name: p.name,
+    color: p.color,
+    is_inbox: p.is_inbox_project ?? p.name === "Inbox",
+  }));
+}
+
+export async function fetchTodoistLabels(token) {
+  const data = await todoistFetch("/labels", token);
+  const labels = data.results || data;
+  return labels.map((l) => ({
+    id: l.id,
+    name: l.name,
+    color: l.color,
+  }));
+}
+
+/** Ensure each label name exists as a personal label, creating any that are missing. */
+async function ensurePersonalLabels(token, labelNames) {
+  if (!labelNames?.length) return;
+  const existing = await fetchTodoistLabels(token);
+  const existingNames = new Set(existing.map((l) => l.name.toLowerCase()));
+  const missing = labelNames.filter((name) => !existingNames.has(name.toLowerCase()));
+  if (!missing.length) return;
+  await Promise.allSettled(
+    missing.map((name) =>
+      todoistFetch("/labels", token, {
+        method: "POST",
+        body: JSON.stringify({ name }),
+      }),
+    ),
+  );
+}
+
+export async function createTodoistTask(token, { content, due_string, due_date, due_datetime, priority, project_id, labels, description }) {
+  // Ensure labels exist as personal labels before creating the task
+  await ensurePersonalLabels(token, labels);
   return todoistFetch("/tasks", token, {
     method: "POST",
     body: JSON.stringify({
@@ -47,8 +87,23 @@ export async function createTodoistTask(token, { content, due_string, due_date, 
       due_date: due_date || undefined,
       due_datetime: due_datetime || undefined,
       priority: priority || undefined,
+      project_id: project_id || undefined,
+      labels: labels?.length ? labels : undefined,
+      description: description || undefined,
     }),
   });
+}
+
+export async function fetchTodoistTask(token, taskId) {
+  const t = await todoistFetch(`/tasks/${taskId}`, token);
+  return {
+    todoist_id: t.id,
+    title: t.content,
+    description: t.description || null,
+    priority: t.priority,
+    project_id: t.project_id,
+    labels: t.labels,
+  };
 }
 
 export async function closeTodoistTask(token, taskId) {

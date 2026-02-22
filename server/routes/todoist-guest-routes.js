@@ -1,6 +1,9 @@
 import { Router } from "express";
 import {
   fetchTodoistTasks,
+  fetchTodoistTask,
+  fetchTodoistProjects,
+  fetchTodoistLabels,
   createTodoistTask,
   closeTodoistTask,
   reopenTodoistTask,
@@ -36,9 +39,42 @@ router.get("/tasks", async (req, res) => {
   }
 });
 
+// Fetch user's Todoist projects (guest access)
+router.get("/projects", async (req, res) => {
+  try {
+    const projects = await fetchTodoistProjects(req.todoistToken);
+    res.json(projects);
+  } catch (err) {
+    console.error("Error fetching Todoist projects (guest):", err);
+    res.status(500).json({ message: "Failed to fetch Todoist projects" });
+  }
+});
+
+// Fetch user's Todoist labels (guest access)
+router.get("/labels", async (req, res) => {
+  try {
+    const labels = await fetchTodoistLabels(req.todoistToken);
+    res.json(labels);
+  } catch (err) {
+    console.error("Error fetching Todoist labels (guest):", err);
+    res.status(500).json({ message: "Failed to fetch Todoist labels" });
+  }
+});
+
+// Fetch a single Todoist task by ID (guest access)
+router.get("/tasks/:id", async (req, res) => {
+  try {
+    const task = await fetchTodoistTask(req.todoistToken, req.params.id);
+    res.json(task);
+  } catch (err) {
+    console.error("Error fetching Todoist task (guest):", err);
+    res.status(500).json({ message: "Failed to fetch Todoist task" });
+  }
+});
+
 // Create a task in Todoist (guest access)
 router.post("/tasks", async (req, res) => {
-  const { content, due_string, due_date, due_datetime, priority } = req.body;
+  const { content, due_string, due_date, due_datetime, priority, project_id, labels } = req.body;
   if (!content) {
     return res.status(400).json({ message: "Task content is required" });
   }
@@ -49,6 +85,8 @@ router.post("/tasks", async (req, res) => {
       due_date,
       due_datetime,
       priority,
+      project_id,
+      labels,
     });
     res.status(201).json(task);
   } catch (err) {

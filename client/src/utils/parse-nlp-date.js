@@ -111,6 +111,52 @@ function normalizeRecurrence(raw) {
   return out;
 }
 
+// Todoist inline token patterns — only used in Todoist mode (! prefix)
+// #project or #"multi word project"
+const PROJECT_RE = /#(?:"([^"]+)"|(\S+))/;
+// @label or @"multi word label" — can appear multiple times
+const LABEL_RE = /@(?:"([^"]+)"|(\S+))/g;
+// !!1 through !!4 — Todoist priority syntax
+const PRIORITY_RE = /!!([1-4])\b/;
+
+/**
+ * Extract Todoist-specific tokens (#project, @label, !!priority) from text.
+ * Returns the cleaned text with tokens removed, plus extracted metadata.
+ */
+function extractTodoistTokens(text) {
+  let project = null;
+  const labels = [];
+  let priority = null;
+
+  // Extract project
+  const projectMatch = text.match(PROJECT_RE);
+  if (projectMatch) {
+    project = projectMatch[1] || projectMatch[2];
+    text = text.replace(PROJECT_RE, "").trim();
+  }
+
+  // Extract labels (multiple allowed)
+  let labelMatch;
+  while ((labelMatch = LABEL_RE.exec(text)) !== null) {
+    labels.push(labelMatch[1] || labelMatch[2]);
+  }
+  if (labels.length) {
+    text = text.replace(LABEL_RE, "").trim();
+  }
+
+  // Extract priority
+  const priorityMatch = text.match(PRIORITY_RE);
+  if (priorityMatch) {
+    priority = parseInt(priorityMatch[1], 10);
+    text = text.replace(PRIORITY_RE, "").trim();
+  }
+
+  // Clean up double spaces from removals
+  text = text.replace(/\s{2,}/g, " ").trim();
+
+  return { text, project, labels, priority };
+}
+
 /**
  * Parse natural language date/time from an input string.
  * Strips the "!" prefix if present, finds a date expression,
@@ -120,14 +166,31 @@ function normalizeRecurrence(raw) {
  * and returns them as `recurrence` — the raw string to pass to Todoist's
  * `due_string` for native recurring task support.
  *
+ * In Todoist mode (! prefix), also extracts #project, @label, and !!priority
+ * tokens from the text.
+ *
  * @param {string} rawInput - The raw input string (may start with "!")
  * @param {Date} anchorDate - The calendar date to use for time-only expressions
  *   (e.g. "at 3pm" anchors to this date). Relative date expressions like
  *   "tomorrow" are always relative to today.
  */
 export function parseNLPInput(rawInput, anchorDate = new Date()) {
-  const text = rawInput.startsWith("!") ? rawInput.slice(1).trim() : rawInput;
-  if (!text) return { title: "", date: null, dateText: "", hasTime: false, recurrence: null };
+  const isTodoist = rawInput.startsWith("!");
+  let text = isTodoist ? rawInput.slice(1).trim() : rawInput;
+  const emptyResult = { title: "", date: null, dateText: "", hasTime: false, recurrence: null, project: null, labels: [], priority: null };
+  if (!text) return emptyResult;
+
+  // Extract Todoist tokens before date parsing (only in Todoist mode)
+  let project = null;
+  let labels = [];
+  let priority = null;
+  if (isTodoist) {
+    const tokens = extractTodoistTokens(text);
+    text = tokens.text;
+    project = tokens.project;
+    labels = tokens.labels;
+    priority = tokens.priority;
+  }
 
   // Check for recurrence patterns — "every X" and shorthand keywords
   const recurrenceMatch = text.match(EVERY_RE) || text.match(SHORTHAND_RE);
@@ -165,6 +228,9 @@ export function parseNLPInput(rawInput, anchorDate = new Date()) {
       dateText: normalizeRecurrence(recurrenceText),
       hasTime,
       recurrence,
+      project,
+      labels,
+      priority,
     };
   }
 
@@ -174,7 +240,7 @@ export function parseNLPInput(rawInput, anchorDate = new Date()) {
   // Always parse relative to today so "tomorrow" means actual tomorrow
   const results = chrono.parse(chronoText, new Date());
   if (results.length === 0) {
-    return { title: text, date: null, dateText: "", hasTime: false, recurrence: null };
+    return { title: text, date: null, dateText: "", hasTime: false, recurrence: null, project, labels, priority };
   }
 
   const result = results[0];
@@ -205,5 +271,8 @@ export function parseNLPInput(rawInput, anchorDate = new Date()) {
     dateText: result.text,
     hasTime,
     recurrence: null,
+    project,
+    labels,
+    priority,
   };
 }

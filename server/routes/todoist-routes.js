@@ -4,6 +4,9 @@ import { requireUser } from "../middleware/clerk-auth.js";
 import { validateTodoistCredentials } from "../middleware/todoist-auth.js";
 import {
   fetchTodoistTasks,
+  fetchTodoistTask,
+  fetchTodoistProjects,
+  fetchTodoistLabels,
   createTodoistTask,
   closeTodoistTask,
   reopenTodoistTask,
@@ -47,12 +50,57 @@ router.get(
   },
 );
 
+// Fetch user's Todoist projects
+router.get(
+  "/projects",
+  validateTodoistCredentials(),
+  async (req, res) => {
+    try {
+      const projects = await fetchTodoistProjects(req.todoistToken);
+      res.json(projects);
+    } catch (err) {
+      console.error("Error fetching Todoist projects:", err);
+      res.status(500).json({ message: "Failed to fetch Todoist projects" });
+    }
+  },
+);
+
+// Fetch user's Todoist labels
+router.get(
+  "/labels",
+  validateTodoistCredentials(),
+  async (req, res) => {
+    try {
+      const labels = await fetchTodoistLabels(req.todoistToken);
+      res.json(labels);
+    } catch (err) {
+      console.error("Error fetching Todoist labels:", err);
+      res.status(500).json({ message: "Failed to fetch Todoist labels" });
+    }
+  },
+);
+
+// Fetch a single Todoist task by ID
+router.get(
+  "/tasks/:id",
+  validateTodoistCredentials(),
+  async (req, res) => {
+    try {
+      const task = await fetchTodoistTask(req.todoistToken, req.params.id);
+      res.json(task);
+    } catch (err) {
+      console.error("Error fetching Todoist task:", err);
+      res.status(500).json({ message: "Failed to fetch Todoist task" });
+    }
+  },
+);
+
 // Create a task in Todoist
 router.post(
   "/tasks",
   validateTodoistCredentials(),
   async (req, res) => {
-    const { content, due_string, due_date, due_datetime, priority } = req.body;
+    const { content, due_string, due_date, due_datetime, priority, project_id, labels } = req.body;
     if (!content) {
       return res.status(400).json({ message: "Task content is required" });
     }
@@ -63,6 +111,8 @@ router.post(
         due_date,
         due_datetime,
         priority,
+        project_id,
+        labels,
       });
       res.status(201).json(task);
     } catch (err) {

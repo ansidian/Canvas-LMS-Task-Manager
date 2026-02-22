@@ -9,6 +9,7 @@ import {
   Text,
   SegmentedControl,
   Badge,
+  TagsInput,
 } from "@mantine/core";
 import { DateTimePicker } from "@mantine/dates";
 import {
@@ -20,6 +21,8 @@ import {
   IconFlag,
   IconSparkles,
   IconX,
+  IconFolder,
+  IconHash,
 } from "@tabler/icons-react";
 import dayjs from "dayjs";
 import { toLocalDate, toUTCString } from "../utils/datetime";
@@ -30,7 +33,12 @@ import BottomSheet from "./BottomSheet";
 import FloatingPanel from "./FloatingPanel";
 import useIsMobile from "../hooks/useIsMobile";
 import { motion, AnimatePresence } from "framer-motion";
-import { EVENT_TYPES, EVENT_TYPE_ICONS } from "./event-modal/constants";
+import { EVENT_TYPES, EVENT_TYPE_ICONS, PRIORITY_COLORS } from "./event-modal/constants";
+import useTodoistMetadata from "../hooks/useTodoistMetadata";
+import TodoistAutocomplete from "./TodoistAutocomplete";
+import { todoistColor } from "../utils/todoist-colors";
+
+const isInbox = (p) => p?.is_inbox || p?.name === "Inbox";
 
 // Subtle section card for visual grouping
 function SectionCard({ children, accent = null }) {
@@ -88,10 +96,15 @@ export default function CreateEventModal({
   const [hasUserEdited, setHasUserEdited] = useState(false);
   const [todoistSubmitting, setTodoistSubmitting] = useState(false);
   const [todoistPriority, setTodoistPriority] = useState("1");
+  const [todoistProjectId, setTodoistProjectId] = useState(null);
+  const [todoistLabels, setTodoistLabels] = useState([]);
+  const { projects: todoistProjects, labels: todoistLabelOptions, fetchMetadata, refreshLabels } = useTodoistMetadata(api);
   const [nlpResult, setNlpResult] = useState(null);
   const [appliedNlp, setAppliedNlp] = useState(null);
   const nlpAppliedRef = useRef(false);
   const nlpDismissedRef = useRef(false);
+  const nlpLabelsRef = useRef([]); // tracks labels currently present as @tokens in the title
+  const nlpProjectRef = useRef(null); // tracks project name from #token in the title
   const [formData, setFormData] = useState({
     title: "",
     dueDate: null,
@@ -161,6 +174,19 @@ export default function CreateEventModal({
     }
   }, [opened]);
 
+  // Fetch Todoist projects/labels when entering Todoist mode
+  useEffect(() => {
+    if (isTodoistMode && api) fetchMetadata();
+  }, [isTodoistMode, api, fetchMetadata]);
+
+  // Default to Inbox project once metadata loads
+  useEffect(() => {
+    if (todoistProjects.length && !todoistProjectId) {
+      const inbox = todoistProjects.find(isInbox);
+      if (inbox) setTodoistProjectId(inbox.id);
+    }
+  }, [todoistProjects, todoistProjectId]);
+
   // NLP parsing for both Todoist mode and normal mode
   useEffect(() => {
     if (!formData.title.trim()) {
@@ -170,6 +196,48 @@ export default function CreateEventModal({
     const timer = setTimeout(() => {
       const result = parseNLPInput(formData.title, formData.dueDate || new Date());
       setNlpResult(result);
+
+      // Sync NLP-parsed Todoist tokens to GUI controls
+      if (isTodoistMode) {
+        // Sync #project token ↔ project dropdown
+        const prevProj = nlpProjectRef.current;
+        const currProj = result.project || null;
+        nlpProjectRef.current = currProj;
+        if (currProj) {
+          const match = todoistProjects.find(
+            (p) => p.name.toLowerCase() === currProj.toLowerCase(),
+          );
+          if (match) setTodoistProjectId(match.id);
+        } else if (prevProj && !currProj) {
+          // #project was removed from title — fall back to Inbox
+          const inbox = todoistProjects.find(isInbox);
+          setTodoistProjectId(inbox ? inbox.id : null);
+        }
+        // Sync NLP-parsed @labels: add new ones, remove backspaced ones
+        // Labels added via the TagsInput GUI are never in nlpLabelsRef, so they persist
+        const prevNlp = nlpLabelsRef.current;
+        const currNlp = result.labels || [];
+        nlpLabelsRef.current = currNlp;
+        const added = currNlp.filter((l) => !prevNlp.includes(l));
+        const removed = prevNlp.filter((l) => !currNlp.includes(l));
+        if (added.length || removed.length) {
+          setTodoistLabels((prev) => {
+            let next = [...prev];
+            for (const label of added) {
+              if (!next.includes(label)) next.push(label);
+            }
+            if (removed.length) {
+              const removedSet = new Set(removed);
+              next = next.filter((l) => !removedSet.has(l));
+            }
+            return next;
+          });
+        }
+        if (result.priority) {
+          // Convert user-facing p1-p4 to API value (p1→4, p2→3, p3→2, p4→1)
+          setTodoistPriority(String(5 - result.priority));
+        }
+      }
 
       // Auto-apply in normal mode (skip if already applied or dismissed)
       if (!isTodoistMode && result.date && result.dateText && !nlpDismissedRef.current && !nlpAppliedRef.current) {
@@ -193,11 +261,15 @@ export default function CreateEventModal({
   useEffect(() => {
     if (!opened) {
       setTodoistPriority("1");
+      setTodoistProjectId(null);
+      setTodoistLabels([]);
       setTodoistSubmitting(false);
       setNlpResult(null);
       setAppliedNlp(null);
       nlpAppliedRef.current = false;
       nlpDismissedRef.current = false;
+      nlpLabelsRef.current = [];
+      nlpProjectRef.current = null;
     }
   }, [opened]);
 
@@ -327,8 +399,13 @@ export default function CreateEventModal({
           content: freshParse.title,
           ...todoistDue,
           priority: parseInt(todoistPriority, 10),
+          project_id: todoistProjectId || undefined,
+          labels: todoistLabels.length ? todoistLabels : undefined,
         }),
       });
+
+      // Refresh labels so newly created personal labels appear in autocomplete
+      if (todoistLabels.length) refreshLabels();
 
       // Find the Todoist class for local event
       const todoistClass = classes.find(
@@ -494,46 +571,62 @@ export default function CreateEventModal({
 
       <Stack gap="md">
           {/* Title - always visible */}
-          <TextInput
-            ref={titleRef}
-            label={
-              <Group gap={6} mb={2}>
-                {isTodoistMode && (
-                  <IconChecklist size={14} color="#e44332" />
-                )}
-                <Text size="sm" fw={600}>
-                  {isTodoistMode ? "Quick Add" : "Title"}
-                </Text>
-                {isTodoistMode && (
-                  <Badge size="xs" color="red" variant="light">Todoist</Badge>
-                )}
-              </Group>
-            }
-            placeholder={
-              isTodoistMode
-                ? "!buy groceries tomorrow 5pm"
-                : "Event title"
-            }
-            value={formData.title}
-            onChange={(e) => {
-              nlpDismissedRef.current = false;
-              nlpAppliedRef.current = false;
-              setAppliedNlp(null);
-              setFormData((f) => ({ ...f, title: e.target.value }));
-              markUserEdited();
-            }}
-            required
-            data-autofocus
-            styles={{
-              input: {
-                fontSize: "1rem",
-                fontWeight: 500,
-                ...(isTodoistMode && {
-                  borderColor: "var(--mantine-color-red-4)",
-                }),
-              },
-            }}
-          />
+          <Box style={{ position: "relative" }}>
+            <TextInput
+              ref={titleRef}
+              label={
+                <Group gap={6} mb={2}>
+                  {isTodoistMode && (
+                    <IconChecklist size={14} color="#e44332" />
+                  )}
+                  <Text size="sm" fw={600}>
+                    {isTodoistMode ? "Quick Add" : "Title"}
+                  </Text>
+                  {isTodoistMode && (
+                    <Badge size="xs" color="red" variant="light">Todoist</Badge>
+                  )}
+                </Group>
+              }
+              placeholder={
+                isTodoistMode
+                  ? "!buy groceries tomorrow 5pm #Work @errands !!1"
+                  : "Event title"
+              }
+              value={formData.title}
+              onChange={(e) => {
+                nlpDismissedRef.current = false;
+                nlpAppliedRef.current = false;
+                setAppliedNlp(null);
+                setFormData((f) => ({ ...f, title: e.target.value }));
+                markUserEdited();
+              }}
+              required
+              data-autofocus
+              styles={{
+                input: {
+                  fontSize: "1rem",
+                  fontWeight: 500,
+                  ...(isTodoistMode && {
+                    borderColor: "var(--mantine-color-red-4)",
+                  }),
+                },
+              }}
+            />
+            <TodoistAutocomplete
+              inputRef={titleRef}
+              value={formData.title}
+              onValueChange={(newValue) => {
+                nlpDismissedRef.current = false;
+                nlpAppliedRef.current = false;
+                setAppliedNlp(null);
+                setFormData((f) => ({ ...f, title: newValue }));
+                markUserEdited();
+              }}
+              projects={todoistProjects}
+              labels={todoistLabelOptions}
+              active={isTodoistMode}
+            />
+          </Box>
 
           <AnimatePresence mode="wait">
             {isTodoistMode ? (
@@ -545,14 +638,14 @@ export default function CreateEventModal({
                 transition={{ duration: 0.2 }}
               >
                 <Stack gap="md">
-                  {/* NLP Preview */}
+                  {/* Parsed Result — reflects merged NLP + GUI state */}
                   <SectionCard accent="#e44332">
                     <Stack gap={6}>
                       <Text size="xs" fw={600} c="dimmed" tt="uppercase">
                         Parsed Result
                       </Text>
                       <Group gap="xs" align="baseline">
-                        <Text size="sm" c="dimmed" w={40}>Title</Text>
+                        <Text size="sm" c="dimmed" w={50}>Title</Text>
                         <Text size="sm" fw={500}>
                           {nlpResult?.title || (
                             <Text span c="dimmed" fs="italic">
@@ -562,7 +655,7 @@ export default function CreateEventModal({
                         </Text>
                       </Group>
                       <Group gap="xs" align="baseline">
-                        <Text size="sm" c="dimmed" w={40}>Due</Text>
+                        <Text size="sm" c="dimmed" w={50}>Due</Text>
                         {nlpResult?.recurrence ? (
                           <Text size="sm" fw={500} c="orange">
                             {nlpResult.dateText}
@@ -581,24 +674,185 @@ export default function CreateEventModal({
                           </Text>
                         )}
                       </Group>
+                      {/* Project — from GUI dropdown or NLP #token */}
+                      <Group gap="xs" align="baseline">
+                        <Text size="sm" c="dimmed" w={50}>Project</Text>
+                        {(() => {
+                          const proj = todoistProjectId
+                            ? todoistProjects.find((p) => p.id === todoistProjectId)
+                            : null;
+                          if (!proj) return <Text size="sm" c="dimmed" fs="italic">Inbox</Text>;
+                          const hex = todoistColor(proj.color) || "#9a9a9a";
+                          return (
+                            <Group gap={6} wrap="nowrap">
+                              <Box
+                                style={{
+                                  width: 8,
+                                  height: 8,
+                                  backgroundColor: hex,
+                                  borderRadius: 2,
+                                  flexShrink: 0,
+                                }}
+                              />
+                              <Text size="sm" fw={500} style={{ color: hex }}>
+                                {proj.name}
+                              </Text>
+                            </Group>
+                          );
+                        })()}
+                      </Group>
+                      {/* Labels — from GUI TagsInput or NLP @tokens */}
+                      <Group gap="xs" align="baseline">
+                        <Text size="sm" c="dimmed" w={50}>Labels</Text>
+                        {todoistLabels.length > 0 ? (
+                          <Group gap={4}>
+                            {todoistLabels.map((l) => (
+                              <Badge key={l} size="xs" variant="light">{l}</Badge>
+                            ))}
+                          </Group>
+                        ) : (
+                          <Text size="sm" c="dimmed" fs="italic">None</Text>
+                        )}
+                      </Group>
+                      {/* Priority — from GUI segmented control or NLP !!token */}
+                      <Group gap="xs" align="baseline">
+                        <Text size="sm" c="dimmed" w={50}>Priority</Text>
+                        <Text size="sm" fw={600} style={{ color: PRIORITY_COLORS[5 - parseInt(todoistPriority, 10)] }}>
+                          P{5 - parseInt(todoistPriority, 10)}
+                        </Text>
+                      </Group>
                     </Stack>
                   </SectionCard>
 
-                  {/* Priority */}
-                  <SectionCard>
-                    <Stack gap={6}>
-                      <Group gap={6} mb={2}>
-                        <IconFlag size={14} style={{ opacity: 0.5 }} />
-                        <Text size="sm" fw={600} c="dimmed">
-                          Priority
-                        </Text>
-                      </Group>
-                      <SegmentedControl
-                        value={todoistPriority}
-                        onChange={setTodoistPriority}
-                        data={TODOIST_PRIORITIES}
+                  {/* Task Details — Priority, Project, Labels */}
+                  <SectionCard
+                    accent={(() => {
+                      const proj = todoistProjects.find((p) => p.id === todoistProjectId);
+                      if (proj) return todoistColor(proj.color) || "#9a9a9a";
+                      // Fallback to Inbox color when project not yet loaded
+                      const inbox = todoistProjects.find(isInbox);
+                      return todoistColor(inbox?.color) || "#9a9a9a";
+                    })()}
+                  >
+                    <Stack gap="md">
+                      <Select
+                        label={
+                          <Group gap={6} mb={2}>
+                            <IconFolder size={14} style={{ opacity: 0.5 }} />
+                            <Text size="sm" fw={600} c="dimmed">
+                              Project
+                            </Text>
+                          </Group>
+                        }
+                        data={todoistProjects.map((p) => ({
+                          value: p.id,
+                          label: p.name,
+                        }))}
+                        value={todoistProjectId}
+                        onChange={(newId) => {
+                          setTodoistProjectId(newId);
+                          const proj = todoistProjects.find((p) => p.id === newId);
+                          // 2-way sync: update #project token in title
+                          const PROJECT_TOKEN = /#(?:"[^"]+"|[^\s]+)\s?/;
+                          setFormData((f) => {
+                            let title = f.title;
+                            if (proj && !isInbox(proj)) {
+                              const token = proj.name.includes(" ")
+                                ? `#"${proj.name}" `
+                                : `#${proj.name} `;
+                              if (PROJECT_TOKEN.test(title)) {
+                                title = title.replace(PROJECT_TOKEN, token);
+                              } else {
+                                title = title.trimEnd() + " " + token;
+                              }
+                            } else {
+                              // Inbox or unknown — remove #project token from title
+                              title = title.replace(PROJECT_TOKEN, "").replace(/\s{2,}/g, " ").trim();
+                            }
+                            return { ...f, title };
+                          });
+                          nlpProjectRef.current = (proj && !isInbox(proj)) ? proj.name : null;
+                          markUserEdited();
+                        }}
+                        searchable
+                        allowDeselect={false}
+                        selectFirstOptionOnChange
+                        size="xs"
+                        renderOption={({ option }) => {
+                          const proj = todoistProjects.find((p) => p.id === option.value);
+                          return (
+                            <Group gap="xs" wrap="nowrap">
+                              <Box
+                                style={{
+                                  width: 10,
+                                  height: 10,
+                                  backgroundColor: todoistColor(proj?.color) || "#9a9a9a",
+                                  borderRadius: 2,
+                                  flexShrink: 0,
+                                }}
+                              />
+                              <Text size="sm">{option.label}</Text>
+                            </Group>
+                          );
+                        }}
+                        leftSection={
+                          <Box
+                            style={{
+                              width: 10,
+                              height: 10,
+                              backgroundColor: todoistColor(todoistProjects.find((p) => p.id === todoistProjectId)?.color) || "#9a9a9a",
+                              borderRadius: 2,
+                              flexShrink: 0,
+                            }}
+                          />
+                        }
+                      />
+
+                      <TagsInput
+                        label={
+                          <Group gap={6} mb={2}>
+                            <IconHash size={14} style={{ opacity: 0.5 }} />
+                            <Text size="sm" fw={600} c="dimmed">
+                              Labels
+                            </Text>
+                          </Group>
+                        }
+                        placeholder="Add labels..."
+                        data={todoistLabelOptions.map((l) => l.name)}
+                        value={todoistLabels}
+                        onChange={(values) => {
+                          setTodoistLabels(values.map((v) => v.replace(/^@/, "")));
+                        }}
                         size="xs"
                       />
+
+                      <Box>
+                        <Group gap={6} mb={6}>
+                          <IconFlag size={14} style={{ opacity: 0.5 }} />
+                          <Text size="sm" fw={600} c="dimmed">
+                            Priority
+                          </Text>
+                        </Group>
+                        <SegmentedControl
+                          value={todoistPriority}
+                          onChange={setTodoistPriority}
+                          data={TODOIST_PRIORITIES}
+                          color={PRIORITY_COLORS[5 - parseInt(todoistPriority, 10)]}
+                          autoContrast
+                          size="xs"
+                          fullWidth
+                          styles={{
+                            root: {
+                              backgroundColor: "var(--card)",
+                              border: "1px solid var(--rule)",
+                              padding: 3,
+                            },
+                            indicator: {
+                              boxShadow: "var(--shadow-sm)",
+                            },
+                          }}
+                        />
+                      </Box>
                     </Stack>
                   </SectionCard>
                 </Stack>

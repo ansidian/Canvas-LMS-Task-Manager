@@ -391,6 +391,16 @@ export default async function guestApi(endpoint, options = {}) {
   if (segments[0] === "todoist") {
     const todoistPath = "/" + segments.slice(1).join("/");
 
+    // GET /todoist/projects
+    if (segments.length === 2 && segments[1] === "projects" && method === "GET") {
+      return requestGuestTodoist("/projects");
+    }
+
+    // GET /todoist/labels
+    if (segments.length === 2 && segments[1] === "labels" && method === "GET") {
+      return requestGuestTodoist("/labels");
+    }
+
     // GET /todoist/tasks
     if (segments.length === 2 && segments[1] === "tasks" && method === "GET") {
       const data = await requestGuestTodoist("/tasks");

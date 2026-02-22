@@ -25,6 +25,7 @@ export default function useAppController({
 		loadEvents,
 		updateEvent: updateEventRecord,
 		deleteEvent: deleteEventRecord,
+		removeEvent,
 		moveEvent: moveEventRecord,
 		createEvent: createEventRecord,
 	} = useEvents();
@@ -84,6 +85,7 @@ export default function useAppController({
 		addEvent,
 		replaceEvent,
 		updateEvent: updateEventRecord,
+		removeEvent,
 		loadClasses: canvas.loadClasses,
 	});
 
