@@ -18,6 +18,7 @@ export default function CalendarDay({
   onDoubleClick,
   onEventContextMenu,
   onDayContextMenu,
+  onDayClick,
   unassignedColor = "#a78b71",
 }) {
   const { setNodeRef, isOver } = useDroppable({
@@ -122,10 +123,17 @@ export default function CalendarDay({
       ref={combinedRef}
       p="xs"
       withBorder
+      onClick={(e) => {
+        if (e.detail === 1 && onDayClick) {
+          const rect = e.currentTarget.getBoundingClientRect();
+          onDayClick(dateKey, rect);
+        }
+      }}
       onDoubleClick={onDoubleClick}
       onContextMenu={(e) => {
         e.preventDefault();
-        onDayContextMenu?.(dateKey, e);
+        const rect = e.currentTarget.getBoundingClientRect();
+        onDayContextMenu?.(dateKey, e, rect);
       }}
       onMouseMove={handleMouseMove}
       onMouseEnter={handleMouseEnter}

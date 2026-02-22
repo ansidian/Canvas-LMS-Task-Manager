@@ -117,6 +117,7 @@ export default function BottomSheet({
               }
             }}
             style={{
+              position: "relative",
               background: "var(--card)",
               borderRadius: "12px 12px 0 0",
               width: "100%",

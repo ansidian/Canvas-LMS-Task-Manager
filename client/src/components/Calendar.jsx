@@ -38,6 +38,7 @@ export default function Calendar({
   onEventClick,
   onEventDrop,
   onDayDoubleClick,
+  onDayClick,
   onEventDelete,
   onEventStatusChange,
   onCreateTodoistTask,
@@ -90,20 +91,20 @@ export default function Calendar({
   // Day (empty space) context menu state
   const [dayContextMenu, setDayContextMenu] = useState(null);
 
-  const handleDayContextMenu = useCallback((dateKey, mouseEvent) => {
+  const handleDayContextMenu = useCallback((dateKey, mouseEvent, anchorRect) => {
     if (activeEvent) return;
-    setDayContextMenu({ dateKey, x: mouseEvent.clientX, y: mouseEvent.clientY });
+    setDayContextMenu({ dateKey, x: mouseEvent.clientX, y: mouseEvent.clientY, anchorRect });
   }, [activeEvent]);
 
   const handleDayAddEvent = useCallback(() => {
     if (!dayContextMenu) return;
-    onDayDoubleClick(dayContextMenu.dateKey);
+    onDayDoubleClick(dayContextMenu.dateKey, dayContextMenu.anchorRect);
     setDayContextMenu(null);
   }, [dayContextMenu, onDayDoubleClick]);
 
   const handleDayAddTodoistTask = useCallback(() => {
     if (!dayContextMenu) return;
-    onCreateTodoistTask(dayContextMenu.dateKey);
+    onCreateTodoistTask(dayContextMenu.dateKey, dayContextMenu.anchorRect);
     setDayContextMenu(null);
   }, [dayContextMenu, onCreateTodoistTask]);
 
@@ -333,7 +334,12 @@ export default function Calendar({
                     onEventClick={onEventClick}
                     onEventContextMenu={handleEventContextMenu}
                     onDayContextMenu={handleDayContextMenu}
-                    onDoubleClick={() => onDayDoubleClick(dateKey)}
+                    onDayClick={onDayClick}
+                    onDoubleClick={(e) => {
+                      const cell = e.currentTarget.closest('.calendar-day');
+                      const rect = cell ? cell.getBoundingClientRect() : null;
+                      onDayDoubleClick(dateKey, rect);
+                    }}
                     unassignedColor={unassignedColor}
                   />
                 );

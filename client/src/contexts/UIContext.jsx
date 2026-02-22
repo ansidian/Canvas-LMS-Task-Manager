@@ -10,6 +10,7 @@ const initialState = {
 	selectedEvent: null,
 	createEventDate: null,
 	createEventPrefix: "",
+	createEventAnchorRect: null,
 	ghostEvent: null,
 	loading: false,
 	initialLoading: true,
@@ -55,6 +56,11 @@ function uiReducer(state, action) {
 				...state,
 				createEventPrefix: resolveNext(action.value, state.createEventPrefix),
 			};
+		case "SET_CREATE_EVENT_ANCHOR_RECT":
+			return {
+				...state,
+				createEventAnchorRect: resolveNext(action.value, state.createEventAnchorRect),
+			};
 		case "SET_GHOST_EVENT":
 			return {
 				...state,
@@ -94,6 +100,7 @@ export function UIProvider({ children }) {
 			selectedEvent: state.selectedEvent,
 			createEventDate: state.createEventDate,
 			createEventPrefix: state.createEventPrefix,
+			createEventAnchorRect: state.createEventAnchorRect,
 			ghostEvent: state.ghostEvent,
 			loading: state.loading,
 			initialLoading: state.initialLoading,
@@ -110,6 +117,8 @@ export function UIProvider({ children }) {
 				dispatch({ type: "SET_CREATE_EVENT_DATE", value: next }),
 			setCreateEventPrefix: (next) =>
 				dispatch({ type: "SET_CREATE_EVENT_PREFIX", value: next }),
+			setCreateEventAnchorRect: (next) =>
+				dispatch({ type: "SET_CREATE_EVENT_ANCHOR_RECT", value: next }),
 			setGhostEvent: (next) =>
 				dispatch({ type: "SET_GHOST_EVENT", value: next }),
 			setLoading: (next) =>
@@ -126,6 +135,7 @@ export function UIProvider({ children }) {
 			state.selectedEvent,
 			state.createEventDate,
 			state.createEventPrefix,
+			state.createEventAnchorRect,
 			state.ghostEvent,
 			state.loading,
 			state.initialLoading,

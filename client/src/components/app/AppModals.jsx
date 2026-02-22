@@ -70,9 +70,11 @@ export default function AppModals() {
 					controller.setGhostEvent(null);
 					controller.setCreateEventDate(null);
 					controller.setCreateEventPrefix("");
+					controller.setCreateEventAnchorRect(null);
 				}}
 				date={controller.createEventDate}
 				initialPrefix={controller.createEventPrefix}
+				anchorRect={controller.createEventAnchorRect}
 				classes={controller.classes}
 				events={controller.events}
 				unassignedColor={controller.unassignedColor}

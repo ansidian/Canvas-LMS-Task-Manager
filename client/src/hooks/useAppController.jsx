@@ -43,6 +43,7 @@ export default function useAppController({
 		selectedEvent,
 		createEventDate,
 		createEventPrefix,
+		createEventAnchorRect,
 		ghostEvent,
 		loading,
 		initialLoading,
@@ -53,6 +54,7 @@ export default function useAppController({
 		setSelectedEvent,
 		setCreateEventDate,
 		setCreateEventPrefix,
+		setCreateEventAnchorRect,
 		setGhostEvent,
 		setLoading,
 		setInitialLoading,
@@ -245,12 +247,20 @@ export default function useAppController({
 		}
 	};
 
-	const handleDayDoubleClick = (date) => {
+	const handleDayDoubleClick = (date, anchorRect = null) => {
+		setCreateEventAnchorRect(anchorRect);
 		setCreateEventDate(date);
 	};
 
-	const handleCreateTodoistTask = (date) => {
+	const handleCreateTodoistTask = (date, anchorRect = null) => {
 		setCreateEventPrefix("!");
+		setCreateEventAnchorRect(anchorRect);
+		setCreateEventDate(date);
+	};
+
+	const handleDayClick = (date, anchorRect = null) => {
+		if (!createEventDate) return; // only reschedule when panel is open
+		setCreateEventAnchorRect(anchorRect);
 		setCreateEventDate(date);
 	};
 
@@ -304,6 +314,8 @@ export default function useAppController({
 		setCreateEventDate,
 		createEventPrefix: createEventPrefix || "",
 		setCreateEventPrefix,
+		createEventAnchorRect,
+		setCreateEventAnchorRect,
 		setGhostEvent,
 		setHighlightCredentials,
 		loadEvents,
@@ -318,6 +330,7 @@ export default function useAppController({
 		handleClassesReorder: canvas.handleClassesReorder,
 		handleCreateEvent,
 		handleDayDoubleClick,
+		handleDayClick,
 		handleCreateTodoistTask,
 		handleOpenEvent,
 		openApprovalModal: approvalFlow.openApprovalModal,

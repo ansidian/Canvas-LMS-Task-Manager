@@ -39,6 +39,7 @@ export default function AppMain({ isMobile }) {
 					onEventClick={controller.setSelectedEvent}
 					onEventDrop={controller.handleEventDrop}
 					onDayDoubleClick={controller.handleDayDoubleClick}
+					onDayClick={controller.handleDayClick}
 					onEventDelete={controller.handleEventDelete}
 					onEventStatusChange={(id, status) =>
 						controller.handleEventUpdate(id, { status })

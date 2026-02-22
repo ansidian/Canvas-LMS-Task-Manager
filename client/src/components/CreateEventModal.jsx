@@ -27,7 +27,9 @@ import { parseNLPInput } from "../utils/parse-nlp-date";
 import { notifyError, notifySuccess } from "../utils/notify.jsx";
 import NotesTextarea from "./NotesTextarea";
 import BottomSheet from "./BottomSheet";
-import { motion, useAnimation, AnimatePresence } from "framer-motion";
+import FloatingPanel from "./FloatingPanel";
+import useIsMobile from "../hooks/useIsMobile";
+import { motion, AnimatePresence } from "framer-motion";
 import { EVENT_TYPES, EVENT_TYPE_ICONS } from "./event-modal/constants";
 
 // Subtle section card for visual grouping
@@ -79,9 +81,9 @@ export default function CreateEventModal({
   onOpenEvent,
   onGhostUpdate,
   api,
+  anchorRect = null,
 }) {
   const titleRef = useRef(null);
-  const shakeControls = useAnimation();
   const initialFormDataRef = useRef(null);
   const [hasUserEdited, setHasUserEdited] = useState(false);
   const [todoistSubmitting, setTodoistSubmitting] = useState(false);
@@ -101,20 +103,54 @@ export default function CreateEventModal({
 
   const isTodoistMode = formData.title.startsWith("!");
 
+  const wasOpenRef = useRef(false);
+  const initialDateRef = useRef(null);
+  const titleRef2 = useRef("");
+
+  // Keep a ref to current title for the reschedule effect
   useEffect(() => {
-    if (!opened) return;
-    const nextFormData = {
-      title: initialPrefix || "",
-      dueDate: toLocalDate(date),
-      classId: null,
-      eventType: "assignment",
-      notes: "",
-      url: "",
-    };
-    setFormData(nextFormData);
-    initialFormDataRef.current = nextFormData;
-    setHasUserEdited(false);
-  }, [date, opened, initialPrefix]);
+    titleRef2.current = formData.title;
+  }, [formData.title]);
+
+  // Reset form when modal first opens
+  useEffect(() => {
+    if (!opened) {
+      wasOpenRef.current = false;
+      initialDateRef.current = null;
+      return;
+    }
+    if (!wasOpenRef.current) {
+      // First open — full reset
+      wasOpenRef.current = true;
+      initialDateRef.current = date;
+      const nextFormData = {
+        title: initialPrefix || "",
+        dueDate: toLocalDate(date),
+        classId: null,
+        eventType: "assignment",
+        notes: "",
+        url: "",
+      };
+      setFormData(nextFormData);
+      initialFormDataRef.current = nextFormData;
+      setHasUserEdited(false);
+    }
+  }, [opened, initialPrefix]);
+
+  // Update only dueDate when date changes while panel is open (click-to-reschedule)
+  // Skip on initial open. If title is blank, close instead.
+  useEffect(() => {
+    if (!opened || !wasOpenRef.current || !date) return;
+    if (date === initialDateRef.current) return; // skip initial
+    initialDateRef.current = date; // update so subsequent changes work
+    const raw = titleRef2.current.trim();
+    const effectiveTitle = raw.startsWith("!") ? raw.slice(1).trim() : raw;
+    if (!effectiveTitle) {
+      onClose();
+      return;
+    }
+    setFormData((f) => ({ ...f, dueDate: toLocalDate(date) }));
+  }, [date]);
 
   // Focus title input when modal opens
   useEffect(() => {
@@ -168,18 +204,15 @@ export default function CreateEventModal({
   // Sync ghost event to calendar preview
   useEffect(() => {
     if (!onGhostUpdate || !opened) return;
-    if (!formData.title.trim()) {
-      onGhostUpdate(null);
-      return;
-    }
 
     if (isTodoistMode) {
       // Todoist ghost: use NLP-parsed title/date, Todoist class
       const resolvedDate = nlpResult?.date || formData.dueDate;
       const todoistClass = classes.find((c) => c.canvas_course_id === "todoist");
+      const rawTitle = (nlpResult?.title || formData.title.slice(1)).trim();
       const baseGhost = {
         id: "__ghost__",
-        title: (nlpResult?.title || formData.title.slice(1)).trim(),
+        title: rawTitle || "New task",
         status: "incomplete",
         event_type: "assignment",
         class_id: todoistClass?.id || null,
@@ -203,9 +236,10 @@ export default function CreateEventModal({
       }
     } else {
       const cls = classes.find((c) => String(c.id) === formData.classId);
+      const rawTitle = (appliedNlp ? nlpResult?.title || formData.title : formData.title).trim();
       onGhostUpdate({
         id: "__ghost__",
-        title: (appliedNlp ? nlpResult?.title || formData.title : formData.title).trim(),
+        title: rawTitle || "New event",
         due_date: toUTCString(formData.dueDate),
         status: "incomplete",
         event_type: formData.eventType,
@@ -346,29 +380,43 @@ export default function CreateEventModal({
   }, [formData]);
   const shouldBlockClose = hasUserEdited && isDirty;
 
-  const triggerDirtyShake = () => {
-    shakeControls.start({
-      x: [0, -8, 8, -6, 6, 0],
-      transition: { duration: 0.35 },
-    });
-  };
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+  const pendingActionRef = useRef(null);
 
   const handleAttemptClose = () => {
     if (shouldBlockClose) {
-      triggerDirtyShake();
+      pendingActionRef.current = () => onClose();
+      setShowDiscardConfirm(true);
       return;
     }
     onClose();
   };
   const handleOpenMentionEvent = (eventItem) => {
     if (shouldBlockClose) {
-      triggerDirtyShake();
+      pendingActionRef.current = () => onOpenEvent?.(eventItem);
+      setShowDiscardConfirm(true);
       return;
     }
     onOpenEvent?.(eventItem);
   };
 
+  const handleConfirmDiscard = () => {
+    setShowDiscardConfirm(false);
+    pendingActionRef.current?.();
+    pendingActionRef.current = null;
+  };
+
+  const handleCancelDiscard = () => {
+    setShowDiscardConfirm(false);
+    pendingActionRef.current = null;
+  };
+
   const handleDiscard = () => {
+    if (shouldBlockClose) {
+      pendingActionRef.current = () => onClose();
+      setShowDiscardConfirm(true);
+      return;
+    }
     onClose();
   };
   const markUserEdited = () => {
@@ -388,15 +436,63 @@ export default function CreateEventModal({
   const todoistSubmitDisabled =
     isTodoistMode && (!formData.title.trim() || todoistSubmitting);
 
+  const isMobile = useIsMobile();
+  const modalTitle = isTodoistMode ? "Create Todoist Task" : "Create Event";
+
+  const Container = isMobile ? BottomSheet : FloatingPanel;
+  const containerProps = isMobile
+    ? { opened, onClose: handleAttemptClose, title: modalTitle, size: "md" }
+    : { opened, onClose: handleAttemptClose, title: modalTitle, anchorRect, closeOnEscape: true };
+
+  // Reset discard state when modal closes
+  useEffect(() => {
+    if (!opened) {
+      setShowDiscardConfirm(false);
+      pendingActionRef.current = null;
+    }
+  }, [opened]);
+
   return (
-    <BottomSheet
-      opened={opened}
-      onClose={handleAttemptClose}
-      title={isTodoistMode ? "Create Todoist Task" : "Create Event"}
-      size="md"
-    >
-      <motion.div animate={shakeControls}>
-        <Stack gap="md">
+    <Container {...containerProps}>
+      {/* Discard confirmation overlay */}
+      <AnimatePresence>
+        {showDiscardConfirm && (
+          <motion.div
+            key="discard-confirm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            style={{
+              position: "absolute",
+              inset: 0,
+              zIndex: 10,
+              background: "var(--card)",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 16,
+              padding: 24,
+              borderRadius: "inherit",
+            }}
+          >
+            <Text fw={600} size="md" ta="center" style={{ color: "var(--ink)" }}>
+              Discard unsaved changes?
+            </Text>
+            <Group gap={12}>
+              <Button color="red" variant="light" onClick={handleConfirmDiscard}>
+                Discard
+              </Button>
+              <Button onClick={handleCancelDiscard}>
+                Keep editing
+              </Button>
+            </Group>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <Stack gap="md">
           {/* Title - always visible */}
           <TextInput
             ref={titleRef}
@@ -782,7 +878,6 @@ export default function CreateEventModal({
             </Group>
           </Box>
         </Stack>
-      </motion.div>
-    </BottomSheet>
+    </Container>
   );
 }
