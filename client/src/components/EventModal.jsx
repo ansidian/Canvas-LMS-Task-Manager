@@ -10,6 +10,7 @@ import EventModalFooter from "./event-modal/EventModalFooter";
 import useEventModalCanvas from "../hooks/useEventModalCanvas";
 import useEventModalForm from "../hooks/useEventModalForm";
 import useEventModalSubmission from "../hooks/useEventModalSubmission";
+import useTodoistTaskDetail from "../hooks/useTodoistTaskDetail";
 import useIsMobile from "../hooks/useIsMobile";
 
 export default function EventModal({
@@ -39,6 +40,9 @@ export default function EventModal({
 
   // Use preserved event for rendering during exit animation
   const displayEvent = event || preservedEvent;
+
+  const isTodoistLinked = Boolean(displayEvent?.todoist_id);
+  const todoist = useTodoistTaskDetail(api, displayEvent?.todoist_id);
 
   const canvas = useEventModalCanvas({ event: displayEvent, api, onUpdate });
 
@@ -125,6 +129,9 @@ export default function EventModal({
               />
 
               <EventDetailsColumn
+                isTodoistLinked={isTodoistLinked}
+                todoistDetail={todoist.taskDetail}
+                todoistLoading={todoist.loading}
                 canvasIds={canvas.canvasIds}
                 canvasUrl={displayEvent.url}
                 assignmentInfo={canvas.assignmentInfo}

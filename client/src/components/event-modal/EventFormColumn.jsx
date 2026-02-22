@@ -373,105 +373,107 @@ export default function EventFormColumn({
           </Stack>
         </SectionCard>
 
-        {/* Classification Section */}
-        <SectionCard accent={currentClassColor}>
-          <Stack gap="md">
-            <Select
-              label={
-                <Group gap={6} mb={2}>
-                  <IconTag size={14} style={{ opacity: 0.5 }} />
-                  <Text size="sm" fw={600} c="dimmed">
-                    Class
-                  </Text>
-                </Group>
-              }
-              placeholder="Select a class"
-              data={[
-                { value: "", label: "Unassigned" },
-                ...classes
-                  .filter(
-                    (cls) =>
-                      !cls.canvas_course_id ||
-                      cls.is_synced ||
-                      (event && cls.id === event.class_id),
-                  )
-                  .map((cls) => ({
-                    value: String(cls.id),
-                    label: cls.name,
-                  })),
-              ]}
-              value={formData.class_id || ""}
-              onChange={(value) => {
-                setFormData((prev) => ({ ...prev, class_id: value || null }));
-                markUserEdited();
-              }}
-              searchable
-              selectFirstOptionOnChange
-              allowDeselect={false}
-              renderOption={({ option }) => {
-                const cls = classes.find(
-                  (item) => String(item.id) === option.value,
-                );
-                return (
-                  <Group gap="xs" wrap="nowrap">
-                    <Box
-                      style={{
-                        width: 10,
-                        height: 10,
-                        backgroundColor: cls?.color || unassignedColor,
-                        borderRadius: 2,
-                        flexShrink: 0,
-                      }}
-                    />
-                    <Text size="sm">{option.label}</Text>
+        {/* Classification Section — hidden for Todoist items */}
+        {!isTodoistLinked && (
+          <SectionCard accent={currentClassColor}>
+            <Stack gap="md">
+              <Select
+                label={
+                  <Group gap={6} mb={2}>
+                    <IconTag size={14} style={{ opacity: 0.5 }} />
+                    <Text size="sm" fw={600} c="dimmed">
+                      Class
+                    </Text>
                   </Group>
-                );
-              }}
-              leftSection={
-                <Box
-                  style={{
-                    width: 10,
-                    height: 10,
-                    backgroundColor: currentClassColor,
-                    borderRadius: 2,
-                    flexShrink: 0,
-                  }}
-                />
-              }
-            />
+                }
+                placeholder="Select a class"
+                data={[
+                  { value: "", label: "Unassigned" },
+                  ...classes
+                    .filter(
+                      (cls) =>
+                        !cls.canvas_course_id ||
+                        cls.is_synced ||
+                        (event && cls.id === event.class_id),
+                    )
+                    .map((cls) => ({
+                      value: String(cls.id),
+                      label: cls.name,
+                    })),
+                ]}
+                value={formData.class_id || ""}
+                onChange={(value) => {
+                  setFormData((prev) => ({ ...prev, class_id: value || null }));
+                  markUserEdited();
+                }}
+                searchable
+                selectFirstOptionOnChange
+                allowDeselect={false}
+                renderOption={({ option }) => {
+                  const cls = classes.find(
+                    (item) => String(item.id) === option.value,
+                  );
+                  return (
+                    <Group gap="xs" wrap="nowrap">
+                      <Box
+                        style={{
+                          width: 10,
+                          height: 10,
+                          backgroundColor: cls?.color || unassignedColor,
+                          borderRadius: 2,
+                          flexShrink: 0,
+                        }}
+                      />
+                      <Text size="sm">{option.label}</Text>
+                    </Group>
+                  );
+                }}
+                leftSection={
+                  <Box
+                    style={{
+                      width: 10,
+                      height: 10,
+                      backgroundColor: currentClassColor,
+                      borderRadius: 2,
+                      flexShrink: 0,
+                    }}
+                  />
+                }
+              />
 
-            <Select
-              label={
-                <Text size="sm" fw={600} c="dimmed" mb={2}>
-                  Event Type
-                </Text>
-              }
-              data={EVENT_TYPES}
-              value={formData.event_type}
-              onChange={(value) => {
-                setFormData((prev) => ({ ...prev, event_type: value }));
-                markUserEdited();
-              }}
-              searchable
-              allowDeselect={false}
-              selectFirstOptionOnChange
-              renderOption={({ option }) => {
-                const Icon = EVENT_TYPE_ICONS[option.value] || IconFileText;
-                return (
-                  <Group gap="xs" wrap="nowrap">
-                    <Icon size={16} style={{ opacity: 0.7, flexShrink: 0 }} />
-                    <Text size="sm">{option.label}</Text>
-                  </Group>
-                );
-              }}
-              leftSection={(() => {
-                const Icon =
-                  EVENT_TYPE_ICONS[formData.event_type] || IconFileText;
-                return <Icon size={16} style={{ opacity: 0.7 }} />;
-              })()}
-            />
-          </Stack>
-        </SectionCard>
+              <Select
+                label={
+                  <Text size="sm" fw={600} c="dimmed" mb={2}>
+                    Event Type
+                  </Text>
+                }
+                data={EVENT_TYPES}
+                value={formData.event_type}
+                onChange={(value) => {
+                  setFormData((prev) => ({ ...prev, event_type: value }));
+                  markUserEdited();
+                }}
+                searchable
+                allowDeselect={false}
+                selectFirstOptionOnChange
+                renderOption={({ option }) => {
+                  const Icon = EVENT_TYPE_ICONS[option.value] || IconFileText;
+                  return (
+                    <Group gap="xs" wrap="nowrap">
+                      <Icon size={16} style={{ opacity: 0.7, flexShrink: 0 }} />
+                      <Text size="sm">{option.label}</Text>
+                    </Group>
+                  );
+                }}
+                leftSection={(() => {
+                  const Icon =
+                    EVENT_TYPE_ICONS[formData.event_type] || IconFileText;
+                  return <Icon size={16} style={{ opacity: 0.7 }} />;
+                })()}
+              />
+            </Stack>
+          </SectionCard>
+        )}
 
         {/* URL Section */}
         <SectionCard>

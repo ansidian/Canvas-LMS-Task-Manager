@@ -40,3 +40,11 @@ export const TODOIST_STATUS_OPTIONS = [
 ];
 
 export const PREVIEW_SIZE = { width: 280, height: 140, contentWidth: 640 };
+
+// User-facing priority → hex color (P1=urgent red, P4=default grey)
+export const PRIORITY_COLORS = {
+  1: "#d1453b",
+  2: "#eb8909",
+  3: "#246fe0",
+  4: "#9a9a9a",
+};
