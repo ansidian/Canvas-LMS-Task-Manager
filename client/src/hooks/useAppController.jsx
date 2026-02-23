@@ -136,11 +136,51 @@ export default function useAppController({
 	});
 
 	const handleEventUpdate = async (eventId, updates, options = {}) => {
-		const updated = await updateEventRecord(eventId, updates);
+		// Extract Todoist metadata before sending to local DB (it doesn't belong there)
+		const todoistMeta = updates._todoistMeta;
+		const { _todoistMeta, ...dbUpdates } = updates;
+
+		// Look up todoist_id from the current event so we don't depend on updateEventRecord's return
+		const existingEvent = events.find((e) => String(e.id) === String(eventId));
+		const todoistTaskId = existingEvent?.todoist_id;
+
+		// Fire Todoist sync immediately and independently of the local DB update
+		// This prevents the request-id guard in updateEventRecord from swallowing Todoist changes
+		if (todoistTaskId) {
+			if (updates.status === "complete") {
+				api(`/todoist/tasks/${todoistTaskId}/close`, { method: "POST" })
+					.catch((err) => console.error("Failed to close Todoist task:", err));
+			} else if (updates.status === "incomplete") {
+				api(`/todoist/tasks/${todoistTaskId}/reopen`, { method: "POST" })
+					.catch((err) => console.error("Failed to reopen Todoist task:", err));
+			}
+
+			const todoistPatch = {};
+			if (updates.title) todoistPatch.content = updates.title;
+			if (updates.due_date) {
+				const hasTime = updates.due_date.includes("T");
+				if (hasTime) {
+					todoistPatch.due_datetime = updates.due_date;
+				} else {
+					todoistPatch.due_date = updates.due_date;
+				}
+			}
+			if (todoistMeta) {
+				Object.assign(todoistPatch, todoistMeta);
+			}
+			if (Object.keys(todoistPatch).length > 0) {
+				api(`/todoist/tasks/${todoistTaskId}`, {
+					method: "PATCH",
+					body: JSON.stringify(todoistPatch),
+				}).catch((err) => console.error("Failed to sync to Todoist:", err));
+			}
+		}
+
+		const updated = await updateEventRecord(eventId, dbUpdates);
 		if (!updated) return;
 
 		// Convert to Todoist: event assigned to Todoist class without existing link
-		if (!updated.todoist_id && updates.class_id != null) {
+		if (!todoistTaskId && updates.class_id != null) {
 			const todoistClass = canvas.classes.find(
 				(c) => c.canvas_course_id === "todoist",
 			);
@@ -157,12 +197,10 @@ export default function useAppController({
 								: { due_date: dueDate }),
 						}),
 					});
-					// Link the local event to the new Todoist task
 					const linkUpdates = {
 						todoist_id: String(todoistTask.id),
 						url: `https://app.todoist.com/app/task/${todoistTask.id}`,
 					};
-					// Todoist only supports incomplete/complete
 					if (updated.status === "in_progress") {
 						linkUpdates.status = "incomplete";
 					}
@@ -170,34 +208,6 @@ export default function useAppController({
 				} catch (err) {
 					console.error("Failed to create Todoist task for converted event:", err);
 				}
-			}
-		}
-
-		// 2-way Todoist sync
-		if (updated.todoist_id) {
-			if (updates.status === "complete") {
-				api(`/todoist/tasks/${updated.todoist_id}/close`, { method: "POST" })
-					.catch((err) => console.error("Failed to close Todoist task:", err));
-			} else if (updates.status === "incomplete") {
-				api(`/todoist/tasks/${updated.todoist_id}/reopen`, { method: "POST" })
-					.catch((err) => console.error("Failed to reopen Todoist task:", err));
-			}
-			if (updates.title) {
-				api(`/todoist/tasks/${updated.todoist_id}`, {
-					method: "PATCH",
-					body: JSON.stringify({ content: updates.title }),
-				}).catch((err) => console.error("Failed to update Todoist task:", err));
-			}
-			if (updates.due_date) {
-				const hasTime = updates.due_date.includes("T");
-				api(`/todoist/tasks/${updated.todoist_id}`, {
-					method: "PATCH",
-					body: JSON.stringify(
-						hasTime
-							? { due_datetime: updates.due_date }
-							: { due_date: updates.due_date },
-					),
-				}).catch((err) => console.error("Failed to sync date to Todoist:", err));
 			}
 		}
 

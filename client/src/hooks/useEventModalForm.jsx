@@ -21,6 +21,10 @@ export default function useEventModalForm({
   onOpenEvent,
   submissionInfo,
   descriptionHtml,
+  todoistEdits,
+  todoistId,
+  invalidateTodoistCache,
+  api,
 }) {
   const [formData, setFormData] = useState({
     title: "",
@@ -43,7 +47,9 @@ export default function useEventModalForm({
   const [submissionDirty, setSubmissionDirty] = useState(false);
   const previewContentRef = useRef(null);
   const initialFormDataRef = useRef(null);
+  const initialTodoistEditsRef = useRef(null);
   const visualStatusAppliedRef = useRef(new Set());
+  const handleSubmitRef = useRef(null);
   const shakeControls = useAnimation();
 
   const markUserEdited = () => {
@@ -86,6 +92,7 @@ export default function useEventModalForm({
       };
       setFormData(nextFormData);
       initialFormDataRef.current = nextFormData;
+      initialTodoistEditsRef.current = null;
       setHasUserEdited(false);
       setConfirmDelete(false);
       setSaveSuccess(false);
@@ -93,6 +100,13 @@ export default function useEventModalForm({
       setSubmissionDirty(false);
     }
   }, [event]);
+
+  // Capture initial todoist edits when they first load for this event
+  useEffect(() => {
+    if (todoistEdits && !initialTodoistEditsRef.current) {
+      initialTodoistEditsRef.current = { ...todoistEdits, labels: [...todoistEdits.labels] };
+    }
+  }, [todoistEdits]);
 
   useEffect(() => {
     if (!opened) return;
@@ -102,12 +116,12 @@ export default function useEventModalForm({
       if (e.key !== "Enter" || !(e.metaKey || e.ctrlKey)) return;
 
       e.preventDefault();
-      handleSubmit();
+      handleSubmitRef.current?.();
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [opened, formData]);
+  }, [opened]);
 
   useEffect(() => {
     if (!submissionInfo?.submitted_at) return;
@@ -162,12 +176,27 @@ export default function useEventModalForm({
       });
     }
 
+    // Attach Todoist metadata diff so app controller can send a single PATCH
+    if (todoistId && todoistEdits && initialTodoistEditsRef.current) {
+      const initial = initialTodoistEditsRef.current;
+      const meta = {};
+      if (todoistEdits.priority !== initial.priority) meta.priority = todoistEdits.priority;
+      if (todoistEdits.project_id !== initial.project_id) meta.project_id = todoistEdits.project_id;
+      if (todoistEdits.description !== initial.description) meta.description = todoistEdits.description;
+      if (JSON.stringify(todoistEdits.labels) !== JSON.stringify(initial.labels)) meta.labels = todoistEdits.labels;
+      if (Object.keys(meta).length > 0) {
+        updates._todoistMeta = meta;
+        invalidateTodoistCache?.();
+      }
+    }
+
     setSaveSuccess(true);
     setTimeout(() => {
       setSaveSuccess(false);
       onUpdate(event.id, updates);
     }, 300);
   };
+  handleSubmitRef.current = handleSubmit;
 
   const handleDelete = () => {
     if (confirmDelete) {
@@ -185,6 +214,18 @@ export default function useEventModalForm({
       (initial.due_date instanceof Date &&
         formData.due_date instanceof Date &&
         initial.due_date.getTime() === formData.due_date.getTime());
+
+    // Check todoist metadata changes
+    let todoistChanged = false;
+    if (todoistEdits && initialTodoistEditsRef.current) {
+      const ti = initialTodoistEditsRef.current;
+      todoistChanged =
+        todoistEdits.priority !== ti.priority ||
+        todoistEdits.project_id !== ti.project_id ||
+        todoistEdits.description !== ti.description ||
+        JSON.stringify(todoistEdits.labels) !== JSON.stringify(ti.labels);
+    }
+
     return (
       formData.title !== initial.title ||
       !sameDueDate ||
@@ -194,9 +235,10 @@ export default function useEventModalForm({
       formData.notes !== initial.notes ||
       formData.url !== initial.url ||
       formData.canvas_due_date_override !== initial.canvas_due_date_override ||
-      submissionDirty
+      submissionDirty ||
+      todoistChanged
     );
-  }, [formData, submissionDirty]);
+  }, [formData, submissionDirty, todoistEdits]);
 
   const shouldBlockClose = hasUserEdited && hasChanges;
 
