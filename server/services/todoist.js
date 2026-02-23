@@ -119,8 +119,25 @@ export async function deleteTodoistTask(token, taskId) {
 }
 
 export async function updateTodoistTask(token, taskId, fields) {
-  return todoistFetch(`/tasks/${taskId}`, token, {
-    method: "POST",
-    body: JSON.stringify(fields),
-  });
+  // project_id requires the separate move endpoint
+  const { project_id, ...updateFields } = fields;
+
+  let updateResult = null;
+
+  if (Object.keys(updateFields).length > 0) {
+    updateResult = await todoistFetch(`/tasks/${taskId}`, token, {
+      method: "POST",
+      body: JSON.stringify(updateFields),
+    });
+  }
+
+  // Move to a different project (separate API call, must run after update)
+  if (project_id !== undefined && project_id !== null) {
+    await todoistFetch(`/tasks/${taskId}/move`, token, {
+      method: "POST",
+      body: JSON.stringify({ project_id }),
+    });
+  }
+
+  return updateResult ?? { id: taskId };
 }

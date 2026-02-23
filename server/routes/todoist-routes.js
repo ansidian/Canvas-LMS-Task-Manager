@@ -100,7 +100,7 @@ router.post(
   "/tasks",
   validateTodoistCredentials(),
   async (req, res) => {
-    const { content, due_string, due_date, due_datetime, priority, project_id, labels } = req.body;
+    const { content, due_string, due_date, due_datetime, priority, project_id, labels, description } = req.body;
     if (!content) {
       return res.status(400).json({ message: "Task content is required" });
     }
@@ -113,6 +113,7 @@ router.post(
         priority,
         project_id,
         labels,
+        description,
       });
       res.status(201).json(task);
     } catch (err) {
@@ -167,19 +168,26 @@ router.delete(
   },
 );
 
-// Update a Todoist task (title, date, etc.)
+// Update a Todoist task (title, date, priority, project, labels, description)
 router.patch(
   "/tasks/:id",
   validateTodoistCredentials(),
   async (req, res) => {
     try {
-      const { content, due_date, due_datetime } = req.body;
+      const { content, due_date, due_datetime, priority, project_id, labels, description } = req.body;
       const fields = {};
       if (content !== undefined) fields.content = content;
       if (due_datetime !== undefined) {
         fields.due_datetime = due_datetime;
       } else if (due_date !== undefined) {
         fields.due_date = due_date;
+      }
+      if (priority !== undefined) fields.priority = priority;
+      if (project_id !== undefined) fields.project_id = project_id;
+      if (labels !== undefined) fields.labels = labels;
+      if (description !== undefined) fields.description = description;
+      if (Object.keys(fields).length === 0) {
+        return res.json({ id: req.params.id });
       }
       const result = await updateTodoistTask(req.todoistToken, req.params.id, fields);
       res.json(result);

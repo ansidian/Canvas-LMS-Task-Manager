@@ -36,6 +36,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { EVENT_TYPES, EVENT_TYPE_ICONS, PRIORITY_COLORS } from "./event-modal/constants";
 import useTodoistMetadata from "../hooks/useTodoistMetadata";
 import TodoistAutocomplete from "./TodoistAutocomplete";
+import TodoistDescriptionEditor from "./TodoistDescriptionEditor";
 import { todoistColor } from "../utils/todoist-colors";
 
 const isInbox = (p) => p?.is_inbox || p?.name === "Inbox";
@@ -98,6 +99,7 @@ export default function CreateEventModal({
   const [todoistPriority, setTodoistPriority] = useState("1");
   const [todoistProjectId, setTodoistProjectId] = useState(null);
   const [todoistLabels, setTodoistLabels] = useState([]);
+  const [todoistDescription, setTodoistDescription] = useState("");
   const { projects: todoistProjects, labels: todoistLabelOptions, fetchMetadata, refreshLabels } = useTodoistMetadata(api);
   const [nlpResult, setNlpResult] = useState(null);
   const [appliedNlp, setAppliedNlp] = useState(null);
@@ -263,6 +265,7 @@ export default function CreateEventModal({
       setTodoistPriority("1");
       setTodoistProjectId(null);
       setTodoistLabels([]);
+      setTodoistDescription("");
       setTodoistSubmitting(false);
       setNlpResult(null);
       setAppliedNlp(null);
@@ -323,7 +326,9 @@ export default function CreateEventModal({
     }
   }, [opened, formData.title, formData.dueDate, formData.classId, formData.eventType, isTodoistMode, nlpResult]);
 
-  // Handle Mod+Enter to submit
+  const handleSubmitRef = useRef(null);
+
+  // Handle Mod+Enter to submit — use ref to avoid stale closures
   useEffect(() => {
     if (!opened) return;
 
@@ -335,7 +340,7 @@ export default function CreateEventModal({
       if (!formData.title.trim()) return;
 
       e.preventDefault();
-      handleSubmit();
+      handleSubmitRef.current?.();
     };
 
     window.addEventListener("keydown", handleKeyDown);
@@ -362,6 +367,8 @@ export default function CreateEventModal({
       url: formData.url,
     });
   };
+
+  handleSubmitRef.current = handleSubmit;
 
   const handleTodoistSubmit = async () => {
     if (!formData.title.trim()) return;
@@ -401,6 +408,7 @@ export default function CreateEventModal({
           priority: parseInt(todoistPriority, 10),
           project_id: todoistProjectId || undefined,
           labels: todoistLabels.length ? todoistLabels : undefined,
+          description: todoistDescription.trim() || undefined,
         }),
       });
 
@@ -851,6 +859,20 @@ export default function CreateEventModal({
                               boxShadow: "var(--shadow-sm)",
                             },
                           }}
+                        />
+                      </Box>
+
+                      <Box>
+                        <Group gap={6} mb={4}>
+                          <IconFileText size={14} style={{ opacity: 0.5 }} />
+                          <Text size="sm" fw={600} c="dimmed">
+                            Description
+                          </Text>
+                        </Group>
+                        <TodoistDescriptionEditor
+                          value={todoistDescription}
+                          onChange={setTodoistDescription}
+                          placeholder="Add a description..."
                         />
                       </Box>
                     </Stack>
