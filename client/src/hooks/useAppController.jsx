@@ -179,38 +179,6 @@ export default function useAppController({
 		const updated = await updateEventRecord(eventId, dbUpdates);
 		if (!updated) return;
 
-		// Convert to Todoist: event assigned to Todoist class without existing link
-		if (!todoistTaskId && updates.class_id != null) {
-			const todoistClass = canvas.classes.find(
-				(c) => c.canvas_course_id === "todoist",
-			);
-			if (todoistClass && String(updates.class_id) === String(todoistClass.id)) {
-				try {
-					const dueDate = updated.due_date;
-					const hasTime = dueDate && dueDate.includes("T");
-					const todoistTask = await api("/todoist/tasks", {
-						method: "POST",
-						body: JSON.stringify({
-							content: updated.title,
-							...(hasTime
-								? { due_datetime: dueDate }
-								: { due_date: dueDate }),
-						}),
-					});
-					const linkUpdates = {
-						todoist_id: String(todoistTask.id),
-						url: `https://app.todoist.com/app/task/${todoistTask.id}`,
-					};
-					if (updated.status === "in_progress") {
-						linkUpdates.status = "incomplete";
-					}
-					await updateEventRecord(eventId, linkUpdates);
-				} catch (err) {
-					console.error("Failed to create Todoist task for converted event:", err);
-				}
-			}
-		}
-
 		if (options.keepOpen) {
 			if (options.closeDelayMs) {
 				setTimeout(() => {

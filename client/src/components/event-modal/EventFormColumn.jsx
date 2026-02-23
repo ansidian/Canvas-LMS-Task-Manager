@@ -392,9 +392,10 @@ export default function EventFormColumn({
                   ...classes
                     .filter(
                       (cls) =>
-                        !cls.canvas_course_id ||
+                        cls.canvas_course_id !== "todoist" &&
+                        (!cls.canvas_course_id ||
                         cls.is_synced ||
-                        (event && cls.id === event.class_id),
+                        (event && cls.id === event.class_id)),
                     )
                     .map((cls) => ({
                       value: String(cls.id),

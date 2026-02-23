@@ -414,6 +414,11 @@ export default async function guestApi(endpoint, options = {}) {
       return { tasks: data.tasks, existingMap };
     }
 
+    // GET /todoist/tasks/:id
+    if (segments.length === 3 && segments[1] === "tasks" && method === "GET") {
+      return requestGuestTodoist(`/tasks/${segments[2]}`);
+    }
+
     // POST /todoist/tasks
     if (segments.length === 2 && segments[1] === "tasks" && method === "POST") {
       return requestGuestTodoist("/tasks", {
