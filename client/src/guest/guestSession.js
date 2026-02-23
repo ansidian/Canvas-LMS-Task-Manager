@@ -7,6 +7,14 @@ import { clearGuestData, GUEST_STORAGE_KEYS } from "./guestStorage";
 
 const AUTO_RESUME_BLOCK_KEY = "guest_auto_resume_blocked";
 
+export const generateId = () =>
+  typeof crypto !== "undefined" && crypto.randomUUID
+    ? crypto.randomUUID()
+    : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+        const r = (Math.random() * 16) | 0;
+        return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+      });
+
 const parseTimestamp = (value) => {
   if (!value) return null;
   const parsed = Number(value);
@@ -29,7 +37,7 @@ export const getGuestSession = () => {
 };
 
 export const createGuestSession = () => {
-  const id = crypto.randomUUID();
+  const id = generateId();
   const now = Date.now();
   setStorageItem(GUEST_STORAGE_KEYS.sessionId, id);
   setStorageItem(GUEST_STORAGE_KEYS.sessionCreatedAt, String(now));

@@ -12,3 +12,4 @@ server/db/*.db
 client/.env
 .planning/
 .interface-design
+.grepai/

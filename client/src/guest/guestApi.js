@@ -12,6 +12,7 @@ import {
   setGuestSettings,
   setGuestLastFetchTimestamp,
 } from "./guestStorage";
+import { generateId } from "./guestSession";
 
 const sortEvents = (events) =>
   [...events].sort((a, b) => {
@@ -142,7 +143,7 @@ export default async function guestApi(endpoint, options = {}) {
       const body = parseBody(options);
       const now = new Date().toISOString();
       const newEvent = {
-        id: crypto.randomUUID(),
+        id: generateId(),
         title: body.title,
         description: body.description ?? null,
         due_date: body.due_date,
@@ -213,7 +214,7 @@ export default async function guestApi(endpoint, options = {}) {
           -1,
         ) + 1;
         const newClass = {
-          id: crypto.randomUUID(),
+          id: generateId(),
           name: body.name,
           color: body.color || "#3498db",
           canvas_course_id: body.canvas_course_id ?? null,

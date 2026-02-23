@@ -48,6 +48,10 @@ export default function useAppInitialization({
 	]);
 
 	useEffect(() => {
+		const isMobile = window.matchMedia(
+      "(max-width: 768px), (max-height: 500px) and (pointer: coarse)",
+    ).matches;
+    if (isMobile) return;
 		const hasCompleted = getStorageItem("hasCompletedOnboarding");
 		if (!hasCompleted) {
 			const timer = setTimeout(() => {
