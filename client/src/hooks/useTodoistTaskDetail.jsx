@@ -1,22 +1,31 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { todoistColor } from "../utils/todoist-colors";
 
 export default function useTodoistTaskDetail(api, todoistId) {
   const [taskDetail, setTaskDetail] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  // Raw editable values (project_id, labels[], priority, description)
+  const [edits, setEdits] = useState(null);
+  const [projects, setProjects] = useState([]);
+  const [labels, setLabels] = useState([]);
   const cacheRef = useRef({});
 
   useEffect(() => {
     if (!todoistId || !api) {
       setTaskDetail(null);
+      setEdits(null);
       setLoading(false);
       return;
     }
 
     // Return cached result
     if (cacheRef.current[todoistId]) {
-      setTaskDetail(cacheRef.current[todoistId]);
+      const cached = cacheRef.current[todoistId];
+      setTaskDetail(cached.detail);
+      setEdits(cached.edits);
+      setProjects(cached.projects);
+      setLabels(cached.labels);
       setLoading(false);
       return;
     }
@@ -30,14 +39,14 @@ export default function useTodoistTaskDetail(api, todoistId) {
       api("/todoist/projects"),
       api("/todoist/labels"),
     ])
-      .then(([task, projects, labels]) => {
+      .then(([task, projectList, labelList]) => {
         if (cancelled) return;
 
         // Resolve project
-        const project = projects.find((p) => p.id === task.project_id);
+        const project = projectList.find((p) => p.id === task.project_id);
         // Resolve label colors
         const labelMap = Object.fromEntries(
-          labels.map((l) => [l.name.toLowerCase(), l]),
+          labelList.map((l) => [l.name.toLowerCase(), l]),
         );
         const resolvedLabels = (task.labels || []).map((name) => {
           const meta = labelMap[name.toLowerCase()];
@@ -56,8 +65,23 @@ export default function useTodoistTaskDetail(api, todoistId) {
           labels: resolvedLabels,
         };
 
-        cacheRef.current[todoistId] = detail;
+        const editValues = {
+          project_id: task.project_id || null,
+          labels: task.labels || [],
+          priority: task.priority,
+          description: task.description || "",
+        };
+
+        cacheRef.current[todoistId] = {
+          detail,
+          edits: editValues,
+          projects: projectList,
+          labels: labelList,
+        };
         setTaskDetail(detail);
+        setEdits(editValues);
+        setProjects(projectList);
+        setLabels(labelList);
         setLoading(false);
       })
       .catch((err) => {
@@ -72,5 +96,16 @@ export default function useTodoistTaskDetail(api, todoistId) {
     };
   }, [todoistId, api]);
 
-  return { taskDetail, loading, error };
+  const updateEdits = useCallback((patch) => {
+    setEdits((prev) => (prev ? { ...prev, ...patch } : null));
+  }, []);
+
+  // Invalidate cache for this task so next open re-fetches
+  const invalidateCache = useCallback(() => {
+    if (todoistId) {
+      delete cacheRef.current[todoistId];
+    }
+  }, [todoistId]);
+
+  return { taskDetail, loading, error, edits, updateEdits, projects, labels, invalidateCache };
 }

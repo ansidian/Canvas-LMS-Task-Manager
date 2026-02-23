@@ -55,6 +55,10 @@ export default function EventModal({
     onOpenEvent,
     submissionInfo: canvas.submissionInfo,
     descriptionHtml: canvas.descriptionHtml,
+    todoistEdits: todoist.edits,
+    todoistId: displayEvent?.todoist_id,
+    invalidateTodoistCache: todoist.invalidateCache,
+    api,
   });
 
   const submission = useEventModalSubmission({
@@ -130,8 +134,11 @@ export default function EventModal({
 
               <EventDetailsColumn
                 isTodoistLinked={isTodoistLinked}
-                todoistDetail={todoist.taskDetail}
+                todoistEdits={todoist.edits}
+                todoistProjects={todoist.projects}
+                todoistLabels={todoist.labels}
                 todoistLoading={todoist.loading}
+                onTodoistEditChange={todoist.updateEdits}
                 canvasIds={canvas.canvasIds}
                 canvasUrl={displayEvent.url}
                 assignmentInfo={canvas.assignmentInfo}
