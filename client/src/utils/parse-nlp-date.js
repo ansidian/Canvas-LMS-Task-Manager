@@ -48,7 +48,7 @@ const EVERY_RE = new RegExp(
     `|\\d+\\s+hours?` +
     // "every jan 27th" / "every 2, 15, 27" (specific dates of month)
     `|${MONTH}\\s+\\d{1,2}${ORD}?` +
-    `|\\d{1,2}${ORD}?(?:(?:\\s*,\\s*\\d{1,2}${ORD}?)*)` +
+    `|\\d{1,2}${ORD}?(?:(?:\\s*(?:,|and)\\s*\\d{1,2}${ORD}?)*)` +
   `)` +
   // optional time
   `${TIME}?` +

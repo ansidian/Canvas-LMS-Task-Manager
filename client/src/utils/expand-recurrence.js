@@ -164,10 +164,13 @@ export function expandRecurrence(recurrence, start, end) {
     return datesByDow(days, rangeStart, rangeEnd, time);
   }
 
-  // "every 15th" / "every 1st" — monthly on specific date
-  const monthlyDate = s.match(/\bevery\s+(\d{1,2})(?:st|nd|rd|th)?\b/);
-  if (monthlyDate) {
-    return monthlyDates(parseInt(monthlyDate[1], 10), rangeStart, rangeEnd, time);
+  // "every 1st and 16th", "every 2, 15, 27", "every 15th" — monthly on specific date(s)
+  const monthlyDatesMatch = s.match(/\bevery\s+((\d{1,2})(?:st|nd|rd|th)?(?:\s*(?:,|and)\s*(\d{1,2})(?:st|nd|rd|th)?)*)\b/);
+  if (monthlyDatesMatch) {
+    const doms = [...monthlyDatesMatch[0].matchAll(/(\d{1,2})(?:st|nd|rd|th)?/g)].map(m => parseInt(m[1], 10));
+    if (doms.length > 0) {
+      return doms.flatMap(dom => monthlyDates(dom, rangeStart, rangeEnd, time)).sort();
+    }
   }
 
   // "monthly" / "every month" — use 1st of month as default
