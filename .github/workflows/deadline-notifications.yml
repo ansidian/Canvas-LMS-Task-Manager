@@ -27,4 +27,5 @@ jobs:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           DISCORD_USER_ID: ${{ secrets.DISCORD_USER_ID }}
           CLERK_USER_ID: ${{ secrets.CLERK_USER_ID }}
+          APP_URL: ${{ secrets.APP_URL }}
         run: node .github/scripts/notify-deadlines.mjs

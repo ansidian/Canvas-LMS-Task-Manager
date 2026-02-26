@@ -130,6 +130,10 @@ export default function EventModal({
                 previewContentRef={form.previewContentRef}
                 descriptionLayoutId={descriptionLayoutId}
                 markUserEdited={form.markUserEdited}
+                reminders={form.reminders}
+                onAddReminder={form.handleAddReminder}
+                onRemoveReminder={form.handleRemoveReminder}
+                isMobile={isMobile}
               />
 
               <EventDetailsColumn

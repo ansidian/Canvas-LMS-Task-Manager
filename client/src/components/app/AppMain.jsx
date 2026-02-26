@@ -25,7 +25,7 @@ export default function AppMain({ isMobile }) {
 					currentDate={controller.currentDate}
 					events={controller.filteredEvents}
 					classes={controller.classes}
-					onEventClick={controller.setSelectedEvent}
+					onEventClick={controller.handleOpenEvent}
 					onDayAdd={controller.handleDayDoubleClick}
 					unassignedColor={controller.unassignedColor}
 					onSwipeLeft={controller.nextMonth}
@@ -36,7 +36,7 @@ export default function AppMain({ isMobile }) {
 					currentDate={controller.currentDate}
 					events={controller.filteredEvents}
 					classes={controller.classes}
-					onEventClick={controller.setSelectedEvent}
+					onEventClick={controller.handleOpenEvent}
 					onEventDrop={controller.handleEventDrop}
 					onDayDoubleClick={controller.handleDayDoubleClick}
 					onDayClick={controller.handleDayClick}

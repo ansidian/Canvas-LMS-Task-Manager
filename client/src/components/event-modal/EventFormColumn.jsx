@@ -34,6 +34,7 @@ import {
   STATUS_OPTIONS,
   TODOIST_STATUS_OPTIONS,
 } from "./constants";
+import RemindersSection from "./RemindersSection";
 
 // Subtle section card for visual grouping
 function SectionCard({ children, accent = null }) {
@@ -83,6 +84,10 @@ export default function EventFormColumn({
   previewContentRef,
   descriptionLayoutId,
   markUserEdited,
+  reminders,
+  onAddReminder,
+  onRemoveReminder,
+  isMobile,
 }) {
   const isCanvasLinked = Boolean(event?.canvas_id);
   const isTodoistLinked = Boolean(event?.todoist_id);
@@ -531,6 +536,23 @@ export default function EventFormColumn({
               </Badge>
             </Group>
           </SectionCard>
+        )}
+
+        {/* Reminders */}
+        {event?.id && (
+          <RemindersSection
+            reminders={reminders || []}
+            onAdd={onAddReminder}
+            onRemove={onRemoveReminder}
+            isMobile={isMobile}
+            dueDate={formData.due_date}
+            isAllDay={
+              !formData.due_date ||
+              (formData.due_date instanceof Date &&
+                formData.due_date.getHours() === 0 &&
+                formData.due_date.getMinutes() === 0)
+            }
+          />
         )}
       </Stack>
     </Box>

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import dayjs from "dayjs";
 import useEvents from "../contexts/useEvents";
 import { useFilters } from "../contexts/FiltersContext";
@@ -183,10 +184,12 @@ export default function useAppController({
 			if (options.closeDelayMs) {
 				setTimeout(() => {
 					setSelectedEvent(null);
+					history.replaceState(null, "", window.location.pathname + window.location.search);
 				}, options.closeDelayMs);
 			}
 		} else {
 			setSelectedEvent(null);
+			history.replaceState(null, "", window.location.pathname + window.location.search);
 		}
 	};
 
@@ -201,6 +204,7 @@ export default function useAppController({
 		const deleted = await deleteEventRecord(eventId);
 		if (deleted) {
 			setSelectedEvent(null);
+			history.replaceState(null, "", window.location.pathname + window.location.search);
 		}
 	};
 
@@ -225,6 +229,7 @@ export default function useAppController({
 		if (newEvent) {
 			setCreateEventDate(null);
 		}
+		return newEvent;
 	};
 
 	const handleDayDoubleClick = (date, anchorRect = null) => {
@@ -247,7 +252,45 @@ export default function useAppController({
 	const handleOpenEvent = (eventItem) => {
 		if (!eventItem) return;
 		setSelectedEvent(eventItem);
+		window.location.hash = `#/event/${eventItem.id}`;
 	};
+
+	// Hash routing: handle back/forward and direct deeplinks.
+	// We use a ref for events so the hashchange handler always sees fresh data
+	// without re-registering on every events update (which would cause the modal
+	// to dismiss whenever events re-renders while it's open).
+	const eventsRef = useRef(events);
+	useEffect(() => { eventsRef.current = events; }, [events]);
+
+	// On initial mount: if the URL already has a hash, open that event once events load.
+	const pendingHashRef = useRef(
+		window.location.hash.match(/^#\/event\/(\d+)$/) ? window.location.hash : null
+	);
+	useEffect(() => {
+		if (!pendingHashRef.current) return;
+		const m = pendingHashRef.current.match(/^#\/event\/(\d+)$/);
+		if (!m) return;
+		const found = eventsRef.current.find((e) => String(e.id) === m[1]);
+		if (found) {
+			pendingHashRef.current = null;
+			setSelectedEvent(found);
+		}
+	}, [events]); // re-try each time events loads until we find the event
+
+	// hashchange: fired by browser back/forward buttons only (not by our own hash sets)
+	useEffect(() => {
+		const onHashChange = () => {
+			const m = window.location.hash.match(/^#\/event\/(\d+)$/);
+			if (m) {
+				const found = eventsRef.current.find((e) => String(e.id) === m[1]);
+				if (found) setSelectedEvent(found);
+			} else {
+				setSelectedEvent(null);
+			}
+		};
+		window.addEventListener("hashchange", onHashChange);
+		return () => window.removeEventListener("hashchange", onHashChange);
+	}, []); // stable — never re-registers
 
 	const prevMonth = () => setCurrentDate((date) => date.subtract(1, "month"));
 	const nextMonth = () => setCurrentDate((date) => date.add(1, "month"));

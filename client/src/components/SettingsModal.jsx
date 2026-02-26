@@ -6,6 +6,7 @@ import SettingsCanvasTab from "./settings/SettingsCanvasTab";
 import SettingsTodoistTab from "./settings/SettingsTodoistTab";
 import SettingsClassesTab from "./settings/SettingsClassesTab";
 import SettingsHelpTab from "./settings/SettingsHelpTab";
+import SettingsRemindersTab from "./settings/SettingsRemindersTab";
 import useSettingsApi from "../hooks/useSettingsApi";
 import { notifyError } from "../utils/notify.jsx";
 import { removeStorageItem } from "../utils/storage";
@@ -49,6 +50,12 @@ export default function SettingsModal({
     setSaveSuccess,
     todoistSaveSuccess,
     setTodoistSaveSuccess,
+    discordWebhook,
+    setDiscordWebhook,
+    savedDiscordWebhook,
+    setSavedDiscordWebhook,
+    discordSaveSuccess,
+    setDiscordSaveSuccess,
     editingUnassigned,
     setEditingUnassigned,
     editUnassignedColor,
@@ -102,6 +109,9 @@ export default function SettingsModal({
     todoistToken,
     todoistSaveSuccess,
     setTodoistSaveSuccess,
+    discordWebhook,
+    setDiscordSaveSuccess,
+    setSavedDiscordWebhook,
     resetOnboarding,
   });
 
@@ -114,6 +124,8 @@ export default function SettingsModal({
         setCanvasUrl(data.canvas_url || "");
         setCanvasToken(data.canvas_token || "");
         setTodoistToken(data.todoist_token || "");
+        setDiscordWebhook(data.discord_webhook || "");
+        setSavedDiscordWebhook(data.discord_webhook || "");
       })
       .catch((err) => {
         console.error("Failed to load Canvas settings:", err);
@@ -122,7 +134,7 @@ export default function SettingsModal({
     return () => {
       cancelled = true;
     };
-  }, [api, opened, setCanvasToken, setCanvasUrl, setTodoistToken]);
+  }, [api, opened, setCanvasToken, setCanvasUrl, setTodoistToken, setDiscordWebhook]);
 
   const [activeTab, setActiveTab] = useState("canvas");
 
@@ -193,6 +205,20 @@ export default function SettingsModal({
         }}
       />
     ),
+    reminders: (
+      <SettingsRemindersTab
+        config={{
+          discordWebhook,
+          savedDiscordWebhook,
+          saveSuccess: discordSaveSuccess,
+        }}
+        handlers={{
+          setDiscordWebhook,
+          saveDiscordWebhook: settingsApi.saveDiscordWebhook,
+          testWebhook: settingsApi.testWebhook,
+        }}
+      />
+    ),
     help: (
       <SettingsHelpTab
         config={{ showResetConfirm, resetting, isGuest }}
@@ -212,6 +238,7 @@ export default function SettingsModal({
           <Tabs.Tab value="canvas">Canvas API</Tabs.Tab>
           <Tabs.Tab value="todoist">Todoist</Tabs.Tab>
           <Tabs.Tab value="classes">Classes</Tabs.Tab>
+          <Tabs.Tab value="reminders">Reminders</Tabs.Tab>
           <Tabs.Tab value="help">Help</Tabs.Tab>
         </Tabs.List>
       </Tabs>

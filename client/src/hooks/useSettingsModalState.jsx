@@ -8,6 +8,9 @@ export default function useSettingsModalState({
 	const [canvasUrl, setCanvasUrl] = useState("");
 	const [canvasToken, setCanvasToken] = useState("");
 	const [todoistToken, setTodoistToken] = useState("");
+	const [discordWebhook, setDiscordWebhook] = useState("");
+	const [savedDiscordWebhook, setSavedDiscordWebhook] = useState(""); // tracks server-persisted value
+	const [discordSaveSuccess, setDiscordSaveSuccess] = useState(false);
 	const [newClassName, setNewClassName] = useState("");
 	const [newClassColor, setNewClassColor] = useState("#228be6");
 	const [editingClassId, setEditingClassId] = useState(null);
@@ -64,5 +67,11 @@ export default function useSettingsModalState({
 		setDeleteClassId,
 		deleting,
 		setDeleting,
+		discordWebhook,
+		setDiscordWebhook,
+		savedDiscordWebhook,
+		setSavedDiscordWebhook,
+		discordSaveSuccess,
+		setDiscordSaveSuccess,
 	};
 }

@@ -38,6 +38,7 @@ import useTodoistMetadata from "../hooks/useTodoistMetadata";
 import TodoistAutocomplete from "./TodoistAutocomplete";
 import TodoistDescriptionEditor from "./TodoistDescriptionEditor";
 import { todoistColor } from "../utils/todoist-colors";
+import RemindersSection from "./event-modal/RemindersSection";
 
 const isInbox = (p) => p?.is_inbox || p?.name === "Inbox";
 
@@ -107,6 +108,7 @@ export default function CreateEventModal({
   const nlpDismissedRef = useRef(false);
   const nlpLabelsRef = useRef([]); // tracks labels currently present as @tokens in the title
   const nlpProjectRef = useRef(null); // tracks project name from #token in the title
+  const [pendingOffsets, setPendingOffsets] = useState([]); // reminder offsets buffered until save
   const [formData, setFormData] = useState({
     title: "",
     dueDate: null,
@@ -273,6 +275,7 @@ export default function CreateEventModal({
       nlpDismissedRef.current = false;
       nlpLabelsRef.current = [];
       nlpProjectRef.current = null;
+      setPendingOffsets([]);
     }
   }, [opened]);
 
@@ -358,7 +361,7 @@ export default function CreateEventModal({
     // Use NLP-cleaned title if a date was applied, otherwise raw title
     const cleanTitle = appliedNlp ? (nlpResult?.title || formData.title).trim() : formData.title.trim();
 
-    onCreate({
+    const newEvent = await onCreate({
       title: cleanTitle,
       due_date: toUTCString(formData.dueDate),
       class_id: formData.classId || null,
@@ -366,6 +369,18 @@ export default function CreateEventModal({
       notes: formData.notes,
       url: formData.url,
     });
+
+    // Flush pending reminders now that we have the event ID
+    if (newEvent?.id && pendingOffsets.length > 0 && api) {
+      await Promise.all(
+        pendingOffsets.map((offset) =>
+          api("/reminders", {
+            method: "POST",
+            body: JSON.stringify({ event_id: newEvent.id, offset_minutes: offset }),
+          })
+        )
+      );
+    }
   };
 
   handleSubmitRef.current = handleSubmit;
@@ -1120,6 +1135,29 @@ export default function CreateEventModal({
                     classes={classes}
                     unassignedColor={unassignedColor}
                     onOpenEvent={handleOpenMentionEvent}
+                  />
+
+                  <RemindersSection
+                    reminders={pendingOffsets.map((offset) => ({
+                      id: offset,
+                      offset_minutes: offset,
+                      sent: 0,
+                    }))}
+                    onAdd={(offset) =>
+                      setPendingOffsets((prev) =>
+                        prev.includes(offset) ? prev : [...prev, offset]
+                      )
+                    }
+                    onRemove={(id) =>
+                      setPendingOffsets((prev) => prev.filter((o) => o !== id))
+                    }
+                    isMobile={isMobile}
+                    dueDate={formData.dueDate}
+                    isAllDay={!formData.dueDate || (
+                      formData.dueDate instanceof Date &&
+                      formData.dueDate.getHours() === 0 &&
+                      formData.dueDate.getMinutes() === 0
+                    )}
                   />
                 </Stack>
               </motion.div>

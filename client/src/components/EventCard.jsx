@@ -14,6 +14,7 @@ import {
   IconSquareRoundedCheckFilled,
   IconProgressCheck,
   IconCircleCheckFilled,
+  IconBell,
 } from "@tabler/icons-react";
 import { hasTimeComponent, extractTime } from "../utils/datetime";
 
@@ -151,6 +152,8 @@ export default function EventCard({ event, color, onClick, onContextMenu, isDrag
   // Format time as 12-hour format
   const formattedTime = showTime ? formatTime(timeString) : null;
 
+  const hasReminders = (event.reminder_count ?? 0) > 0;
+
   // Compute styles based on completion status
   // Completed: nearly grayscale, faded, clearly "done"
   const cardBackground = isComplete ? desaturateColor(color, 0.9) : color;
@@ -230,12 +233,19 @@ export default function EventCard({ event, color, onClick, onContextMenu, isDrag
               {event.title}
             </Text>
           </Group>
-          {showTime && (
-            <Group gap={4} wrap="nowrap" ml={16}>
-              <IconClock size={10} color={textColor} opacity={0.8} />
-              <Text size="10px" c={textColor} opacity={0.8}>
-                {formattedTime}
-              </Text>
+          {(showTime || hasReminders) && (
+            <Group gap={6} wrap="nowrap" ml={16}>
+              {showTime && (
+                <>
+                  <IconClock size={10} color={textColor} opacity={0.8} />
+                  <Text size="10px" c={textColor} opacity={0.8}>
+                    {formattedTime}
+                  </Text>
+                </>
+              )}
+              {hasReminders && (
+                <IconBell size={10} color={textColor} opacity={0.8} />
+              )}
             </Group>
           )}
         </Stack>
@@ -343,12 +353,19 @@ export default function EventCard({ event, color, onClick, onContextMenu, isDrag
               {event.title}
             </Text>
           </Group>
-          {showTime && (
-            <Group gap={4} wrap="nowrap" ml={16}>
-              <IconClock size={10} color={textColor} opacity={0.8} />
-              <Text size="10px" c={textColor} opacity={0.8}>
-                {formattedTime}
-              </Text>
+          {(showTime || hasReminders) && (
+            <Group gap={6} wrap="nowrap" ml={16}>
+              {showTime && (
+                <>
+                  <IconClock size={10} color={textColor} opacity={0.8} />
+                  <Text size="10px" c={textColor} opacity={0.8}>
+                    {formattedTime}
+                  </Text>
+                </>
+              )}
+              {hasReminders && (
+                <IconBell size={10} color={textColor} opacity={0.8} />
+              )}
             </Group>
           )}
         </Stack>

@@ -28,6 +28,9 @@ export default function useSettingsApi({
   todoistToken,
   todoistSaveSuccess,
   setTodoistSaveSuccess,
+  discordWebhook,
+  setDiscordSaveSuccess,
+  setSavedDiscordWebhook,
   resetOnboarding,
 }) {
   const handleResetData = async () => {
@@ -219,11 +222,35 @@ export default function useSettingsApi({
     }
   };
 
+  const saveDiscordWebhook = async () => {
+    try {
+      const trimmed = discordWebhook?.trim() || "";
+      await api("/settings", {
+        method: "PATCH",
+        body: JSON.stringify({ discord_webhook: trimmed }),
+      });
+      setSavedDiscordWebhook(trimmed);
+      setDiscordSaveSuccess(true);
+      notifySuccess(trimmed ? "Discord webhook saved." : "Discord webhook cleared.");
+      setTimeout(() => setDiscordSaveSuccess(false), 1500);
+    } catch (err) {
+      console.error("Failed to save Discord webhook:", err);
+      notifyError(err.message || "Failed to save Discord webhook.");
+    }
+  };
+
+  const testWebhook = async () => {
+    const res = await api("/reminders/test", { method: "POST" });
+    return res;
+  };
+
   return {
     resetOnboarding,
     handleResetData,
     saveCanvasSettings,
     saveTodoistSettings,
+    saveDiscordWebhook,
+    testWebhook,
     addClass,
     deleteClass,
     startEditing,

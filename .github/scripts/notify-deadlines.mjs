@@ -8,6 +8,7 @@ const db = createClient({
 const WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
 const DISCORD_USER_ID = process.env.DISCORD_USER_ID;
 const CLERK_USER_ID = process.env.CLERK_USER_ID;
+const APP_URL = process.env.APP_URL;
 const USER_TIMEZONE = "America/Los_Angeles";
 
 // Ensure notification_log table exists
@@ -141,7 +142,7 @@ for (const event of events) {
     footer: {
       text: `Due in ${timeRemaining}`,
     },
-    ...(event.canvas_url ? { url: event.canvas_url } : {}),
+    ...(APP_URL ? { url: `${APP_URL}/#/event/${event.id}` } : event.canvas_url ? { url: event.canvas_url } : {}),
   };
 
   const body = {

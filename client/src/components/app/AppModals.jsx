@@ -52,7 +52,7 @@ export default function AppModals() {
 
 			<EventModal
 				opened={!!controller.selectedEvent}
-				onClose={() => controller.setSelectedEvent(null)}
+				onClose={() => { controller.setSelectedEvent(null); history.replaceState(null, "", window.location.pathname + window.location.search); }}
 				event={controller.selectedEvent}
 				classes={controller.classes}
 				events={controller.events}

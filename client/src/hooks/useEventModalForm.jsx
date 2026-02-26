@@ -26,6 +26,13 @@ export default function useEventModalForm({
   invalidateTodoistCache,
   api,
 }) {
+  // Reminders: savedReminders = what's in the DB, pendingReminders = local view (saved + unsaved adds - pending removes)
+  // reminderCacheRef: per-event-id cache so reopening an event shows reminders immediately (no flash)
+  const savedRemindersRef = useRef([]);
+  const loadedReminderEventIdRef = useRef(null);
+  const reminderCacheRef = useRef({}); // { [eventId]: reminder[] }
+  const [pendingReminders, setPendingReminders] = useState([]); // { id?, offset_minutes, sent?, _pending: 'add'|null }
+
   const [formData, setFormData] = useState({
     title: "",
     due_date: null,
@@ -98,8 +105,87 @@ export default function useEventModalForm({
       setSaveSuccess(false);
       setShowDescriptionFullscreen(false);
       setSubmissionDirty(false);
+      // Seed from cache immediately so there's no empty-state flash on reopen
+      const cached = reminderCacheRef.current[event.id] ?? [];
+      savedRemindersRef.current = cached;
+      loadedReminderEventIdRef.current = null; // always re-fetch on open to stay fresh
+      setPendingReminders(cached.map((r) => ({ ...r, _pending: null })));
     }
   }, [event]);
+
+  // Load reminders from server when event opens — populate pending view.
+  // Always re-fetches on event open to stay fresh, but seeds from cache immediately so there's no flash.
+  useEffect(() => {
+    if (!event?.id || !api) return;
+    // Skip if we already fetched for this event in this open session
+    if (loadedReminderEventIdRef.current === event.id) return;
+    loadedReminderEventIdRef.current = event.id;
+    let cancelled = false;
+    api(`/reminders?event_id=${event.id}`)
+      .then((data) => {
+        if (cancelled) return;
+        reminderCacheRef.current[event.id] = data;
+        savedRemindersRef.current = data;
+        // Only update pending if no local edits have been made yet
+        setPendingReminders((prev) => {
+          const hasLocalEdits = prev.some((r) => r._pending === "add" || r._pending === "remove");
+          if (hasLocalEdits) return prev;
+          return data.map((r) => ({ ...r, _pending: null }));
+        });
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [event?.id, api]);
+
+  // Add reminder to local pending state only (no DB call yet)
+  const handleAddReminder = (offsetMinutes) => {
+    const already = pendingReminders.some((r) => r.offset_minutes === offsetMinutes);
+    if (already) return;
+    // Use negative temp ID so we can identify unsaved adds
+    const tempId = `pending_${offsetMinutes}_${Date.now()}`;
+    setPendingReminders((prev) => [
+      ...prev,
+      { id: tempId, offset_minutes: offsetMinutes, sent: 0, _pending: "add" },
+    ]);
+  };
+
+  // Remove reminder from local pending state only (no DB call yet)
+  const handleRemoveReminder = (id) => {
+    setPendingReminders((prev) => {
+      const item = prev.find((r) => r.id === id || r.offset_minutes === id);
+      if (!item) return prev;
+      if (item._pending === "add") {
+        // Never persisted — just drop it
+        return prev.filter((r) => r !== item);
+      }
+      // Mark for deletion on save
+      return prev.map((r) => (r === item ? { ...r, _pending: "remove" } : r));
+    });
+  };
+
+  // Flush pending reminder changes to server — called from handleSubmit
+  const flushReminders = async (eventId) => {
+    if (!api) return;
+    const toAdd = pendingReminders.filter((r) => r._pending === "add");
+    const toRemove = pendingReminders.filter((r) => r._pending === "remove");
+    const dueDateChanged =
+      toUTCString(formData.due_date) !== toUTCString(initialFormDataRef.current?.due_date);
+
+    await Promise.all([
+      ...toAdd.map((r) =>
+        api("/reminders", {
+          method: "POST",
+          body: JSON.stringify({ event_id: eventId, offset_minutes: r.offset_minutes }),
+        })
+      ),
+      ...toRemove.map((r) =>
+        api(`/reminders/${r.id}`, { method: "DELETE" })
+      ),
+      ...(dueDateChanged && savedRemindersRef.current.length > 0
+        ? [api("/reminders/reset", { method: "PATCH", body: JSON.stringify({ event_id: eventId }) })]
+        : []),
+    ]);
+  };
 
   // Capture initial todoist edits when they first load for this event
   useEffect(() => {
@@ -149,7 +235,7 @@ export default function useEventModalForm({
     }
   }, [opened]);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const updates = {
       title: formData.title,
       due_date: toUTCString(formData.due_date),
@@ -190,6 +276,18 @@ export default function useEventModalForm({
       }
     }
 
+    // Flush buffered reminder adds/removes/resets before saving event
+    // so the PATCH response includes the correct reminder_count
+    await flushReminders(event.id).catch(() => {});
+
+    // After flushing reminders, sync saved state so discard/close uses updated list
+    const freshReminders = pendingReminders
+      .filter((r) => r._pending !== "remove" && r._pending !== "add")
+      .concat(pendingReminders.filter((r) => r._pending === "add").map((r) => ({ ...r, _pending: null })));
+    savedRemindersRef.current = freshReminders;
+    reminderCacheRef.current[event.id] = freshReminders;
+    setPendingReminders(freshReminders);
+
     setSaveSuccess(true);
     setTimeout(() => {
       setSaveSuccess(false);
@@ -226,6 +324,10 @@ export default function useEventModalForm({
         JSON.stringify(todoistEdits.labels) !== JSON.stringify(ti.labels);
     }
 
+    const remindersChanged = pendingReminders.some(
+      (r) => r._pending === "add" || r._pending === "remove",
+    );
+
     return (
       formData.title !== initial.title ||
       !sameDueDate ||
@@ -236,9 +338,10 @@ export default function useEventModalForm({
       formData.url !== initial.url ||
       formData.canvas_due_date_override !== initial.canvas_due_date_override ||
       submissionDirty ||
-      todoistChanged
+      todoistChanged ||
+      remindersChanged
     );
-  }, [formData, submissionDirty, todoistEdits]);
+  }, [formData, submissionDirty, todoistEdits, pendingReminders]);
 
   const shouldBlockClose = hasUserEdited && hasChanges;
 
@@ -254,6 +357,8 @@ export default function useEventModalForm({
       triggerDirtyShake();
       return;
     }
+    // Reset pending reminders back to saved state (no unsaved changes)
+    setPendingReminders(savedRemindersRef.current.map((r) => ({ ...r, _pending: null })));
     onClose();
   };
 
@@ -266,12 +371,17 @@ export default function useEventModalForm({
   };
 
   const handleDiscard = () => {
+    // Reset pending reminders back to whatever is saved in DB (discard local changes)
+    setPendingReminders(savedRemindersRef.current.map((r) => ({ ...r, _pending: null })));
     onClose();
   };
 
   return {
     formData,
     setFormData,
+    reminders: pendingReminders.filter((r) => r._pending !== "remove"),
+    handleAddReminder,
+    handleRemoveReminder,
     confirmDelete,
     saveSuccess,
     showSegmented,

@@ -12,7 +12,8 @@ router.get("/", async (req, res) => {
   try {
     const result = await db.execute({
       sql: `
-        SELECT e.*, c.name as class_name, c.color as class_color
+        SELECT e.*, c.name as class_name, c.color as class_color,
+          (SELECT COUNT(*) FROM reminders r WHERE r.event_id = e.id AND r.sent = 0) as reminder_count
         FROM events e
         LEFT JOIN classes c ON e.class_id = c.id AND c.user_id = ?
         WHERE e.user_id = ?
@@ -162,7 +163,8 @@ router.patch("/:id", async (req, res) => {
     });
 
     const updated = await db.execute({
-      sql: `SELECT e.*, c.name as class_name, c.color as class_color
+      sql: `SELECT e.*, c.name as class_name, c.color as class_color,
+              (SELECT COUNT(*) FROM reminders r WHERE r.event_id = e.id AND r.sent = 0) as reminder_count
             FROM events e
             LEFT JOIN classes c ON e.class_id = c.id AND c.user_id = ?
             WHERE e.id = ? AND e.user_id = ?`,
