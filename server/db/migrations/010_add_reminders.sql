@@ -8,5 +8,6 @@ CREATE TABLE IF NOT EXISTS reminders (
   offset_minutes INTEGER NOT NULL,
   sent INTEGER DEFAULT 0,
   remind_at TEXT,
+  retry_count INTEGER DEFAULT 0,
   created_at TEXT DEFAULT (datetime('now'))
 );

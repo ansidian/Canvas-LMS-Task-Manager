@@ -163,7 +163,7 @@ router.patch("/reset", async (req, res) => {
     for (const reminder of reminders.rows) {
       const remindAt = await computeRemindAt(event_id, reminder.offset_minutes);
       await db.execute({
-        sql: "UPDATE reminders SET remind_at = ?, sent = 0 WHERE id = ?",
+        sql: "UPDATE reminders SET remind_at = ?, sent = 0, retry_count = 0 WHERE id = ?",
         args: [remindAt, reminder.id],
       });
     }
@@ -202,6 +202,13 @@ router.post("/test", async (req, res) => {
         ],
       }),
     });
+
+    if (response.status === 429) {
+      const retryAfter = response.headers.get("retry-after") || "60";
+      return res.status(429).json({
+        message: `Discord is rate-limiting requests. Try again in ${retryAfter} seconds.`,
+      });
+    }
 
     if (!response.ok) {
       const text = await response.text();

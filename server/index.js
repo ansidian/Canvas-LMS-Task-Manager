@@ -45,6 +45,9 @@ function formatOffsetLabel(offsetMinutes) {
   return `${d} day${d !== 1 ? "s" : ""} ${direction}`;
 }
 
+// Rate-limit backoff: skip reminder checks until this time
+let rateLimitUntil = 0;
+
 async function sendDiscordWebhook(webhookUrl, reminder) {
   const label = formatOffsetLabel(reminder.offset_minutes);
   const dueDisplay = reminder.due_date
@@ -78,6 +81,12 @@ async function sendDiscordWebhook(webhookUrl, reminder) {
     body: JSON.stringify(body),
   });
 
+  if (res.status === 429) {
+    const retryAfter = parseInt(res.headers.get("retry-after") || "60", 10);
+    rateLimitUntil = Date.now() + retryAfter * 1000;
+    throw new Error(`Discord rate limited, backing off ${retryAfter}s`);
+  }
+
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`Discord webhook failed (${res.status}): ${text}`);
@@ -86,14 +95,17 @@ async function sendDiscordWebhook(webhookUrl, reminder) {
 
 async function checkReminders() {
   try {
+    // Respect Discord rate-limit backoff
+    if (Date.now() < rateLimitUntil) return;
+
     const now = new Date().toISOString();
 
-    // Fetch all unsent due reminders, grouped by user so we can look up their webhook
+    // Fetch unsent due reminders that haven't exceeded retry limit
     const due = await db.execute({
-      sql: `SELECT r.id, r.event_id, r.offset_minutes, e.title, e.due_date, e.url, e.user_id
+      sql: `SELECT r.id, r.event_id, r.offset_minutes, r.retry_count, e.title, e.due_date, e.url, e.user_id
             FROM reminders r
             JOIN events e ON r.event_id = e.id
-            WHERE r.sent = 0 AND r.remind_at <= ?`,
+            WHERE r.sent = 0 AND r.remind_at <= ? AND r.retry_count < 5`,
       args: [now],
     });
 
@@ -107,6 +119,9 @@ async function checkReminders() {
     }
 
     for (const [userId, reminders] of Object.entries(byUser)) {
+      // Stop processing if we hit a rate limit from a previous user's batch
+      if (Date.now() < rateLimitUntil) break;
+
       const settingsResult = await db.execute({
         sql: "SELECT discord_webhook FROM settings WHERE user_id = ?",
         args: [userId],
@@ -115,6 +130,7 @@ async function checkReminders() {
       if (!webhookUrl) continue;
 
       for (const reminder of reminders) {
+        if (Date.now() < rateLimitUntil) break;
         try {
           await sendDiscordWebhook(webhookUrl, reminder);
           await db.execute({
@@ -123,6 +139,10 @@ async function checkReminders() {
           });
         } catch (err) {
           console.error(`Failed to send reminder ${reminder.id}:`, err.message);
+          await db.execute({
+            sql: "UPDATE reminders SET retry_count = retry_count + 1 WHERE id = ?",
+            args: [reminder.id],
+          });
         }
       }
     }
