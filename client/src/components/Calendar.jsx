@@ -377,7 +377,7 @@ export default function Calendar({
     const newTime = slotToTime(newSlot);
 
     if (newTime !== ts.selectedTime) {
-      setTimeScrollState((prev) => prev ? { ...prev, selectedTime: newTime } : null);
+      setTimeScrollState((prev) => prev ? { ...prev, selectedTime: newTime, slotIndex: newSlot, originY: currentY } : null);
     }
   }, []);
 

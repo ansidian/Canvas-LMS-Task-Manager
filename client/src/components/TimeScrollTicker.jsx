@@ -25,6 +25,9 @@ function timeToIndex(time24) {
 }
 
 function SlotRow({ slot, isCurrent, isOriginal, distance }) {
+  // Smooth opacity falloff — close slots are legible, far ones dissolve
+  const farOpacity = Math.max(0.08, 0.55 - distance * 0.12);
+
   return (
     <div
       style={{
@@ -33,26 +36,27 @@ function SlotRow({ slot, isCurrent, isOriginal, distance }) {
         alignItems: "center",
         justifyContent: "center",
         width: "100%",
-        fontSize: isCurrent ? 16 : 12,
-        fontWeight: isCurrent ? 700 : 400,
+        fontSize: isCurrent ? 15 : 12,
+        fontWeight: isCurrent ? 600 : 400,
         color: isCurrent
-          ? "#fff"
-          : `rgba(255, 255, 255, ${Math.max(0.15, 0.5 - distance * 0.1)})`,
+          ? "var(--ink)"
+          : `rgba(255, 255, 255, ${farOpacity})`,
         position: "relative",
         fontVariantNumeric: "tabular-nums",
-        letterSpacing: "0.02em",
+        letterSpacing: isCurrent ? "0.04em" : "0.02em",
+        transition: "font-size 0.15s ease, font-weight 0.15s ease",
       }}
     >
       {isCurrent && (
         <div
           style={{
             position: "absolute",
-            inset: "0 8px",
-            background:
-              "linear-gradient(135deg, rgba(34, 139, 230, 0.35), rgba(34, 139, 230, 0.15))",
-            borderRadius: 6,
-            border: "1px solid rgba(34, 139, 230, 0.5)",
-            boxShadow: "0 0 12px rgba(34, 139, 230, 0.2)",
+            inset: "1px 10px",
+            background: "var(--ink-blue-light)",
+            borderRadius: 5,
+            border: "1px solid rgba(91, 141, 217, 0.35)",
+            boxShadow:
+              "inset 0 1px 2px rgba(0, 0, 0, 0.15), 0 0 8px rgba(91, 141, 217, 0.12)",
           }}
         />
       )}
@@ -63,13 +67,15 @@ function SlotRow({ slot, isCurrent, isOriginal, distance }) {
         <span
           style={{
             position: "absolute",
-            right: 8,
+            right: 10,
             top: "50%",
             transform: "translateY(-50%)",
-            fontSize: 8,
-            color: "rgba(255,255,255,0.3)",
-            letterSpacing: "0.05em",
+            fontSize: 7,
+            fontWeight: 500,
+            color: "var(--pencil)",
+            letterSpacing: "0.08em",
             textTransform: "uppercase",
+            opacity: 0.7,
           }}
         >
           now
@@ -111,8 +117,9 @@ export default function TimeScrollTicker({ selectedTime, originalTime }) {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        background: "rgba(0, 0, 0, 0.75)",
-        backdropFilter: "blur(8px)",
+        background: "rgba(23, 26, 31, 0.82)",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
         borderRadius: "inherit",
         overflow: "hidden",
         userSelect: "none",
@@ -128,6 +135,35 @@ export default function TimeScrollTicker({ selectedTime, originalTime }) {
           position: "relative",
         }}
       >
+        {/* Top fade mask */}
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: SLOT_HEIGHT * 2,
+            background:
+              "linear-gradient(to bottom, rgba(23, 26, 31, 0.9), transparent)",
+            zIndex: 2,
+            pointerEvents: "none",
+          }}
+        />
+        {/* Bottom fade mask */}
+        <div
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: SLOT_HEIGHT * 2,
+            background:
+              "linear-gradient(to top, rgba(23, 26, 31, 0.9), transparent)",
+            zIndex: 2,
+            pointerEvents: "none",
+          }}
+        />
+
         <motion.div
           style={{
             y: useTransform(springY, (v) => v + centerOffset),
@@ -155,14 +191,16 @@ export default function TimeScrollTicker({ selectedTime, originalTime }) {
       <div
         style={{
           position: "absolute",
-          bottom: 4,
-          fontSize: 9,
-          color: "rgba(255, 255, 255, 0.3)",
-          letterSpacing: "0.05em",
+          bottom: 5,
+          fontSize: 8,
+          fontWeight: 500,
+          color: "var(--pencil)",
+          letterSpacing: "0.1em",
           textTransform: "uppercase",
+          opacity: 0.6,
         }}
       >
-        scroll or drag
+        scroll · drag
       </div>
     </motion.div>
   );
