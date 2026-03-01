@@ -50,11 +50,12 @@ let rateLimitUntil = 0;
 
 async function sendDiscordWebhook(webhookUrl, reminder) {
   const label = formatOffsetLabel(reminder.offset_minutes);
-  const dueDisplay = reminder.due_date
+  const pacificTime = reminder.due_date
     ? new Date(reminder.due_date).toLocaleString("en-US", {
+        timeZone: "America/Los_Angeles",
+        weekday: "short",
         month: "short",
         day: "numeric",
-        year: "numeric",
         hour: "numeric",
         minute: "2-digit",
       })
@@ -64,15 +65,24 @@ async function sendDiscordWebhook(webhookUrl, reminder) {
     ? `${process.env.APP_URL}/#/event/${reminder.event_id}`
     : reminder.url;
 
-  const body = {
-    embeds: [
-      {
-        title: `⏰ ${reminder.title}`,
-        description: `**Due:** ${dueDisplay}\n**Reminder:** ${label}`,
-        color: 0x5b8dd9,
-        ...(deeplink ? { url: deeplink } : {}),
-      },
+  const DISCORD_USER_ID = process.env.DISCORD_USER_ID;
+
+  const embed = {
+    color: 0x5b8dd9,
+    title: reminder.title,
+    fields: [
+      ...(reminder.class_name
+        ? [{ name: "Class", value: reminder.class_name, inline: true }]
+        : []),
+      { name: "Due", value: pacificTime, inline: true },
     ],
+    footer: { text: `Due ${label}` },
+    ...(deeplink ? { url: deeplink } : {}),
+  };
+
+  const body = {
+    content: DISCORD_USER_ID ? `<@${DISCORD_USER_ID}>` : "",
+    embeds: [embed],
   };
 
   const res = await fetch(webhookUrl, {
@@ -102,9 +112,12 @@ async function checkReminders() {
 
     // Fetch unsent due reminders that haven't exceeded retry limit
     const due = await db.execute({
-      sql: `SELECT r.id, r.event_id, r.offset_minutes, r.retry_count, e.title, e.due_date, e.url, e.user_id
+      sql: `SELECT r.id, r.event_id, r.offset_minutes, r.retry_count,
+                   e.title, e.due_date, e.url, e.user_id,
+                   c.name as class_name
             FROM reminders r
             JOIN events e ON r.event_id = e.id
+            LEFT JOIN classes c ON e.class_id = c.id AND c.user_id = e.user_id
             WHERE r.sent = 0 AND r.remind_at <= ? AND r.retry_count < 5`,
       args: [now],
     });

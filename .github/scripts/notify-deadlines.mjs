@@ -71,6 +71,7 @@ const result = await db.execute(`
       NOT EXISTS (SELECT 1 FROM notification_log nl WHERE nl.event_id = e.id AND nl.notification_type = '6h')
       OR NOT EXISTS (SELECT 1 FROM notification_log nl WHERE nl.event_id = e.id AND nl.notification_type = '1h')
     )
+    AND NOT EXISTS (SELECT 1 FROM reminders r WHERE r.event_id = e.id)
 `);
 
 // Filter with proper timezone handling
@@ -140,7 +141,7 @@ for (const event of events) {
       { name: "Due", value: pacificTime, inline: true },
     ],
     footer: {
-      text: `Due in ${timeRemaining}`,
+      text: `Due in ${timeRemaining} (${event.notification_type} reminder)`,
     },
     ...(APP_URL ? { url: `${APP_URL}/#/event/${event.id}` } : event.canvas_url ? { url: event.canvas_url } : {}),
   };
