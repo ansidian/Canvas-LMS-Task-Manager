@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import dayjs from "dayjs";
+import { combineLocalDateAndTime, toUTCString } from "../utils/datetime";
 import useEvents from "../contexts/useEvents";
 import { useFilters } from "../contexts/FiltersContext";
 import { useOnboarding } from "../contexts/OnboardingContext";
@@ -223,6 +224,18 @@ export default function useAppController({
 		}
 	};
 
+	const handleEventTimeChange = async (eventId, dateKey, timeString) => {
+		const localDateTime = combineLocalDateAndTime(dateKey, timeString);
+		const utcString = toUTCString(localDateTime);
+		const updated = await updateEventRecord(eventId, { due_date: utcString });
+		if (updated?.todoist_id && updated.due_date) {
+			api(`/todoist/tasks/${updated.todoist_id}`, {
+				method: "PATCH",
+				body: JSON.stringify({ due_datetime: updated.due_date }),
+			}).catch((err) => console.error("Failed to sync time to Todoist:", err));
+		}
+	};
+
 	const handleCreateEvent = async (eventData) => {
 		setGhostEvent(null);
 		const newEvent = await createEventRecord(eventData);
@@ -350,6 +363,7 @@ export default function useAppController({
 		handleEventUpdate,
 		handleEventDelete,
 		handleEventDrop,
+		handleEventTimeChange,
 		handleClassesReorder: canvas.handleClassesReorder,
 		handleCreateEvent,
 		handleDayDoubleClick,

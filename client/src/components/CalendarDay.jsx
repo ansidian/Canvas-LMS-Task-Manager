@@ -3,6 +3,7 @@ import { useDroppable } from "@dnd-kit/core";
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import EventCard from "./EventCard";
+import TimeScrollTicker from "./TimeScrollTicker";
 
 const EVENT_GAP = 2;
 const MORE_TEXT_HEIGHT = 14; // Mantine xs text (~12px font + line-height)
@@ -20,6 +21,9 @@ export default function CalendarDay({
   onDayContextMenu,
   onDayClick,
   unassignedColor = "#a78b71",
+  timeScrollActive = false,
+  timeScrollTime = null,
+  timeScrollOriginalTime = null,
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: dateKey,
@@ -314,6 +318,16 @@ export default function CalendarDay({
           )}
         </div>
       </Stack>
+
+      {/* Time-scroll ticker overlay */}
+      <AnimatePresence>
+        {timeScrollActive && (
+          <TimeScrollTicker
+            selectedTime={timeScrollTime}
+            originalTime={timeScrollOriginalTime}
+          />
+        )}
+      </AnimatePresence>
     </Paper>
   );
 }

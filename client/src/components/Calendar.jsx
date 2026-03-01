@@ -22,6 +22,11 @@ import dayjs from "dayjs";
 import CalendarDay from "./CalendarDay";
 import EventCard from "./EventCard";
 import { expandRecurrence } from "../utils/expand-recurrence";
+import { hasTimeComponent, extractTime } from "../utils/datetime";
+
+const PIXELS_PER_SLOT = 8; // mouse Y pixels per 15-min slot
+const HOLD_DELAY_MS = 400;
+const IS_COARSE_POINTER = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -31,12 +36,28 @@ const STATUS_MENU_ITEMS = [
   { value: "complete", label: "Complete", icon: IconCircleCheckFilled },
 ];
 
+// Convert slot index (0–95) to "HH:mm" string
+function slotToTime(index) {
+  const clamped = ((index % 96) + 96) % 96;
+  const h = Math.floor(clamped / 4);
+  const m = (clamped % 4) * 15;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+// Convert "HH:mm" to slot index
+function timeToSlot(time24) {
+  if (!time24) return 36; // 9:00 AM default
+  const [h, m] = time24.split(":").map(Number);
+  return Math.round((h * 60 + m) / 15);
+}
+
 export default function Calendar({
   currentDate,
   events,
   classes,
   onEventClick,
   onEventDrop,
+  onEventTimeChange,
   onDayDoubleClick,
   onDayClick,
   onEventDelete,
@@ -51,6 +72,19 @@ export default function Calendar({
   const [prevDate, setPrevDate] = useState(currentDate);
   const [ghostAnimation, setGhostAnimation] = useState(null);
   const sourceRectRef = useRef(null);
+
+  // Time-scroll state
+  const [timeScrollState, setTimeScrollState] = useState(null);
+  const timeScrollRef = useRef(null); // mirror of timeScrollState for hot-path reads
+  const sourceDateKeyRef = useRef(null);
+  const holdTimerRef = useRef(null);
+  const dragMoveYRef = useRef(null);
+  const wheelVelocityRef = useRef(0);   // slots per frame
+  const wheelPositionRef = useRef(0);   // fractional slot accumulator
+  const wheelRafRef = useRef(null);
+
+  // Keep ref in sync with state
+  timeScrollRef.current = timeScrollState;
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState(null);
@@ -211,6 +245,11 @@ export default function Calendar({
     setContextMenu(null);
     setDayContextMenu(null);
 
+    // Track source dateKey for same-day detection
+    if (eventData?.due_date) {
+      sourceDateKeyRef.current = dayjs(eventData.due_date).format("YYYY-MM-DD");
+    }
+
     // Capture source position for ghost animation
     const element = document.querySelector(
       `[data-event-id="${event.active.id}"]`,
@@ -222,10 +261,32 @@ export default function Calendar({
 
   const handleDragEnd = (event) => {
     const { active, over } = event;
+    clearTimeout(holdTimerRef.current);
+
+    // If in time-scroll mode, commit the selected time
+    if (timeScrollState?.active && onEventTimeChange) {
+      onEventTimeChange(active.id, timeScrollState.dateKey, timeScrollState.selectedTime);
+      setTimeScrollState(null);
+      sourceDateKeyRef.current = null;
+      dragMoveYRef.current = null;
+      setActiveEvent(null);
+      sourceRectRef.current = null;
+      return;
+    }
 
     if (over && active.id !== over.id && sourceRectRef.current) {
       const eventData = events.find((e) => e.id === active.id);
       const newDate = over.id;
+
+      // Skip if dropped on the same day (no-op)
+      if (newDate === sourceDateKeyRef.current) {
+        setTimeScrollState(null);
+        setActiveEvent(null);
+        sourceRectRef.current = null;
+        sourceDateKeyRef.current = null;
+        dragMoveYRef.current = null;
+        return;
+      }
 
       // Start ghost animation
       setGhostAnimation({
@@ -240,14 +301,155 @@ export default function Calendar({
       onEventDrop(active.id, newDate);
     }
 
+    setTimeScrollState(null);
     setActiveEvent(null);
     sourceRectRef.current = null;
+    sourceDateKeyRef.current = null;
+    dragMoveYRef.current = null;
   };
 
   const handleDragCancel = () => {
+    clearTimeout(holdTimerRef.current);
+    setTimeScrollState(null);
     setActiveEvent(null);
     sourceRectRef.current = null;
+    sourceDateKeyRef.current = null;
+    dragMoveYRef.current = null;
   };
+
+  // Detect same-day hover during drag → start 400ms hold timer
+  const handleDragOver = useCallback((event) => {
+    if (IS_COARSE_POINTER) return;
+    const { over } = event;
+    const overDateKey = over?.id;
+    const srcKey = sourceDateKeyRef.current;
+
+    if (overDateKey && overDateKey === srcKey && !timeScrollRef.current?.active) {
+      // Hovering over the same day — start hold timer (if not already running)
+      if (!holdTimerRef.current) {
+        holdTimerRef.current = setTimeout(() => {
+          // Determine initial time from the event
+          const eventData = events.find((e) => e.id === event.active.id);
+          let originalTime = null;
+          if (eventData && hasTimeComponent(eventData.due_date)) {
+            const t = extractTime(eventData.due_date);
+            if (t !== "00:00") originalTime = t;
+          }
+          const initialTime = originalTime || "09:00";
+          const initialSlot = timeToSlot(initialTime);
+
+          setTimeScrollState({
+            active: true,
+            dateKey: srcKey,
+            eventId: event.active.id,
+            selectedTime: initialTime,
+            originalTime,
+            slotIndex: initialSlot,
+            originY: dragMoveYRef.current ?? 0,
+          });
+          holdTimerRef.current = null;
+        }, HOLD_DELAY_MS);
+      }
+    } else {
+      // Moved off the same day — cancel any pending timer
+      if (holdTimerRef.current) {
+        clearTimeout(holdTimerRef.current);
+        holdTimerRef.current = null;
+      }
+      // If time-scroll was active but user moved to a different day, cancel it
+      if (timeScrollRef.current?.active && overDateKey !== srcKey) {
+        setTimeScrollState(null);
+      }
+    }
+  }, [events]);
+
+  // Track mouse Y during drag for time-scroll scrubbing
+  const handleDragMove = useCallback((event) => {
+    const currentY = event.delta.y;
+    dragMoveYRef.current = currentY;
+
+    const ts = timeScrollRef.current;
+    if (!ts?.active) return;
+
+    const yDelta = currentY - ts.originY;
+    const slotDelta = Math.round(yDelta / PIXELS_PER_SLOT);
+    const newSlot = ts.slotIndex + slotDelta;
+    const newTime = slotToTime(newSlot);
+
+    if (newTime !== ts.selectedTime) {
+      setTimeScrollState((prev) => prev ? { ...prev, selectedTime: newTime } : null);
+    }
+  }, []);
+
+  // Escape key → cancel time-scroll mode
+  // Mouse wheel → scroll through time slots
+  useEffect(() => {
+    if (!timeScrollState?.active) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        setTimeScrollState(null);
+      }
+    };
+
+    const FRICTION = 0.82;          // velocity multiplier per frame (lower = more drag)
+    const MIN_VELOCITY = 0.05;     // stop threshold
+    const IMPULSE_SCALE = 0.004;   // wheel delta → velocity conversion
+
+    const applySlots = (slots) => {
+      setTimeScrollState((prev) => {
+        if (!prev) return null;
+        const newSlot = prev.slotIndex + slots;
+        const newTime = slotToTime(newSlot);
+        return { ...prev, slotIndex: newSlot, selectedTime: newTime, originY: dragMoveYRef.current ?? prev.originY };
+      });
+    };
+
+    // Momentum animation loop
+    const tick = () => {
+      wheelVelocityRef.current *= FRICTION;
+      wheelPositionRef.current += wheelVelocityRef.current;
+
+      const slots = Math.trunc(wheelPositionRef.current);
+      if (slots !== 0) {
+        wheelPositionRef.current -= slots;
+        applySlots(slots);
+      }
+
+      if (Math.abs(wheelVelocityRef.current) > MIN_VELOCITY) {
+        wheelRafRef.current = requestAnimationFrame(tick);
+      } else {
+        wheelVelocityRef.current = 0;
+        wheelPositionRef.current = 0;
+        wheelRafRef.current = null;
+      }
+    };
+
+    const handleWheel = (e) => {
+      e.preventDefault();
+      // Add impulse to velocity
+      wheelVelocityRef.current += e.deltaY * IMPULSE_SCALE;
+      // Start the momentum loop if not already running
+      if (!wheelRafRef.current) {
+        wheelRafRef.current = requestAnimationFrame(tick);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown, true);
+    window.addEventListener("wheel", handleWheel, { passive: false });
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown, true);
+      window.removeEventListener("wheel", handleWheel);
+      if (wheelRafRef.current) {
+        cancelAnimationFrame(wheelRafRef.current);
+        wheelRafRef.current = null;
+      }
+      wheelVelocityRef.current = 0;
+      wheelPositionRef.current = 0;
+    };
+  }, [timeScrollState?.active]);
 
   // Capture destination rect after the event moves to new position
   useLayoutEffect(() => {
@@ -287,6 +489,8 @@ export default function Calendar({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
+      onDragOver={handleDragOver}
+      onDragMove={handleDragMove}
     >
       <Box
           style={{
@@ -322,6 +526,8 @@ export default function Calendar({
                 const dayEvents = eventsByDate[dateKey] || [];
                 const isToday = date.isSame(dayjs(), "day");
 
+                const isTimeScrollTarget = timeScrollState?.active && timeScrollState.dateKey === dateKey;
+
                 return (
                   <CalendarDay
                     key={dateKey}
@@ -341,6 +547,9 @@ export default function Calendar({
                       onDayDoubleClick(dateKey, rect);
                     }}
                     unassignedColor={unassignedColor}
+                    timeScrollActive={isTimeScrollTarget}
+                    timeScrollTime={isTimeScrollTarget ? timeScrollState.selectedTime : null}
+                    timeScrollOriginalTime={isTimeScrollTarget ? timeScrollState.originalTime : null}
                   />
                 );
               })}
