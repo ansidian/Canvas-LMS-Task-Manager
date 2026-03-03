@@ -11,7 +11,6 @@ export default function useTodoistSync({
   addEvent,
   replaceEvent,
   updateEvent,
-  removeEvent,
   loadClasses,
 }) {
   const fetchInFlightRef = useRef(false);
@@ -171,14 +170,13 @@ export default function useTodoistSync({
         // Wait for all event creations to complete before finishing
         await Promise.all(createPromises);
 
-        // Tasks no longer in Todoist response → silently delete from CTM
+        // Tasks no longer in Todoist response → mark complete and detach
         const activeTodoistIds = new Set(
           tasks.map((t) => String(t.todoist_id)),
         );
         for (const [todoistId, local] of Object.entries(existingMap)) {
           if (!activeTodoistIds.has(todoistId)) {
-            removeEvent(local.id);
-            api(`/events/${local.id}`, { method: "DELETE" }).catch(() => {});
+            updateEvent(local.id, { status: "complete", todoist_id: null });
           }
         }
 
@@ -205,7 +203,7 @@ export default function useTodoistSync({
         fetchInFlightRef.current = false;
       }
     },
-    [api, addEvent, replaceEvent, updateEvent, removeEvent, loadClasses, ensureTodoistClass],
+    [api, addEvent, replaceEvent, updateEvent, loadClasses, ensureTodoistClass],
   );
 
   const fetchTodoistIfStale = useCallback(
