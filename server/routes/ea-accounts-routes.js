@@ -1,6 +1,5 @@
 import { Router } from "express";
 import db from "../db/connection.js";
-import { requireUser } from "../middleware/clerk-auth.js";
 import { encrypt, decrypt } from "../briefing/encryption.js";
 import {
   getAuthUrl,
@@ -10,6 +9,16 @@ import {
 import {
   testConnection as testIcloud,
 } from "../briefing/icloud.js";
+
+const EA_API_KEY = process.env.EA_API_KEY;
+
+function requireApiKey(req, res, next) {
+  const key = req.headers["x-api-key"];
+  if (!EA_API_KEY || key !== EA_API_KEY) {
+    return res.status(401).json({ message: "Invalid or missing API key" });
+  }
+  next();
+}
 
 const router = Router();
 
@@ -42,12 +51,12 @@ router.get("/accounts/gmail/callback", async (req, res) => {
   }
 });
 
-// All other routes require auth
-router.use(requireUser());
+// All other routes require API key auth
+router.use(requireApiKey);
 
 // GET /api/ea/accounts — list connected accounts
 router.get("/accounts", async (req, res) => {
-  const userId = req.auth().userId;
+  const userId = process.env.EA_USER_ID;
   try {
     const result = await db.execute({
       sql: "SELECT id, type, email, label, color, created_at FROM ea_accounts WHERE user_id = ?",
@@ -62,7 +71,7 @@ router.get("/accounts", async (req, res) => {
 
 // GET /api/ea/accounts/gmail/auth — start OAuth flow
 router.get("/accounts/gmail/auth", async (req, res) => {
-  const userId = req.auth().userId;
+  const userId = process.env.EA_USER_ID;
   const label = req.query.label || "Gmail";
   // Encode userId and label into the state param
   const accountId = `${userId}:${label}`;
@@ -72,7 +81,7 @@ router.get("/accounts/gmail/auth", async (req, res) => {
 
 // POST /api/ea/accounts/icloud — add iCloud account
 router.post("/accounts/icloud", async (req, res) => {
-  const userId = req.auth().userId;
+  const userId = process.env.EA_USER_ID;
   const { email, password, label, color } = req.body;
 
   if (!email || !password) {
@@ -111,7 +120,7 @@ router.post("/accounts/icloud", async (req, res) => {
 
 // POST /api/ea/accounts/test/:id — test account connection
 router.post("/accounts/test/:id", async (req, res) => {
-  const userId = req.auth().userId;
+  const userId = process.env.EA_USER_ID;
   const { id } = req.params;
 
   try {
@@ -140,7 +149,7 @@ router.post("/accounts/test/:id", async (req, res) => {
 
 // DELETE /api/ea/accounts/:id — remove account
 router.delete("/accounts/:id", async (req, res) => {
-  const userId = req.auth().userId;
+  const userId = process.env.EA_USER_ID;
   const { id } = req.params;
 
   try {
@@ -160,7 +169,7 @@ router.delete("/accounts/:id", async (req, res) => {
 
 // GET /api/ea/settings — get EA settings
 router.get("/settings", async (req, res) => {
-  const userId = req.auth().userId;
+  const userId = process.env.EA_USER_ID;
   try {
     let result = await db.execute({
       sql: "SELECT * FROM ea_settings WHERE user_id = ?",
@@ -192,7 +201,7 @@ router.get("/settings", async (req, res) => {
 
 // PUT /api/ea/settings — update EA settings
 router.put("/settings", async (req, res) => {
-  const userId = req.auth().userId;
+  const userId = process.env.EA_USER_ID;
   const {
     schedules_json,
     email_lookback_hours,

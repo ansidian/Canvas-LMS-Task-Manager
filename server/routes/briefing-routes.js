@@ -1,14 +1,23 @@
 import { Router } from "express";
 import db from "../db/connection.js";
-import { requireUser } from "../middleware/clerk-auth.js";
 import { generateBriefing, quickRefresh } from "../briefing/index.js";
 import { fetchEmailBody as fetchGmailBody } from "../briefing/gmail.js";
 import { fetchEmailBody as fetchIcloudBody } from "../briefing/icloud.js";
 import { decrypt } from "../briefing/encryption.js";
 import { sendBill } from "../briefing/actual.js";
 
+const EA_API_KEY = process.env.EA_API_KEY;
+
+function requireApiKey(req, res, next) {
+  const key = req.headers["x-api-key"];
+  if (!EA_API_KEY || key !== EA_API_KEY) {
+    return res.status(401).json({ message: "Invalid or missing API key" });
+  }
+  next();
+}
+
 const router = Router();
-router.use(requireUser());
+router.use(requireApiKey);
 
 // Minimum minutes between full AI generations (prevents accidental Haiku cost)
 const GENERATION_COOLDOWN_MINUTES = 10;
@@ -16,7 +25,7 @@ const GENERATION_COOLDOWN_MINUTES = 10;
 // POST /api/briefing/generate — full AI briefing generation (Haiku call)
 // Client should poll GET /api/briefing/status/:id until status = "ready"
 router.post("/generate", async (req, res) => {
-  const userId = req.auth().userId;
+  const userId = process.env.EA_USER_ID;
   const force = req.body?.force === true;
 
   try {
@@ -67,7 +76,7 @@ router.post("/generate", async (req, res) => {
 // Updates weather, calendar, deadlines, raw emails. Preserves existing AI insights.
 // Returns the updated briefing synchronously (fast, ~2-5s).
 router.post("/refresh", async (req, res) => {
-  const userId = req.auth().userId;
+  const userId = process.env.EA_USER_ID;
   try {
     const result = await quickRefresh(userId);
     res.json(result);
@@ -79,7 +88,7 @@ router.post("/refresh", async (req, res) => {
 
 // GET /api/briefing/latest — get most recent ready briefing
 router.get("/latest", async (req, res) => {
-  const userId = req.auth().userId;
+  const userId = process.env.EA_USER_ID;
   try {
     const result = await db.execute({
       sql: `SELECT id, status, briefing_json, generated_at, generation_time_ms
@@ -109,7 +118,7 @@ router.get("/latest", async (req, res) => {
 
 // GET /api/briefing/history — last 20 briefings (metadata only)
 router.get("/history", async (req, res) => {
-  const userId = req.auth().userId;
+  const userId = process.env.EA_USER_ID;
   try {
     const result = await db.execute({
       sql: `SELECT id, status, generated_at, generation_time_ms, error_message
@@ -127,7 +136,7 @@ router.get("/history", async (req, res) => {
 
 // GET /api/briefing/status/:id — poll generation status
 router.get("/status/:id", async (req, res) => {
-  const userId = req.auth().userId;
+  const userId = process.env.EA_USER_ID;
   const { id } = req.params;
   try {
     const result = await db.execute({
@@ -149,7 +158,7 @@ router.get("/status/:id", async (req, res) => {
 
 // GET /api/briefing/email/:uid — fetch full email body
 router.get("/email/:uid", async (req, res) => {
-  const userId = req.auth().userId;
+  const userId = process.env.EA_USER_ID;
   const { uid } = req.params;
 
   try {
@@ -191,7 +200,7 @@ router.get("/email/:uid", async (req, res) => {
 
 // GET /api/briefing/:id — fetch a specific briefing by ID (for history viewing)
 router.get("/:id", async (req, res) => {
-  const userId = req.auth().userId;
+  const userId = process.env.EA_USER_ID;
   const { id } = req.params;
   try {
     const result = await db.execute({
@@ -220,7 +229,7 @@ router.get("/:id", async (req, res) => {
 
 // POST /api/briefing/actual/send — send bill to Actual Budget
 router.post("/actual/send", async (req, res) => {
-  const userId = req.auth().userId;
+  const userId = process.env.EA_USER_ID;
   const billData = req.body;
 
   if (!billData?.payee || !billData?.amount || !billData?.type) {
