@@ -4,7 +4,7 @@ import { generateBriefing, quickRefresh } from "../briefing/index.js";
 import { fetchEmailBody as fetchGmailBody } from "../briefing/gmail.js";
 import { fetchEmailBody as fetchIcloudBody } from "../briefing/icloud.js";
 import { decrypt } from "../briefing/encryption.js";
-import { sendBill } from "../briefing/actual.js";
+import { sendBill, testConnection as testActual } from "../briefing/actual.js";
 
 const EA_API_KEY = process.env.EA_API_KEY;
 
@@ -248,35 +248,12 @@ router.post("/actual/send", async (req, res) => {
 // POST /api/briefing/actual/test — test Actual Budget connection
 router.post("/actual/test", async (req, res) => {
   const userId = process.env.EA_USER_ID;
-  let actualApi = null;
-
   try {
-    const settingsResult = await db.execute({
-      sql: "SELECT actual_budget_url, actual_budget_password_encrypted, actual_budget_sync_id FROM ea_settings WHERE user_id = ?",
-      args: [userId],
-    });
-    const settings = settingsResult.rows[0];
-    if (!settings?.actual_budget_url || !settings?.actual_budget_sync_id) {
-      return res.status(400).json({ message: "Actual Budget not configured. Save settings first." });
-    }
-
-    actualApi = (await import("@actual-app/api")).default;
-    const password = settings.actual_budget_password_encrypted
-      ? decrypt(settings.actual_budget_password_encrypted)
-      : null;
-    const serverURL = settings.actual_budget_url.replace(/\/+$/, "");
-
-    await actualApi.init({ serverURL, password });
-    await actualApi.downloadBudget(settings.actual_budget_sync_id);
-    const accounts = await actualApi.getAccounts();
-    await actualApi.shutdown().catch(() => {});
-    actualApi = null;
-
-    res.json({ success: true, accountCount: accounts.length });
+    const result = await testActual(userId);
+    res.json(result);
   } catch (err) {
-    if (actualApi) await actualApi.shutdown().catch(() => {});
     console.error("Actual Budget test failed:", err.message);
-    res.status(400).json({ message: err.reason || err.message || "Connection failed" });
+    res.status(400).json({ message: err.message || "Connection failed" });
   }
 });
 
