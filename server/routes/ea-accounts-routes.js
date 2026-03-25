@@ -9,6 +9,7 @@ import {
 import {
   testConnection as testIcloud,
 } from "../briefing/icloud.js";
+import { geocodeLocation } from "../briefing/weather.js";
 
 const EA_API_KEY = process.env.EA_API_KEY;
 
@@ -164,6 +165,18 @@ router.delete("/accounts/:id", async (req, res) => {
   } catch (err) {
     console.error("Error deleting account:", err);
     res.status(500).json({ message: "Failed to delete account" });
+  }
+});
+
+// GET /api/ea/geocode?q=El Monte, CA — look up lat/lng for a city name
+router.get("/geocode", async (req, res) => {
+  const { q } = req.query;
+  if (!q) return res.status(400).json({ message: "q parameter required" });
+  try {
+    const results = await geocodeLocation(q);
+    res.json(results);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
   }
 });
 
