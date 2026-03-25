@@ -1,4 +1,10 @@
 import "dotenv/config";
+
+// Prevent @actual-app/api internal unhandled rejections from crashing the process
+process.on("unhandledRejection", (err) => {
+  console.error("[Unhandled Rejection]", err?.message || err);
+});
+
 import express from "express";
 import cors from "cors";
 import { fileURLToPath } from "url";

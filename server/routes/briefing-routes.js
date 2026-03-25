@@ -248,6 +248,8 @@ router.post("/actual/send", async (req, res) => {
 // POST /api/briefing/actual/test — test Actual Budget connection
 router.post("/actual/test", async (req, res) => {
   const userId = process.env.EA_USER_ID;
+  let actualApi = null;
+
   try {
     const settingsResult = await db.execute({
       sql: "SELECT actual_budget_url, actual_budget_password_encrypted, actual_budget_sync_id FROM ea_settings WHERE user_id = ?",
@@ -258,7 +260,7 @@ router.post("/actual/test", async (req, res) => {
       return res.status(400).json({ message: "Actual Budget not configured. Save settings first." });
     }
 
-    const actualApi = (await import("@actual-app/api")).default;
+    actualApi = (await import("@actual-app/api")).default;
     const password = settings.actual_budget_password_encrypted
       ? decrypt(settings.actual_budget_password_encrypted)
       : null;
@@ -266,12 +268,14 @@ router.post("/actual/test", async (req, res) => {
     await actualApi.init({ serverURL: settings.actual_budget_url, password });
     await actualApi.downloadBudget(settings.actual_budget_sync_id);
     const accounts = await actualApi.getAccounts();
-    await actualApi.shutdown();
+    await actualApi.shutdown().catch(() => {});
+    actualApi = null;
 
     res.json({ success: true, accountCount: accounts.length });
   } catch (err) {
-    console.error("Actual Budget test failed:", err);
-    res.status(400).json({ message: err.message });
+    if (actualApi) await actualApi.shutdown().catch(() => {});
+    console.error("Actual Budget test failed:", err.message);
+    res.status(400).json({ message: err.reason || err.message || "Connection failed" });
   }
 });
 
