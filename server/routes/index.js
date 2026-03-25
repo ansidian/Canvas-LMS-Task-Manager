@@ -8,6 +8,8 @@ import todoistRoutes from "./todoist-routes.js";
 import todoistGuestRoutes from "./todoist-guest-routes.js";
 import mergeRoutes from "./merge-routes.js";
 import remindersRoutes from "./reminders-routes.js";
+import briefingRoutes from "./briefing-routes.js";
+import eaAccountsRoutes from "./ea-accounts-routes.js";
 
 const router = Router();
 
@@ -19,6 +21,8 @@ router.use("/guest/todoist", todoistGuestRoutes);
 router.use("/todoist", todoistRoutes);
 router.use("/merge", mergeRoutes);
 router.use("/reminders", remindersRoutes);
+router.use("/briefing", briefingRoutes);
+router.use("/ea", eaAccountsRoutes);
 router.use("/", settingsRoutes);
 
 export default router;
