@@ -43,8 +43,8 @@ router.get("/accounts/gmail/callback", async (req, res) => {
     }
 
     // Redirect back to the dashboard settings page
-    const redirectUrl = process.env.EA_FRONTEND_URL || process.env.APP_URL || "/";
-    res.redirect(`${redirectUrl}?account_connected=${result.email}`);
+    const frontendBase = (process.env.EA_FRONTEND_URL || "").replace(/\/+$/, "");
+    res.redirect(`${frontendBase}/ea-dashboard/settings?account_connected=${result.email}`);
   } catch (err) {
     console.error("Gmail OAuth callback error:", err);
     res.status(500).send(`OAuth failed: ${err.message}`);
