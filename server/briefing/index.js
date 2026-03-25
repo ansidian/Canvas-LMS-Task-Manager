@@ -131,6 +131,7 @@ export async function generateBriefing(userId) {
     briefingJson.generatedAt = nowPacific();
     briefingJson.dataUpdatedAt = new Date().toISOString();
     briefingJson.aiGeneratedAt = new Date().toISOString();
+    if (briefingJson.weather) briefingJson.weather.location = settings.weather_location || "El Monte, CA";
 
     const elapsed = Date.now() - startTime;
     await db.execute({
@@ -180,7 +181,7 @@ export async function quickRefresh(userId) {
   }
 
   // Overwrite raw data fields, keep AI-generated fields intact
-  briefing.weather = weather;
+  briefing.weather = { ...weather, location: settings.weather_location || "El Monte, CA" };
   briefing.calendar = calendar;
   briefing.ctm = {
     upcoming: ctmDeadlines,
