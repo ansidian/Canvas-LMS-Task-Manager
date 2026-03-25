@@ -265,13 +265,34 @@ router.post("/actual/test", async (req, res) => {
       ? decrypt(settings.actual_budget_password_encrypted)
       : null;
 
-    await actualApi.init({ serverURL: settings.actual_budget_url, password });
-    await actualApi.downloadBudget(settings.actual_budget_sync_id);
-    const accounts = await actualApi.getAccounts();
-    await actualApi.shutdown().catch(() => {});
-    actualApi = null;
+    // Test reachability with a direct fetch first
+    const infoRes = await fetch(`${settings.actual_budget_url}/info`, {
+      headers: { "Content-Type": "application/json" },
+    }).catch(() => null);
 
-    res.json({ success: true, accountCount: accounts.length });
+    if (!infoRes || !infoRes.ok) {
+      return res.status(400).json({
+        message: `Cannot reach Actual Budget server at ${settings.actual_budget_url} (${infoRes?.status || "no response"})`,
+      });
+    }
+
+    // Validate password by attempting login
+    const loginRes = await fetch(`${settings.actual_budget_url}/account/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password }),
+    });
+    const loginData = await loginRes.json().catch(() => ({}));
+
+    if (!loginRes.ok || loginData.status === "error") {
+      return res.status(400).json({
+        message: loginData.reason === "invalid-password"
+          ? "Invalid password"
+          : `Login failed: ${loginData.reason || loginRes.status}`,
+      });
+    }
+
+    res.json({ success: true, token: !!loginData.data?.token });
   } catch (err) {
     if (actualApi) await actualApi.shutdown().catch(() => {});
     console.error("Actual Budget test failed:", err.message);
