@@ -17,9 +17,11 @@ export async function sendBill(billData, userId) {
     ? decrypt(settings.actual_budget_password_encrypted)
     : null;
 
+  const serverURL = settings.actual_budget_url.replace(/\/+$/, "");
+
   try {
     await actualApi.init({
-      serverURL: settings.actual_budget_url,
+      serverURL,
       password,
     });
     await actualApi.downloadBudget(settings.actual_budget_sync_id);
