@@ -1,10 +1,5 @@
 import "dotenv/config";
 
-// Prevent @actual-app/api internal unhandled rejections from crashing the process
-process.on("unhandledRejection", (err) => {
-  console.error("[Unhandled Rejection]", err?.message || err);
-});
-
 import express from "express";
 import cors from "cors";
 import { fileURLToPath } from "url";
@@ -12,7 +7,6 @@ import { dirname, join } from "path";
 import { clerkMiddleware } from "@clerk/express";
 import apiRoutes from "./routes/index.js";
 import db from "./db/connection.js";
-import { initScheduler } from "./briefing/scheduler.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -20,18 +14,7 @@ const __dirname = dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// CORS: allow EA dashboard frontend (GitHub Pages) in addition to same-origin
-const eaFrontendOrigin = process.env.EA_FRONTEND_URL;
-app.use(
-  cors(
-    eaFrontendOrigin
-      ? {
-          origin: [eaFrontendOrigin, /localhost/],
-          credentials: true,
-        }
-      : undefined,
-  ),
-);
+app.use(cors());
 app.use(express.json());
 app.use(clerkMiddleware());
 app.use("/api", apiRoutes);
@@ -185,7 +168,4 @@ async function checkReminders() {
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
   setInterval(checkReminders, 10_000);
-  initScheduler().catch((err) =>
-    console.error("[EA Scheduler] Init failed:", err.message),
-  );
 });
