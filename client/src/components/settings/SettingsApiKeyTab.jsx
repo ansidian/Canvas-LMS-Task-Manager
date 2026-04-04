@@ -3,12 +3,10 @@ import { Alert, Button, CopyButton, Group, Stack, Text, TextInput } from "@manti
 import { IconAlertCircle, IconCheck, IconCopy } from "@tabler/icons-react";
 import { notifyError, notifySuccess } from "../../utils/notify.jsx";
 
-export default function SettingsApiKeyTab({ api, hasApiKey: initialHasKey }) {
-  const [hasKey, setHasKey] = useState(initialHasKey);
+export default function SettingsApiKeyTab({ api, hasApiKey, onHasApiKeyChange }) {
   const [revealedKey, setRevealedKey] = useState(null);
   const [generating, setGenerating] = useState(false);
   const [confirmRegenerate, setConfirmRegenerate] = useState(false);
-  const [revoking, setRevoking] = useState(false);
   const [confirmRevoke, setConfirmRevoke] = useState(false);
 
   const generateKey = async () => {
@@ -17,8 +15,8 @@ export default function SettingsApiKeyTab({ api, hasApiKey: initialHasKey }) {
     try {
       const data = await api("/settings/api-key", { method: "POST" });
       setRevealedKey(data.api_key);
-      setHasKey(true);
-      notifySuccess(hasKey ? "API key regenerated." : "API key generated.");
+      onHasApiKeyChange(true);
+      notifySuccess(hasApiKey ? "API key regenerated." : "API key generated.");
     } catch (err) {
       notifyError(err.message || "Failed to generate API key.");
     } finally {
@@ -27,17 +25,19 @@ export default function SettingsApiKeyTab({ api, hasApiKey: initialHasKey }) {
   };
 
   const revokeKey = async () => {
-    setRevoking(true);
+    // Optimistic: clear UI immediately
+    const prevRevealedKey = revealedKey;
     setConfirmRevoke(false);
+    onHasApiKeyChange(false);
+    setRevealedKey(null);
     try {
       await api("/settings/api-key", { method: "DELETE" });
-      setHasKey(false);
-      setRevealedKey(null);
       notifySuccess("API key revoked.");
     } catch (err) {
+      // Revert on failure
+      onHasApiKeyChange(true);
+      setRevealedKey(prevRevealedKey);
       notifyError(err.message || "Failed to revoke API key.");
-    } finally {
-      setRevoking(false);
     }
   };
 
@@ -74,7 +74,7 @@ export default function SettingsApiKeyTab({ api, hasApiKey: initialHasKey }) {
             )}
           </CopyButton>
         </Group>
-      ) : hasKey ? (
+      ) : hasApiKey ? (
         <TextInput
           value="ctm_••••••••••••••••••••••••••••••••"
           readOnly
@@ -83,12 +83,11 @@ export default function SettingsApiKeyTab({ api, hasApiKey: initialHasKey }) {
       ) : null}
 
       <Group justify="flex-end">
-        {hasKey && !confirmRevoke && (
+        {hasApiKey && !confirmRevoke && (
           <Button
             variant="default"
             color="red"
             onClick={() => setConfirmRevoke(true)}
-            disabled={revoking}
           >
             Revoke
           </Button>
@@ -97,15 +96,15 @@ export default function SettingsApiKeyTab({ api, hasApiKey: initialHasKey }) {
           <>
             <Text size="sm" c="red">Revoke this key? External apps will lose access.</Text>
             <Button variant="default" onClick={() => setConfirmRevoke(false)}>Cancel</Button>
-            <Button color="red" onClick={revokeKey} loading={revoking}>Confirm Revoke</Button>
+            <Button color="red" onClick={revokeKey}>Confirm Revoke</Button>
           </>
         )}
         {!confirmRevoke && !confirmRegenerate && (
           <Button
-            onClick={hasKey ? () => setConfirmRegenerate(true) : generateKey}
+            onClick={hasApiKey ? () => setConfirmRegenerate(true) : generateKey}
             loading={generating}
           >
-            {hasKey ? "Regenerate" : "Generate API Key"}
+            {hasApiKey ? "Regenerate" : "Generate API Key"}
           </Button>
         )}
         {confirmRegenerate && (

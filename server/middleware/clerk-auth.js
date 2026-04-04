@@ -1,3 +1,8 @@
 import { requireAuth } from "@clerk/express";
 
-export const requireUser = () => requireAuth();
+const clerkAuth = requireAuth();
+
+export const requireUser = () => (req, res, next) => {
+  if (req.apiKeyAuth) return next();
+  clerkAuth(req, res, next);
+};

@@ -223,7 +223,7 @@ export default function SettingsModal({
       />
     ),
     apikey: (
-      <SettingsApiKeyTab api={api} hasApiKey={hasApiKey} />
+      <SettingsApiKeyTab api={api} hasApiKey={hasApiKey} onHasApiKeyChange={setHasApiKey} />
     ),
     help: (
       <SettingsHelpTab
