@@ -6,20 +6,38 @@ const router = Router();
 
 router.use(requireUser());
 
-// Get all events
+// Get events (supports optional query params: status, due_after, due_before)
 router.get("/", async (req, res) => {
   const userId = req.auth().userId;
+  const { status, due_after, due_before } = req.query;
   try {
+    const conditions = ["e.user_id = ?"];
+    const args = [userId];
+
+    if (status) {
+      const statuses = status.split(",").map((s) => s.trim());
+      conditions.push(`e.status IN (${statuses.map(() => "?").join(", ")})`);
+      args.push(...statuses);
+    }
+    if (due_after) {
+      conditions.push("substr(e.due_date, 1, 10) >= ?");
+      args.push(due_after);
+    }
+    if (due_before) {
+      conditions.push("substr(e.due_date, 1, 10) <= ?");
+      args.push(due_before);
+    }
+
     const result = await db.execute({
       sql: `
         SELECT e.*, c.name as class_name, c.color as class_color,
           (SELECT COUNT(*) FROM reminders r WHERE r.event_id = e.id AND r.sent = 0) as reminder_count
         FROM events e
         LEFT JOIN classes c ON e.class_id = c.id AND c.user_id = ?
-        WHERE e.user_id = ?
+        WHERE ${conditions.join(" AND ")}
         ORDER BY e.due_date
       `,
-      args: [userId, userId],
+      args: [userId, ...args],
     });
     res.json(result.rows);
   } catch (err) {
