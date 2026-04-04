@@ -7,6 +7,7 @@ import SettingsTodoistTab from "./settings/SettingsTodoistTab";
 import SettingsClassesTab from "./settings/SettingsClassesTab";
 import SettingsHelpTab from "./settings/SettingsHelpTab";
 import SettingsRemindersTab from "./settings/SettingsRemindersTab";
+import SettingsApiKeyTab from "./settings/SettingsApiKeyTab";
 import useSettingsApi from "../hooks/useSettingsApi";
 import { notifyError } from "../utils/notify.jsx";
 import { removeStorageItem } from "../utils/storage";
@@ -126,6 +127,7 @@ export default function SettingsModal({
         setTodoistToken(data.todoist_token || "");
         setDiscordWebhook(data.discord_webhook || "");
         setSavedDiscordWebhook(data.discord_webhook || "");
+        setHasApiKey(Boolean(data.has_api_key));
       })
       .catch((err) => {
         console.error("Failed to load Canvas settings:", err);
@@ -137,6 +139,7 @@ export default function SettingsModal({
   }, [api, opened, setCanvasToken, setCanvasUrl, setTodoistToken, setDiscordWebhook]);
 
   const [activeTab, setActiveTab] = useState("canvas");
+  const [hasApiKey, setHasApiKey] = useState(false);
 
   const panelContent = {
     canvas: (
@@ -219,6 +222,9 @@ export default function SettingsModal({
         }}
       />
     ),
+    apikey: (
+      <SettingsApiKeyTab api={api} hasApiKey={hasApiKey} />
+    ),
     help: (
       <SettingsHelpTab
         config={{ showResetConfirm, resetting, isGuest }}
@@ -239,6 +245,7 @@ export default function SettingsModal({
           <Tabs.Tab value="todoist">Todoist</Tabs.Tab>
           <Tabs.Tab value="classes">Classes</Tabs.Tab>
           <Tabs.Tab value="reminders">Reminders</Tabs.Tab>
+          <Tabs.Tab value="apikey">API Key</Tabs.Tab>
           <Tabs.Tab value="help">Help</Tabs.Tab>
         </Tabs.List>
       </Tabs>
