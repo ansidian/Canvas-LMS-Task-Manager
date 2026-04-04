@@ -6,10 +6,10 @@ const router = Router();
 
 router.use(requireUser());
 
-// Get events (supports optional query params: status, due_after, due_before)
+// Get events (supports optional query params: status, due_after, due_before, exclude_source)
 router.get("/", async (req, res) => {
   const userId = req.auth().userId;
-  const { status, due_after, due_before } = req.query;
+  const { status, due_after, due_before, exclude_source } = req.query;
   try {
     const conditions = ["e.user_id = ?"];
     const args = [userId];
@@ -26,6 +26,14 @@ router.get("/", async (req, res) => {
     if (due_before) {
       conditions.push("substr(e.due_date, 1, 10) <= ?");
       args.push(due_before);
+    }
+    if (exclude_source) {
+      const sources = exclude_source.split(",").map((s) => s.trim());
+      for (const source of sources) {
+        if (source === "todoist") conditions.push("e.todoist_id IS NULL");
+        else if (source === "canvas") conditions.push("e.canvas_id IS NULL");
+        else if (source === "manual") conditions.push("(e.canvas_id IS NOT NULL OR e.todoist_id IS NOT NULL)");
+      }
     }
 
     const result = await db.execute({

@@ -54,11 +54,12 @@ Returns all events for the authenticated user, ordered by due date.
 | `status` | string | Comma-separated status filter | `incomplete,in_progress` |
 | `due_after` | string | Minimum due date (inclusive, `YYYY-MM-DD`) | `2026-04-03` |
 | `due_before` | string | Maximum due date (inclusive, `YYYY-MM-DD`) | `2026-04-10` |
+| `exclude_source` | string | Comma-separated sources to exclude (`todoist`, `canvas`, `manual`) | `todoist` |
 
-**Example — upcoming incomplete events this week:**
+**Example — upcoming incomplete non-Todoist events this week:**
 
 ```bash
-curl -s "https://ctm.andysu.tech/api/events?status=incomplete,in_progress&due_after=2026-04-03&due_before=2026-04-10" \
+curl -s "https://ctm.andysu.tech/api/events?status=incomplete,in_progress&due_after=2026-04-03&due_before=2026-04-10&exclude_source=todoist" \
   -H "Authorization: Bearer ctm_your_key"
 ```
 
