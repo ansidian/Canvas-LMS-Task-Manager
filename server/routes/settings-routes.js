@@ -1,6 +1,7 @@
 import { Router } from "express";
 import db from "../db/connection.js";
 import { requireUser } from "../middleware/clerk-auth.js";
+import crypto from "crypto";
 
 const router = Router();
 
@@ -28,7 +29,10 @@ router.get("/settings", async (req, res) => {
       });
     }
 
-    res.json(result.rows[0]);
+    const settings = { ...result.rows[0] };
+    settings.has_api_key = Boolean(settings.api_key);
+    delete settings.api_key;
+    res.json(settings);
   } catch (err) {
     console.error("Error fetching settings:", err);
     res.status(500).json({ message: "Failed to fetch settings" });
@@ -91,6 +95,43 @@ router.patch("/settings", async (req, res) => {
   } catch (err) {
     console.error("Error updating settings:", err);
     res.status(500).json({ message: "Failed to update settings" });
+  }
+});
+
+// Generate or regenerate API key
+router.post("/settings/api-key", async (req, res) => {
+  if (req.apiKeyAuth) {
+    return res.status(403).json({ message: "Cannot manage API keys via API key auth" });
+  }
+  const userId = req.auth().userId;
+  try {
+    const apiKey = "ctm_" + crypto.randomBytes(16).toString("hex");
+    await db.execute({
+      sql: "UPDATE settings SET api_key = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
+      args: [apiKey, userId],
+    });
+    res.json({ api_key: apiKey });
+  } catch (err) {
+    console.error("Error generating API key:", err);
+    res.status(500).json({ message: "Failed to generate API key" });
+  }
+});
+
+// Revoke API key
+router.delete("/settings/api-key", async (req, res) => {
+  if (req.apiKeyAuth) {
+    return res.status(403).json({ message: "Cannot manage API keys via API key auth" });
+  }
+  const userId = req.auth().userId;
+  try {
+    await db.execute({
+      sql: "UPDATE settings SET api_key = NULL, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
+      args: [userId],
+    });
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Error revoking API key:", err);
+    res.status(500).json({ message: "Failed to revoke API key" });
   }
 });
 
