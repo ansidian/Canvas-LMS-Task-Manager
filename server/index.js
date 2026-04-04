@@ -6,6 +6,7 @@ import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { clerkMiddleware } from "@clerk/express";
 import apiRoutes from "./routes/index.js";
+import apiKeyAuth from "./middleware/api-key-auth.js";
 import db from "./db/connection.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -17,6 +18,7 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 app.use(clerkMiddleware());
+app.use("/api", apiKeyAuth);
 app.use("/api", apiRoutes);
 
 // Serve static files in production
