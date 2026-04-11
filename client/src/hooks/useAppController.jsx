@@ -73,6 +73,7 @@ export default function useAppController({
 
 	const canvas = useCanvasSync({
 		api,
+		isGuest: Boolean(isGuest),
 		setLoading,
 		setHighlightCredentials,
 		setSettingsOpen,
@@ -80,6 +81,7 @@ export default function useAppController({
 		addEvent,
 		replaceEvent,
 		updateEvent: updateEventRecord,
+		loadEvents,
 	});
 
 	const todoist = useTodoistSync({

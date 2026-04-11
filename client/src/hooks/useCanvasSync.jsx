@@ -82,6 +82,7 @@ function canvasReducer(state, action) {
 
 export default function useCanvasSync({
 	api,
+	isGuest,
 	setLoading,
 	setHighlightCredentials,
 	setSettingsOpen,
@@ -89,6 +90,7 @@ export default function useCanvasSync({
 	addEvent,
 	replaceEvent,
 	updateEvent,
+	loadEvents,
 }) {
 	const [state, dispatch] = useReducer(canvasReducer, initialState, initState);
 
@@ -178,6 +180,8 @@ export default function useCanvasSync({
 	});
 	const { fetchCanvasAssignments } = useCanvasFetch({
 		api,
+		isGuest,
+		loadEvents,
 		loadClasses,
 		ensureClassesExist,
 		setPendingItems,

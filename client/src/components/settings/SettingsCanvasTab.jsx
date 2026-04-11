@@ -1,4 +1,4 @@
-import { Alert, Button, Group, Stack, Text, TextInput, PasswordInput } from "@mantine/core";
+import { Alert, Button, Divider, Group, Stack, Switch, Text, TextInput, PasswordInput } from "@mantine/core";
 import { IconAlertTriangle } from "@tabler/icons-react";
 
 export default function SettingsCanvasTab({ config, handlers }) {
@@ -51,6 +51,17 @@ export default function SettingsCanvasTab({ config, handlers }) {
           {config.saveSuccess ? "✓ Saved" : "Save Settings"}
         </Button>
       </Group>
+      {!config.isGuest && (
+        <>
+          <Divider />
+          <Switch
+            label="Auto-approve Canvas assignments"
+            description="New assignments fetched from Canvas are added straight to your calendar instead of waiting in the approval queue."
+            checked={Boolean(config.autoApproveCanvas)}
+            onChange={(e) => handlers.setAutoApproveCanvas(e.currentTarget.checked)}
+          />
+        </>
+      )}
     </Stack>
   );
 }

@@ -1,0 +1,1 @@
+ALTER TABLE settings ADD COLUMN auto_approve_canvas INTEGER NOT NULL DEFAULT 0;

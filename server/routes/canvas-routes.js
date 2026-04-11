@@ -3,7 +3,7 @@ import multer from "multer";
 import db from "../db/connection.js";
 import { requireUser } from "../middleware/clerk-auth.js";
 import { validateCanvasCredentials } from "../middleware/canvas-auth.js";
-import { fetchCanvasAssignments } from "../services/canvas-assignments.js";
+import { runCanvasSync } from "../services/canvas-reconcile.js";
 
 const router = Router();
 const upload = multer({
@@ -21,34 +21,25 @@ router.get(
     const userId = req.auth().userId;
 
     try {
-      const { allAssignments, canvasCourses } = await fetchCanvasAssignments(
-        req.canvasBaseUrl,
-        req.canvasToken,
-      );
-
-      // Filter out already approved or rejected items for this user
-      const existingEvents = await db.execute({
-        sql: "SELECT canvas_id FROM events WHERE user_id = ? AND canvas_id IS NOT NULL",
+      const settingsRes = await db.execute({
+        sql: "SELECT auto_approve_canvas FROM settings WHERE user_id = ?",
         args: [userId],
       });
-      const rejectedItems = await db.execute({
-        sql: "SELECT canvas_id FROM rejected_items WHERE user_id = ?",
-        args: [userId],
-      });
+      const autoApprove = Boolean(settingsRes.rows[0]?.auto_approve_canvas);
 
-      const existingIds = new Set([
-        ...existingEvents.rows.map((r) => r.canvas_id),
-        ...rejectedItems.rows.map((r) => r.canvas_id),
-      ]);
-
-      const pendingAssignments = allAssignments.filter(
-        (a) => !existingIds.has(a.canvas_id),
-      );
+      const { pendingAssignments, canvasCourses, allAssignments, stats } =
+        await runCanvasSync({
+          userId,
+          canvasBaseUrl: req.canvasBaseUrl,
+          canvasToken: req.canvasToken,
+          autoApprove,
+        });
 
       res.json({
         assignments: pendingAssignments,
         courses: canvasCourses,
         allAssignments,
+        stats,
       });
     } catch (err) {
       console.error("Error fetching Canvas assignments:", err);

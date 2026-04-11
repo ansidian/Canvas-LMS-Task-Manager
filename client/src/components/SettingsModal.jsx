@@ -35,6 +35,8 @@ export default function SettingsModal({
     setCanvasUrl,
     canvasToken,
     setCanvasToken,
+    autoApproveCanvas,
+    setAutoApproveCanvas,
     todoistToken,
     setTodoistToken,
     newClassName,
@@ -124,6 +126,7 @@ export default function SettingsModal({
         if (cancelled) return;
         setCanvasUrl(data.canvas_url || "");
         setCanvasToken(data.canvas_token || "");
+        setAutoApproveCanvas(Boolean(data.auto_approve_canvas));
         setTodoistToken(data.todoist_token || "");
         setDiscordWebhook(data.discord_webhook || "");
         setSavedDiscordWebhook(data.discord_webhook || "");
@@ -136,7 +139,7 @@ export default function SettingsModal({
     return () => {
       cancelled = true;
     };
-  }, [api, opened, setCanvasToken, setCanvasUrl, setTodoistToken, setDiscordWebhook]);
+  }, [api, opened, setCanvasToken, setCanvasUrl, setTodoistToken, setDiscordWebhook, setAutoApproveCanvas, setSavedDiscordWebhook]);
 
   const [activeTab, setActiveTab] = useState("canvas");
   const [hasApiKey, setHasApiKey] = useState(false);
@@ -147,13 +150,23 @@ export default function SettingsModal({
         config={{
           canvasUrl,
           canvasToken,
+          autoApproveCanvas,
           highlightCredentials,
           canvasAuthError,
           saveSuccess,
+          isGuest,
         }}
         handlers={{
           setCanvasUrl,
           setCanvasToken,
+          setAutoApproveCanvas: async (value) => {
+            setAutoApproveCanvas(value);
+            try {
+              await settingsApi.saveAutoApproveCanvas(value);
+            } catch {
+              setAutoApproveCanvas(!value);
+            }
+          },
           saveCanvasSettings: settingsApi.saveCanvasSettings,
           onCanvasAuthErrorClear,
         }}

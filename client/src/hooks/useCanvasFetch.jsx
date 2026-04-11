@@ -5,6 +5,8 @@ import { setStorageItem } from "../utils/storage";
 
 export default function useCanvasFetch({
 	api,
+	isGuest,
+	loadEvents,
 	loadClasses,
 	ensureClassesExist,
 	setPendingItems,
@@ -33,93 +35,103 @@ export default function useCanvasFetch({
 		fetchAbortRef.current = controller;
 		setLoading(true);
 		try {
-      const currentClasses = await loadClasses();
+      if (isGuest) {
+        const currentClasses = await loadClasses();
 
-      const data = await api("/canvas/assignments", {
-        headers: {},
-        signal: controller.signal,
-      });
+        const data = await api("/canvas/assignments", {
+          headers: {},
+          signal: controller.signal,
+        });
 
-      await ensureClassesExist(data.courses, currentClasses);
+        await ensureClassesExist(data.courses, currentClasses);
 
-      if (fetchRequestIdRef.current !== requestId) return;
+        if (fetchRequestIdRef.current !== requestId) return;
 
-      // Reload classes to get updated list with canvas_course_id mappings
-      const updatedClasses = await loadClasses();
+        const updatedClasses = await loadClasses();
 
-      // Filter out items from unsynced classes (they won't show anywhere)
-      const syncedAssignments = data.assignments.filter((a) => {
-        const cls = updatedClasses.find(
-          (c) => c.canvas_course_id === a.canvas_course_id,
+        const syncedAssignments = data.assignments.filter((a) => {
+          const cls = updatedClasses.find(
+            (c) => c.canvas_course_id === a.canvas_course_id,
+          );
+          return !cls || cls.is_synced;
+        });
+
+        const submittedItems = syncedAssignments.filter((a) => a.has_submitted);
+        const pendingAssignments = syncedAssignments.filter(
+          (a) => !a.has_submitted,
         );
-        // Keep if no matching class (new) or class is synced
-        return !cls || cls.is_synced;
-      });
 
-      // Separate submitted items from pending items
-      const submittedItems = syncedAssignments.filter((a) => a.has_submitted);
+        const autoApprovePromises = submittedItems.map((item) => {
+          const matchingClass = updatedClasses.find(
+            (cls) => cls.canvas_course_id === item.canvas_course_id,
+          );
+          const classId = matchingClass?.id ?? null;
 
-      const pendingAssignments = syncedAssignments.filter(
-        (a) => !a.has_submitted,
-      );
-
-      // Auto-approve submitted items as complete
-      // Add all optimistic events immediately, then fire API calls in parallel
-      const autoApprovePromises = submittedItems.map((item) => {
-        const matchingClass = updatedClasses.find(
-          (cls) => cls.canvas_course_id === item.canvas_course_id,
-        );
-        const classId = matchingClass?.id ?? null;
-
-        const tempId = `temp-auto-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-        const optimisticEvent = {
-          id: tempId,
-          title: item.title,
-          due_date: item.due_date,
-          class_id: classId,
-          event_type: "assignment",
-          status: "complete",
-          notes: "",
-          url: item.url,
-          description: item.description ?? null,
-          points_possible: item.points_possible ?? null,
-          canvas_id: item.canvas_id,
-          canvas_due_date_override: 0,
-        };
-
-        addEvent(optimisticEvent);
-
-        return api("/events", {
-          method: "POST",
-          body: JSON.stringify({
+          const tempId = `temp-auto-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+          const optimisticEvent = {
+            id: tempId,
             title: item.title,
-            description: item.description ?? null,
             due_date: item.due_date,
             class_id: classId,
             event_type: "assignment",
             status: "complete",
             notes: "",
             url: item.url,
+            description: item.description ?? null,
             points_possible: item.points_possible ?? null,
             canvas_id: item.canvas_id,
             canvas_due_date_override: 0,
-          }),
-        })
-          .then((newEvent) => {
-            replaceEvent(tempId, newEvent);
-            notifySuccess(`"${item.title}" added as complete`);
+          };
+
+          addEvent(optimisticEvent);
+
+          return api("/events", {
+            method: "POST",
+            body: JSON.stringify({
+              title: item.title,
+              description: item.description ?? null,
+              due_date: item.due_date,
+              class_id: classId,
+              event_type: "assignment",
+              status: "complete",
+              notes: "",
+              url: item.url,
+              points_possible: item.points_possible ?? null,
+              canvas_id: item.canvas_id,
+              canvas_due_date_override: 0,
+            }),
           })
-          .catch((err) => {
-            console.error("Failed to auto-approve submitted item:", err);
-          });
-      });
+            .then((newEvent) => {
+              replaceEvent(tempId, newEvent);
+              notifySuccess(`"${item.title}" added as complete`);
+            })
+            .catch((err) => {
+              console.error("Failed to auto-approve submitted item:", err);
+            });
+        });
 
-      // Don't await - let them complete in background
-      Promise.allSettled(autoApprovePromises);
+        Promise.allSettled(autoApprovePromises);
 
-      setPendingItems(pendingAssignments);
-      setCanvasAuthError("");
-      await syncCanvasUpdates(data);
+        setPendingItems(pendingAssignments);
+        setCanvasAuthError("");
+        await syncCanvasUpdates(data);
+      } else {
+        const data = await api("/canvas/assignments", {
+          headers: {},
+          signal: controller.signal,
+        });
+
+        if (fetchRequestIdRef.current !== requestId) return;
+
+        setPendingItems(data.assignments);
+        setCanvasAuthError("");
+        await Promise.all([loadClasses(), loadEvents()]);
+        if (data?.stats?.approved > 0) {
+          notifySuccess(
+            `${data.stats.approved} submitted item${data.stats.approved === 1 ? "" : "s"} marked complete`,
+          );
+        }
+      }
 
       const now = Date.now();
       setStorageItem(LAST_FETCH_KEY, String(now));
@@ -157,6 +169,8 @@ export default function useCanvasFetch({
 		}
 	}, [
 		api,
+		isGuest,
+		loadEvents,
 		loadClasses,
 		ensureClassesExist,
 		setHighlightCredentials,

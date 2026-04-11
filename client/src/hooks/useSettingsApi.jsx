@@ -96,6 +96,19 @@ export default function useSettingsApi({
     }
   };
 
+  const saveAutoApproveCanvas = async (value) => {
+    try {
+      await api("/settings", {
+        method: "PATCH",
+        body: JSON.stringify({ auto_approve_canvas: value }),
+      });
+    } catch (err) {
+      console.error("Failed to save auto-approve setting:", err);
+      notifyError(err.message || "Failed to update auto-approve setting.");
+      throw err;
+    }
+  };
+
   const saveTodoistSettings = async () => {
     try {
       const trimmed = todoistToken?.trim() || "";
@@ -248,6 +261,7 @@ export default function useSettingsApi({
     resetOnboarding,
     handleResetData,
     saveCanvasSettings,
+    saveAutoApproveCanvas,
     saveTodoistSettings,
     saveDiscordWebhook,
     testWebhook,

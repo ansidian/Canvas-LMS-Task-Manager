@@ -7,6 +7,7 @@ export default function useSettingsModalState({
 }) {
 	const [canvasUrl, setCanvasUrl] = useState("");
 	const [canvasToken, setCanvasToken] = useState("");
+	const [autoApproveCanvas, setAutoApproveCanvas] = useState(false);
 	const [todoistToken, setTodoistToken] = useState("");
 	const [discordWebhook, setDiscordWebhook] = useState("");
 	const [savedDiscordWebhook, setSavedDiscordWebhook] = useState(""); // tracks server-persisted value
@@ -39,6 +40,8 @@ export default function useSettingsModalState({
 		setCanvasUrl,
 		canvasToken,
 		setCanvasToken,
+		autoApproveCanvas,
+		setAutoApproveCanvas,
 		todoistToken,
 		setTodoistToken,
 		newClassName,

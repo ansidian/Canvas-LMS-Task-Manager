@@ -42,7 +42,14 @@ router.get("/settings", async (req, res) => {
 // Update settings
 router.patch("/settings", async (req, res) => {
   const userId = req.auth().userId;
-  const { unassigned_color, canvas_url, canvas_token, todoist_token, discord_webhook } = req.body;
+  const {
+    unassigned_color,
+    canvas_url,
+    canvas_token,
+    todoist_token,
+    discord_webhook,
+    auto_approve_canvas,
+  } = req.body;
   try {
     // Ensure settings exist first
     await db.execute({
@@ -73,6 +80,10 @@ router.patch("/settings", async (req, res) => {
     if (discord_webhook !== undefined) {
       updates.push("discord_webhook = ?");
       args.push(discord_webhook);
+    }
+    if (auto_approve_canvas !== undefined) {
+      updates.push("auto_approve_canvas = ?");
+      args.push(auto_approve_canvas ? 1 : 0);
     }
 
     if (updates.length === 0) {
