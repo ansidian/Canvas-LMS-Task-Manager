@@ -2,6 +2,7 @@ import { useCallback, useEffect, useReducer } from "react";
 import {
 	getStorageItem,
 	getStorageJSON,
+	removeStorageItem,
 	setStorageJSON,
 } from "../utils/storage";
 import {
@@ -124,6 +125,8 @@ export default function useCanvasSync({
 	useEffect(() => {
 		if (state.pendingItems.length > 0) {
 			setStorageJSON(PENDING_CACHE_KEY, state.pendingItems);
+		} else {
+			removeStorageItem(PENDING_CACHE_KEY);
 		}
 	}, [state.pendingItems]);
 
