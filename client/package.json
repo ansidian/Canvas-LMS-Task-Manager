@@ -19,7 +19,7 @@
     "@mantine/hooks": "^8.3.12",
     "@mantine/notifications": "8.3.12",
     "@mantine/spotlight": "^8.3.12",
-    "@tabler/icons-react": "^3.36.1",
+    "@tabler/icons-react": "3.35.0",
     "@tiptap/extension-link": "^3.17.1",
     "@tiptap/extension-mention": "^3.4.2",
     "@tiptap/extension-placeholder": "^3.4.2",
