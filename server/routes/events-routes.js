@@ -6,10 +6,46 @@ const router = Router();
 
 router.use(requireUser());
 
+const TODOIST_ORIGIN_SQL = `(
+  e.todoist_id IS NOT NULL
+  OR lower(coalesce(e.url, '')) LIKE '%todoist.com%'
+  OR c.canvas_course_id = 'todoist'
+)`;
+const CANVAS_ORIGIN_SQL = `e.canvas_id IS NOT NULL`;
+const MANUAL_ORIGIN_SQL = `(
+  e.canvas_id IS NULL
+  AND NOT ${TODOIST_ORIGIN_SQL}
+)`;
+
+function sourceCondition(source, { exclude = false } = {}) {
+  let condition = null;
+  if (source === "todoist") condition = TODOIST_ORIGIN_SQL;
+  else if (source === "canvas") condition = CANVAS_ORIGIN_SQL;
+  else if (source === "manual") condition = MANUAL_ORIGIN_SQL;
+  if (!condition) return null;
+  return exclude ? `NOT ${condition}` : condition;
+}
+
+function parseSourceList(value) {
+  return String(value || "")
+    .split(",")
+    .map((source) => source.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function sourceFilterCondition(value, options) {
+  const conditions = parseSourceList(value)
+    .map((entry) => sourceCondition(entry, options))
+    .filter(Boolean);
+  if (!conditions.length) return null;
+  const joiner = options?.exclude ? " AND " : " OR ";
+  return conditions.length === 1 ? conditions[0] : `(${conditions.join(joiner)})`;
+}
+
 // Get events (supports optional query params: status, due_after, due_before, exclude_source)
 router.get("/", async (req, res) => {
   const userId = req.auth().userId;
-  const { status, due_after, due_before, exclude_source } = req.query;
+  const { status, due_after, due_before, source, exclude_source } = req.query;
   try {
     const conditions = ["e.user_id = ?"];
     const args = [userId];
@@ -27,18 +63,33 @@ router.get("/", async (req, res) => {
       conditions.push("substr(e.due_date, 1, 10) <= ?");
       args.push(due_before);
     }
+    if (source) {
+      const condition = sourceFilterCondition(source);
+      if (condition) conditions.push(condition);
+    }
     if (exclude_source) {
-      const sources = exclude_source.split(",").map((s) => s.trim());
-      for (const source of sources) {
-        if (source === "todoist") conditions.push("e.todoist_id IS NULL");
-        else if (source === "canvas") conditions.push("e.canvas_id IS NULL");
-        else if (source === "manual") conditions.push("(e.canvas_id IS NOT NULL OR e.todoist_id IS NOT NULL)");
-      }
+      const condition = sourceFilterCondition(exclude_source, { exclude: true });
+      if (condition) conditions.push(condition);
     }
 
     const result = await db.execute({
       sql: `
         SELECT e.*, c.name as class_name, c.color as class_color,
+          CASE
+            WHEN ${TODOIST_ORIGIN_SQL} THEN 'todoist'
+            WHEN ${CANVAS_ORIGIN_SQL} THEN 'canvas'
+            ELSE 'manual'
+          END as source,
+          CASE
+            WHEN ${TODOIST_ORIGIN_SQL} THEN 'todoist'
+            WHEN ${CANVAS_ORIGIN_SQL} THEN 'canvas'
+            ELSE 'manual'
+          END as origin_provider,
+          CASE
+            WHEN ${TODOIST_ORIGIN_SQL} THEN coalesce(e.todoist_id, e.url)
+            WHEN ${CANVAS_ORIGIN_SQL} THEN e.canvas_id
+            ELSE NULL
+          END as external_id,
           (SELECT COUNT(*) FROM reminders r WHERE r.event_id = e.id AND r.sent = 0) as reminder_count
         FROM events e
         LEFT JOIN classes c ON e.class_id = c.id AND c.user_id = ?
