@@ -1,6 +1,10 @@
 import { runCanvasSync } from "../../server/services/canvas-reconcile.js";
 import db from "../../server/db/connection.js";
-import { normalizeCanvasBaseUrl, normalizeCanvasToken } from "../../server/services/canvas-api.js";
+import {
+  isTransientCanvasError,
+  normalizeCanvasBaseUrl,
+  normalizeCanvasToken,
+} from "../../server/services/canvas-api.js";
 
 const result = await db.execute(
   "SELECT user_id, canvas_url, canvas_token, auto_approve_canvas FROM settings WHERE canvas_url IS NOT NULL AND canvas_url != '' AND canvas_token IS NOT NULL AND canvas_token != ''",
@@ -14,7 +18,8 @@ if (result.rows.length === 0) {
 console.log(`Syncing Canvas for ${result.rows.length} user(s)...`);
 
 let successCount = 0;
-let failCount = 0;
+let transientFailCount = 0;
+let permanentFailCount = 0;
 
 for (const row of result.rows) {
   const userId = row.user_id;
@@ -34,10 +39,28 @@ for (const row of result.rows) {
     );
     successCount += 1;
   } catch (err) {
-    console.error(`[${userId}] failed:`, err?.message || err);
-    failCount += 1;
+    const transient = isTransientCanvasError(err);
+    console.error(
+      `[${userId}] ${transient ? "transient failure" : "failed"}:`,
+      err?.message || err,
+    );
+    if (transient) {
+      transientFailCount += 1;
+    } else {
+      permanentFailCount += 1;
+    }
   }
 }
 
-console.log(`Done — ${successCount} ok, ${failCount} failed.`);
-process.exit(failCount > 0 ? 1 : 0);
+const failCount = transientFailCount + permanentFailCount;
+console.log(
+  `Done — ${successCount} ok, ${failCount} failed (${transientFailCount} transient, ${permanentFailCount} permanent).`,
+);
+
+if (permanentFailCount === 0 && transientFailCount > 0) {
+  console.warn(
+    "Only transient Canvas failures occurred; leaving scheduled workflow green.",
+  );
+}
+
+process.exit(permanentFailCount > 0 ? 1 : 0);
